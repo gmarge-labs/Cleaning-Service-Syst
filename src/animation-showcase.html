@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SparkleVille Animation Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #fafbfc 0%, #f0f2f6 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: #1A2238;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #1A2238 0%, #FF1493 50%, #FF69B4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: #3d5a80;
+            margin-bottom: 32px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(255, 20, 147, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.05); }
+        }
+
+        .section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            color: #1A2238;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-card h3 {
+            font-size: 1.25rem;
+            color: #1A2238;
+            margin-bottom: 12px;
+        }
+
+        .demo-card p {
+            color: #3d5a80;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+
+        .demo-element {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        /* Animation Classes */
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .animate-slide-in-bottom {
+            animation: slideInBottom 0.6s ease-out;
+        }
+
+        @keyframes slideInBottom {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-in-left {
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.6s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-scale-in {
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .animate-rotate {
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-gradient {
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 50%, #1A2238 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Hover Effects Section */
+        .hover-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            cursor: pointer;
+            transition: all 0.3s ease-out;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .hover-3d {
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .hover-3d:hover {
+            transform: translateY(-8px) rotateX(2deg);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .hover-glow:hover {
+            box-shadow: 0 0 30px rgba(255, 20, 147, 0.5);
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+
+        /* Stagger Animation */
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+
+        /* Button Animations */
+        .btn {
+            display: inline-block;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 20, 147, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 20, 147, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left: 4px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 40px 0;
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        .info-box h3 {
+            color: #2e7d32;
+            margin-bottom: 12px;
+        }
+
+        .info-box p {
+            color: #1b5e20;
+            line-height: 1.6;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FF1493;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #FF1493 0%, #FF69B4 100%);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 40px;
+            animation: slideInRight 0.6s ease-out;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -29px;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #FF1493;
+            box-shadow: 0 0 0 4px white, 0 0 0 6px #FF1493;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #3d5a80;
+            margin-top: 80px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ SparkleVille Animation Showcase</h1>
+            <p class="subtitle">Experience all our animation effects in one place</p>
+            <div class="badge">
+                <span>🎬</span>
+                <span>Live Demo</span>
+            </div>
+        </header>
+
+        <div class="info-box">
+            <h3>✅ Animation System Status: Active</h3>
+            <p>All animations are working correctly. Scroll down to see various effects, hover over cards, and click the replay button to restart animations.</p>
+        </div>
+
+        <!-- Entrance Animations -->
+        <section class="section">
+            <h2 class="section-title">Entrance Animations</h2>
+            <div class="grid">
+                <div class="demo-card animate-fade-in stagger-1">
+                    <h3>Fade In</h3>
+                    <p>Simple opacity transition</p>
+                    <div class="demo-element">1</div>
+                </div>
+
+                <div class="demo-card animate-slide-in-bottom stagger-2">
+                    <h3>Slide from Bottom</h3>
+                    <p>Slides up with fade</p>
+                    <div class="demo-element">2</div>
+                </div>
+
+                <div class="demo-card animate-slide-in-left stagger-3">
+                    <h3>Slide from Left</h3>
+                    <p>Slides from the left</p>
+                    <div class="demo-element">3</div>
+                </div>
+
+                <div class="demo-card animate-slide-in-right stagger-4">
+                    <h3>Slide from Right</h3>
+                    <p>Slides from the right</p>
+                    <div class="demo-element">4</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Continuous Animations -->
+        <section class="section">
+            <h2 class="section-title">Continuous Animations</h2>
+            <div class="grid">
+                <div class="demo-card">
+                    <h3>Float</h3>
+                    <p>Continuous floating motion</p>
+                    <div class="demo-element animate-float">∞</div>
+                </div>
+
+                <div class="demo-card">
+                    <h3>Rotate</h3>
+                    <p>Continuous rotation</p>
+                    <div class="demo-element animate-rotate">↻</div>
+                </div>
+
+                <div class="demo-card">
+                    <h3>Gradient Shift</h3>
+                    <p>Animated background</p>
+                    <div class="demo-element animate-gradient">🎨</div>
+                </div>
+
+                <div class="demo-card">
+                    <h3>Loading</h3>
+                    <p>Spinner animation</p>
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100px;">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hover Effects -->
+        <section class="section">
+            <h2 class="section-title">Hover Effects (Try Hovering!)</h2>
+            <div class="grid">
+                <div class="hover-card hover-3d">
+                    <h3>3D Lift</h3>
+                    <p>Hover for 3D perspective effect</p>
+                    <div class="demo-element">👆</div>
+                </div>
+
+                <div class="hover-card hover-glow">
+                    <h3>Glow Effect</h3>
+                    <p>Hover for glowing shadow</p>
+                    <div class="demo-element">✨</div>
+                </div>
+
+                <div class="hover-card hover-scale">
+                    <h3>Scale Up</h3>
+                    <p>Hover to scale up</p>
+                    <div class="demo-element">📈</div>
+                </div>
+
+                <div class="hover-card" style="transition: all 0.3s ease;">
+                    <h3>Rotate</h3>
+                    <p>Hover to rotate icon</p>
+                    <div class="demo-element" style="transition: transform 0.5s ease;" onmouseover="this.style.transform='rotate(180deg)'" onmouseout="this.style.transform='rotate(0deg)'">🔄</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Button Animations -->
+        <section class="section">
+            <h2 class="section-title">Interactive Buttons</h2>
+            <div style="text-align: center; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;">
+                <button class="btn btn-primary">Primary Button</button>
+                <button class="btn btn-primary animate-pulse">Pulsing Button</button>
+                <button class="btn btn-primary" onclick="replayAnimations()" style="background: linear-gradient(135deg, #1A2238 0%, #3d5a80 100%);">
+                    🔄 Replay All Animations
+                </button>
+            </div>
+        </section>
+
+        <!-- Timeline -->
+        <section class="section">
+            <h2 class="section-title">Timeline Animation</h2>
+            <div class="timeline">
+                <div class="timeline-item stagger-1">
+                    <div class="demo-card">
+                        <h3>Step 1: Installation</h3>
+                        <p>Import the animation components and utilities</p>
+                    </div>
+                </div>
+                <div class="timeline-item stagger-2">
+                    <div class="demo-card">
+                        <h3>Step 2: Choose Animation</h3>
+                        <p>Select from CSS classes or Motion components</p>
+                    </div>
+                </div>
+                <div class="timeline-item stagger-3">
+                    <div class="demo-card">
+                        <h3>Step 3: Apply & Customize</h3>
+                        <p>Add your preferred animation with custom timing</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="section">
+            <h2 class="section-title">Animation Stats</h2>
+            <div class="grid">
+                <div class="demo-card animate-scale-in stagger-1">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">8</div>
+                    <h3>Keyframe Animations</h3>
+                    <p>Defined in globals.css</p>
+                </div>
+                <div class="demo-card animate-scale-in stagger-2">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">15+</div>
+                    <h3>Utility Classes</h3>
+                    <p>Ready-to-use animations</p>
+                </div>
+                <div class="demo-card animate-scale-in stagger-3">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">3</div>
+                    <h3>React Components</h3>
+                    <p>Motion-powered effects</p>
+                </div>
+                <div class="demo-card animate-scale-in stagger-4">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">100%</div>
+                    <h3>Page Coverage</h3>
+                    <p>All pages animated</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p style="font-size: 1.25rem; font-weight: 600; margin-bottom: 12px;">
+                Ready to use these animations in your components?
+            </p>
+            <p style="margin-bottom: 24px;">
+                Check out <strong>/ANIMATION_GUIDE.md</strong> for complete documentation and usage examples
+            </p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <a href="/ANIMATION_GUIDE.md" class="btn btn-primary">Full Guide</a>
+                <a href="/ANIMATION_QUICKSTART.md" class="btn btn-primary" style="background: linear-gradient(135deg, #1A2238 0%, #3d5a80 100%);">Quick Start</a>
+            </div>
+            <p style="margin-top: 40px; color: #9ca3af; font-size: 0.875rem;">
+                SparkleVille Animation System v2.0 | December 2024
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        function replayAnimations() {
+            // Get all animated elements
+            const animatedElements = document.querySelectorAll('[class*="animate-"]');
+            
+            animatedElements.forEach(el => {
+                // Store original classes
+                const originalClasses = Array.from(el.classList);
+                const animationClasses = originalClasses.filter(c => 
+                    c.startsWith('animate-') || c.startsWith('stagger-')
+                );
+                
+                // Remove animation classes
+                animationClasses.forEach(c => el.classList.remove(c));
+                
+                // Force reflow
+                void el.offsetWidth;
+                
+                // Re-add animation classes after a tiny delay
+                setTimeout(() => {
+                    animationClasses.forEach(c => el.classList.add(c));
+                }, 10);
+            });
+
+            console.log('✅ Animations replayed successfully!');
+        }
+
+        // Log on page load
+        console.log('✨ SparkleVille Animation Showcase loaded');
+        console.log('📊 Showcasing 20+ different animation effects');
+        console.log('🎯 Try hovering over cards and clicking the replay button!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+    "name": "sparkleville-server",
+    "version": "1.0.0",
+    "description": "Backend for SparkleVille",
+    "main": "dist/index.js",
+    "scripts": {
+        "start": "node dist/index.js",
+        "dev": "nodemon src/index.ts",
+        "build": "tsc"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@prisma/client": "^6.0.1",
+        "axios": "^1.13.2",
+        "bcrypt": "^6.0.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "pg": "^8.11.5"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.12.7",
+        "@types/pg": "^8.11.5",
+        "nodemon": "^3.1.0",
+        "prisma": "^6.0.1",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    },
+    "prisma": {
+        "seed": "ts-node prisma/seed.ts"
+    }
+}

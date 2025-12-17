@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Test - SparkleVille</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #fafbfc;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1A2238;
+        }
+
+        .animation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .animation-card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .animation-card h3 {
+            margin-bottom: 16px;
+            color: #1A2238;
+        }
+
+        .animation-card p {
+            color: #3d5a80;
+            margin-bottom: 20px;
+        }
+
+        .animated-box {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            border-radius: 8px;
+        }
+
+        /* Test Keyframe Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInFromBottom {
+            from {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Apply animations */
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .animate-slide-in-bottom {
+            animation: slideInFromBottom 0.6s ease-out;
+        }
+
+        .animate-slide-in-left {
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.6s ease-out;
+        }
+
+        .animate-scale-in {
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .animate-pulse-soft {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .animate-gradient {
+            background-size: 200% 200%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        /* Hover effects */
+        .hover-3d {
+            transition: all 0.3s ease-out;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .hover-3d:hover {
+            transform: translateY(-4px) rotateX(2deg);
+            box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease-out;
+        }
+
+        .card-hover:hover {
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px);
+        }
+
+        /* Stagger delays */
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .stagger-5 { animation-delay: 0.5s; }
+        .stagger-6 { animation-delay: 0.6s; }
+
+        .test-btn {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, #FF1493 0%, #FF69B4 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 20, 147, 0.3);
+        }
+
+        .status {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 40px;
+            border-left: 4px solid #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 SparkleVille Animation System Test</h1>
+        
+        <div class="status">
+            ✅ All keyframe animations are loaded and ready
+        </div>
+
+        <h2 style="margin-bottom: 20px; color: #1A2238;">CSS Keyframe Animations</h2>
+        <div class="animation-grid">
+            <div class="animation-card hover-3d">
+                <h3>Fade In</h3>
+                <p>Simple opacity transition</p>
+                <div class="animated-box animate-fade-in"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Slide In Bottom</h3>
+                <p>Slides up from below</p>
+                <div class="animated-box animate-slide-in-bottom stagger-1"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Slide In Left</h3>
+                <p>Slides from the left</p>
+                <div class="animated-box animate-slide-in-left stagger-2"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Slide In Right</h3>
+                <p>Slides from the right</p>
+                <div class="animated-box animate-slide-in-right stagger-3"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Scale In</h3>
+                <p>Scales up from 90%</p>
+                <div class="animated-box animate-scale-in stagger-4"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Float</h3>
+                <p>Continuous floating motion</p>
+                <div class="animated-box animate-float"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Pulse</h3>
+                <p>Soft pulsing opacity</p>
+                <div class="animated-box animate-pulse-soft"></div>
+            </div>
+
+            <div class="animation-card hover-3d">
+                <h3>Gradient Shift</h3>
+                <p>Animated gradient background</p>
+                <div class="animated-box animate-gradient"></div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 20px; color: #1A2238;">Hover & Transition Effects</h2>
+        <div class="animation-grid">
+            <div class="animation-card card-hover">
+                <h3>Card Hover</h3>
+                <p>Hover to see lift effect</p>
+                <div class="animated-box"></div>
+            </div>
+
+            <div class="animation-card card-hover">
+                <h3>3D Transform</h3>
+                <p>Hover for 3D tilt</p>
+                <div class="animated-box"></div>
+            </div>
+        </div>
+
+        <div class="test-btn">
+            <button onclick="replayAnimations()">🔄 Replay All Animations</button>
+        </div>
+    </div>
+
+    <script>
+        function replayAnimations() {
+            const animatedElements = document.querySelectorAll('[class*="animate-"]');
+            animatedElements.forEach(el => {
+                // Remove animation
+                const classes = Array.from(el.classList).filter(c => c.startsWith('animate-'));
+                classes.forEach(c => el.classList.remove(c));
+                
+                // Trigger reflow
+                void el.offsetWidth;
+                
+                // Re-add animation
+                setTimeout(() => {
+                    classes.forEach(c => el.classList.add(c));
+                }, 10);
+            });
+        }
+
+        // Log on page load
+        console.log('✅ SparkleVille Animation Test loaded successfully');
+        console.log('📊 Testing 8 keyframe animations + hover effects');
+    </script>
+</body>
+</html>

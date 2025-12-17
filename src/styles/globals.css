@@ -1,0 +1,433 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary - Teal #009688 */
+  --color-primary-50: rgb(224 247 250);
+  --color-primary-100: rgb(178 235 238);
+  --color-primary-200: rgb(128 222 225);
+  --color-primary-300: rgb(77 210 212);
+  --color-primary-400: rgb(38 180 174);
+  --color-primary-500: rgb(0 150 136);
+  --color-primary-600: rgb(0 120 109);
+  --color-primary-700: rgb(0 90 82);
+  --color-primary-800: rgb(0 60 54);
+  --color-primary-900: rgb(0 30 27);
+
+  /* Secondary - Mint Green #20C997 */
+  --color-secondary-50: rgb(234 251 246);
+  --color-secondary-100: rgb(204 246 234);
+  --color-secondary-200: rgb(163 239 216);
+  --color-secondary-300: rgb(122 232 198);
+  --color-secondary-400: rgb(81 225 180);
+  --color-secondary-500: rgb(32 201 151);
+  --color-secondary-600: rgb(26 161 121);
+  --color-secondary-700: rgb(19 121 91);
+  --color-secondary-800: rgb(13 80 60);
+  --color-secondary-900: rgb(6 40 30);
+
+  /* Accent - Light Cyan #E0F7FA */
+  --color-accent-50: rgb(240 253 255);
+  --color-accent-100: rgb(224 247 250);
+  --color-accent-200: rgb(199 238 243);
+  --color-accent-300: rgb(174 229 236);
+  --color-accent-400: rgb(149 220 229);
+  --color-accent-500: rgb(124 211 222);
+  --color-accent-600: rgb(99 169 178);
+  --color-accent-700: rgb(74 127 133);
+  --color-accent-800: rgb(50 84 89);
+  --color-accent-900: rgb(25 42 44);
+
+  /* Success - Teal tone */
+  --color-success-50: rgb(234 251 246);
+  --color-success-100: rgb(204 246 234);
+  --color-success-500: rgb(32 201 151);
+  --color-success-600: rgb(26 161 121);
+  --color-success-700: rgb(19 121 91);
+
+  /* Warning - Soft Orange */
+  --color-warning-50: rgb(255 250 240);
+  --color-warning-400: rgb(255 200 102);
+  --color-warning-500: rgb(255 184 77);
+  --color-warning-600: rgb(204 147 62);
+
+  /* Error - Crimson */
+  --color-error-50: rgb(255 240 248);
+  --color-error-500: rgb(199 21 133);
+  --color-error-600: rgb(159 17 106);
+
+  /* Info - Teal */
+  --color-info-50: rgb(224 247 250);
+  --color-info-500: rgb(0 150 136);
+  --color-info-600: rgb(0 120 109);
+
+  /* Neutrals */
+  --color-neutral-0: rgb(255 255 255);
+  --color-neutral-50: rgb(250 251 252);
+  --color-neutral-100: rgb(245 247 250);
+  --color-neutral-200: rgb(232 234 240);
+  --color-neutral-300: rgb(209 213 219);
+  --color-neutral-400: rgb(156 163 175);
+  --color-neutral-500: rgb(100 116 139);
+  --color-neutral-600: rgb(71 85 105);
+  --color-neutral-700: rgb(51 65 85);
+  --color-neutral-800: rgb(30 41 59);
+  --color-neutral-900: rgb(15 23 42);
+  --color-neutral-950: rgb(5 7 11);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@layer base {
+  :root {
+    /* Primary Colors - Teal #009688 */
+    --primary-50: 224 247 250;
+    --primary-100: 178 235 238;
+    --primary-200: 128 222 225;
+    --primary-300: 77 210 212;
+    --primary-400: 38 180 174;
+    --primary-500: 0 150 136;
+    --primary-600: 0 120 109;
+    --primary-700: 0 90 82;
+    --primary-800: 0 60 54;
+    --primary-900: 0 30 27;
+
+    /* Secondary Colors - Mint Green #20C997 */
+    --secondary-50: 234 251 246;
+    --secondary-100: 204 246 234;
+    --secondary-200: 163 239 216;
+    --secondary-300: 122 232 198;
+    --secondary-400: 81 225 180;
+    --secondary-500: 32 201 151;
+    --secondary-600: 26 161 121;
+    --secondary-700: 19 121 91;
+    --secondary-800: 13 80 60;
+    --secondary-900: 6 40 30;
+
+    /* Accent Colors - Light Cyan #E0F7FA */
+    --accent-50: 240 253 255;
+    --accent-100: 224 247 250;
+    --accent-200: 199 238 243;
+    --accent-300: 174 229 236;
+    --accent-400: 149 220 229;
+    --accent-500: 124 211 222;
+    --accent-600: 99 169 178;
+    --accent-700: 74 127 133;
+    --accent-800: 50 84 89;
+    --accent-900: 25 42 44;
+
+    /* Semantic Colors */
+    --success-50: 234 251 246;
+    --success-100: 204 246 234;
+    --success-500: 32 201 151;
+    --success-600: 26 161 121;
+    --success-700: 19 121 91;
+    
+    --warning-50: 255 250 240;
+    --warning-400: 255 200 102;
+    --warning-500: 255 184 77;
+    --warning-600: 204 147 62;
+    
+    --error-50: 255 240 248;
+    --error-500: 199 21 133;
+    --error-600: 159 17 106;
+    
+    --info-50: 224 247 250;
+    --info-500: 0 150 136;
+    --info-600: 0 120 109;
+
+    /* Neutrals */
+    --neutral-0: 255 255 255;
+    --neutral-50: 250 251 252;
+    --neutral-100: 245 247 250;
+    --neutral-200: 232 234 240;
+    --neutral-300: 209 213 219;
+    --neutral-400: 156 163 175;
+    --neutral-500: 100 116 139;
+    --neutral-600: 71 85 105;
+    --neutral-700: 51 65 85;
+    --neutral-800: 30 41 59;
+    --neutral-900: 15 23 42;
+    --neutral-950: 5 7 11;
+
+    --background: var(--neutral-50);
+    --foreground: var(--neutral-900);
+    
+    --card: var(--neutral-0);
+    --card-foreground: var(--neutral-900);
+    
+    --popover: var(--neutral-0);
+    --popover-foreground: var(--neutral-900);
+    
+    --primary: var(--primary-500);
+    --primary-foreground: var(--neutral-0);
+    
+    --secondary: var(--secondary-500);
+    --secondary-foreground: var(--neutral-0);
+    
+    --muted: var(--neutral-100);
+    --muted-foreground: var(--neutral-500);
+    
+    --accent: var(--accent-500);
+    --accent-foreground: var(--neutral-0);
+    
+    --destructive: var(--error-500);
+    --destructive-foreground: var(--neutral-0);
+    
+    --border: var(--neutral-200);
+    --input: var(--neutral-200);
+    --ring: var(--secondary-500);
+    
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Global transitions for interactive elements */
+  button, a, input, textarea, select {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Additional button animations */
+  button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  button:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism utilities */
+  .glass {
+    @apply backdrop-blur-md bg-white/80 border border-white/20;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-md bg-neutral-900/80 border border-white/10;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .animate-slide-in-bottom {
+    animation: slideInFromBottom 0.6s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.6s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.6s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Stagger animations */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+
+  /* 3D hover effects */
+  .hover-3d {
+    @apply transition-all duration-300 ease-out;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .hover-3d:hover {
+    transform: translateY(-4px) rotateX(2deg);
+    box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Interactive card effects */
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply shadow-2xl -translate-y-1;
+  }
+
+  /* Button ripple effect container */
+  .btn-ripple {
+    @apply relative overflow-hidden;
+  }
+
+  /* Smooth underline animation */
+  .underline-animate {
+    @apply relative;
+  }
+
+  .underline-animate::after {
+    @apply absolute bottom-0 left-0 h-0.5 bg-current;
+    content: '';
+    width: 0;
+    transition: width 0.3s ease-out;
+  }
+
+  .underline-animate:hover::after {
+    width: 100%;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(0, 150, 136, 0.3);
+    transition: box-shadow 0.3s ease-out;
+  }
+
+  .glow-primary:hover {
+    box-shadow: 0 0 30px rgba(0, 150, 136, 0.5);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(32, 201, 151, 0.3);
+    transition: box-shadow 0.3s ease-out;
+  }
+
+  .glow-accent:hover {
+    box-shadow: 0 0 30px rgba(32, 201, 151, 0.5);
+  }
+
+  /* Premium gradient backgrounds */
+  .gradient-primary {
+    background: linear-gradient(135deg, rgb(0, 150, 136) 0%, rgb(0, 120, 109) 100%);
+  }
+
+  .gradient-secondary {
+    background: linear-gradient(135deg, rgb(32, 201, 151) 0%, rgb(26, 161, 121) 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, rgb(124, 211, 222) 0%, rgb(99, 169, 178) 100%);
+  }
+}
