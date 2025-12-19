@@ -48,6 +48,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
     roomQuantities: data.roomQuantities || {},
     kitchenAddOns: data.kitchenAddOns || {},
     laundryRoomDetails: data.laundryRoomDetails || {},
+    address: data.address || '',
   });
 
   const updateFormData = (updates: Partial<typeof formData>) => {
@@ -60,18 +61,18 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
     const newRooms = formData.rooms.includes(roomId)
       ? formData.rooms.filter(r => r !== roomId)
       : [...formData.rooms, roomId];
-    
+
     // If room is being added and it allows quantity, initialize quantity to 1
     const room = roomOptions.find(r => r.id === roomId);
     const newQuantities = { ...formData.roomQuantities };
-    
+
     if (!formData.rooms.includes(roomId) && room?.allowQuantity) {
       newQuantities[roomId] = 1;
     } else if (formData.rooms.includes(roomId)) {
       // Remove quantity when room is deselected
       delete newQuantities[roomId];
     }
-    
+
     updateFormData({ rooms: newRooms, roomQuantities: newQuantities });
   };
 
@@ -83,13 +84,13 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
   const toggleKitchenAddOn = (kitchenIndex: number, addOnId: string) => {
     const newAddOns = { ...formData.kitchenAddOns };
     const currentAddOns = newAddOns[kitchenIndex] || [];
-    
+
     if (currentAddOns.includes(addOnId)) {
       newAddOns[kitchenIndex] = currentAddOns.filter(a => a !== addOnId);
     } else {
       newAddOns[kitchenIndex] = [...currentAddOns, addOnId];
     }
-    
+
     updateFormData({ kitchenAddOns: newAddOns });
   };
 
@@ -109,16 +110,16 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
   };
 
   const isValid = () => {
-    if (!formData.propertyType) return false;
-    
+    if (!formData.propertyType || !formData.address) return false;
+
     if (isResidentialProperty()) {
       return formData.bedrooms > 0 && formData.bathrooms > 0;
     }
-    
+
     if (isOfficeProperty()) {
       return formData.toilets >= 0;
     }
-    
+
     return true;
   };
 
@@ -128,6 +129,19 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
         <div>
           <h2 className="text-3xl font-bold text-neutral-900 mb-2">Property Details</h2>
           <p className="text-neutral-600">Tell us about your space so we can provide an accurate quote</p>
+        </div>
+
+        {/* Service Address */}
+        <div>
+          <Label htmlFor="address" className="text-base font-semibold mb-3 block">Service Address *</Label>
+          <Input
+            id="address"
+            value={formData.address}
+            onChange={(e) => updateFormData({ address: e.target.value })}
+            placeholder="123 Sparkle St, City, State, Zip"
+            className="h-12 focus:ring-2 focus:ring-secondary-500"
+            required
+          />
         </div>
 
         {/* Property Type */}
@@ -284,25 +298,23 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
               </Label>
               <p className="text-xs text-neutral-600 mb-3">Select all that apply to your {formData.propertyType.toLowerCase()}</p>
             </div>
-            
+
             {/* Scrollable rooms container - similar to time slots */}
             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
               {roomOptions.map((room) => (
                 <div key={room.id}>
                   <button
                     onClick={() => toggleRoom(room.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                      formData.rooms.includes(room.id)
-                        ? 'border-secondary-500 bg-secondary-50 shadow-sm'
-                        : 'border-neutral-200 hover:border-secondary-300 bg-white'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${formData.rooms.includes(room.id)
+                      ? 'border-secondary-500 bg-secondary-50 shadow-sm'
+                      : 'border-neutral-200 hover:border-secondary-300 bg-white'
+                      }`}
                   >
                     {/* Checkbox */}
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                      formData.rooms.includes(room.id)
-                        ? 'border-secondary-500 bg-secondary-500'
-                        : 'border-neutral-300'
-                    }`}>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${formData.rooms.includes(room.id)
+                      ? 'border-secondary-500 bg-secondary-500'
+                      : 'border-neutral-300'
+                      }`}>
                       {formData.rooms.includes(room.id) && <Check className="w-3 h-3 text-white" />}
                     </div>
 
@@ -319,7 +331,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
                       </div>
                     )}
                   </button>
-                  
+
                   {/* Quantity selector for kitchen and living room when selected */}
                   {formData.rooms.includes(room.id) && room.allowQuantity && (
                     <div className="ml-10 mt-2 flex items-center gap-2 p-2 bg-white rounded-lg border border-secondary-200 max-w-[180px]">
@@ -363,24 +375,22 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
                             </Label>
                             <p className="text-xs text-neutral-600 mb-2">Select all that apply</p>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-2">
                             {kitchenAddOnOptions.map((addOn) => (
                               <button
                                 key={addOn.id}
                                 onClick={() => toggleKitchenAddOn(kitchenIndex, addOn.id)}
-                                className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all ${
-                                  formData.kitchenAddOns[kitchenIndex]?.includes(addOn.id)
-                                    ? 'border-secondary-500 bg-secondary-50 shadow-sm'
-                                    : 'border-neutral-200 hover:border-secondary-300 bg-white'
-                                }`}
+                                className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all ${formData.kitchenAddOns[kitchenIndex]?.includes(addOn.id)
+                                  ? 'border-secondary-500 bg-secondary-50 shadow-sm'
+                                  : 'border-neutral-200 hover:border-secondary-300 bg-white'
+                                  }`}
                               >
                                 {/* Checkbox */}
-                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                                  formData.kitchenAddOns[kitchenIndex]?.includes(addOn.id)
-                                    ? 'border-secondary-500 bg-secondary-500'
-                                    : 'border-neutral-300'
-                                }`}>
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${formData.kitchenAddOns[kitchenIndex]?.includes(addOn.id)
+                                  ? 'border-secondary-500 bg-secondary-500'
+                                  : 'border-neutral-300'
+                                  }`}>
                                   {formData.kitchenAddOns[kitchenIndex]?.includes(addOn.id) && <Check className="w-2.5 h-2.5 text-white" />}
                                 </div>
 
@@ -470,7 +480,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
                 </div>
               ))}
             </div>
-            
+
             {/* Scroll hint */}
             <p className="text-xs text-neutral-500 italic text-center">Scroll to view more rooms</p>
           </div>
@@ -485,24 +495,22 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
               </Label>
               <p className="text-xs text-neutral-600 mb-3">Select all that apply to your {formData.propertyType.toLowerCase()}</p>
             </div>
-            
+
             <div className="space-y-2">
               {roomOptions.map((room) => (
                 <div key={room.id}>
                   <button
                     onClick={() => toggleRoom(room.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                      formData.rooms.includes(room.id)
-                        ? 'border-secondary-500 bg-secondary-50 shadow-sm'
-                        : 'border-neutral-200 hover:border-secondary-300 bg-white'
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${formData.rooms.includes(room.id)
+                      ? 'border-secondary-500 bg-secondary-50 shadow-sm'
+                      : 'border-neutral-200 hover:border-secondary-300 bg-white'
+                      }`}
                   >
                     {/* Checkbox */}
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                      formData.rooms.includes(room.id)
-                        ? 'border-secondary-500 bg-secondary-500'
-                        : 'border-neutral-300'
-                    }`}>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${formData.rooms.includes(room.id)
+                      ? 'border-secondary-500 bg-secondary-500'
+                      : 'border-neutral-300'
+                      }`}>
                       {formData.rooms.includes(room.id) && <Check className="w-3 h-3 text-white" />}
                     </div>
 
@@ -519,7 +527,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
                       </div>
                     )}
                   </button>
-                  
+
                   {/* Quantity selector for kitchen and living room when selected */}
                   {formData.rooms.includes(room.id) && room.allowQuantity && (
                     <div className="ml-10 mt-2 flex items-center gap-2 p-2 bg-white rounded-lg border border-secondary-200 max-w-[180px]">

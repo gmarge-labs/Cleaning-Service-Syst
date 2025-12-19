@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 
@@ -16,18 +15,50 @@ datasource db {
 }
 
 model User {
-  id        String    @id
-  email     String    @unique
-  password  String
-  name      String
-  role      Role      @default(CUSTOMER)
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                  String          @id
+  email               String          @unique
+  password            String
+  name                String
+  phone               String?
+  address             String?         // Legacy field, keeping for compatibility
+  role                Role            @default(CUSTOMER)
+  notificationSettings Json?           // Store notification preferences
+  addresses           Address[]
+  paymentMethods      PaymentMethod[]
+  bookings            Booking[]
+  notifications       Notification[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  label     String   // e.g., "Home", "Office"
+  street    String
+  city      String
+  state     String
+  zip       String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // e.g., "Visa", "Mastercard"
+  last4     String
+  expiry    String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Booking {
-  id                  String        @id @default(cuid())
+  id                  String        @id
   userId              String?
   user                User?         @relation(fields: [userId], references: [id])
   
@@ -35,6 +66,7 @@ model Booking {
   guestName           String?
   guestEmail          String?
   guestPhone          String?
+  address             String?       // Added address field
   
   // Service Details
   serviceType         String
@@ -70,6 +102,7 @@ model Booking {
 
 enum BookingStatus {
   DRAFT
+  BOOKED
   PENDING
   CONFIRMED
   COMPLETED
@@ -84,3 +117,20 @@ enum Role {
   SUPPORT
   CLEANER
 }
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // e.g., "booking_created", "booking_confirmed", "review_received", "payment_received", "cleaner_application"
+  title     String
+  message   String
+  data      Json?    // Store additional data like booking ID, user name, etc.
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isRead])
+}
+

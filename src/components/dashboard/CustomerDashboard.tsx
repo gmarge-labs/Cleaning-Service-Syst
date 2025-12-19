@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 interface CustomerDashboardProps {
   onNavigateHome: () => void;
   onStartBooking: () => void;
-  onRescheduleBooking: () => void;
+  onRescheduleBooking: (booking: any) => void;
   onLogout: () => void;
 }
 
@@ -70,11 +70,10 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors whitespace-nowrap ${isActive
                       ? 'border-secondary-500 text-secondary-500'
                       : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{tab.label}</span>

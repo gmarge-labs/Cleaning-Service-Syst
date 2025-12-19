@@ -69,7 +69,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
     return cardNumber && expiryDate && cvv && cardName && agreedToTerms;
   };
 
-  const handleSubmit = async (status: 'PENDING' | 'DRAFT' = 'PENDING') => {
+  const handleSubmit = async (status: 'BOOKED' | 'DRAFT' = 'BOOKED') => {
     setIsLoading(true);
 
     const bookingPayload = {
@@ -78,6 +78,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
       guestName: !user ? (data.name || null) : null,
       guestEmail: !user ? (data.email || null) : null,
       guestPhone: !user ? (data.phone || null) : null,
+      address: data.address || null,
       totalAmount: totalAmount,
       paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? null : paymentMethod),
       status: status,
@@ -422,7 +423,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
             Save as Draft
           </Button>
           <Button
-            onClick={() => handleSubmit('PENDING')}
+            onClick={() => handleSubmit('BOOKED')}
             disabled={!isValid() || isLoading}
             className="bg-secondary-500 hover:bg-secondary-600 px-8"
           >

@@ -1,8 +1,9 @@
 
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { PrismaClient, Role } from '../generated/prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { generateUserId } from '../utils/idGenerator';
+import { notifyAdmins } from '../utils/notification';
 
 const prisma = new PrismaClient();
 
@@ -50,6 +51,14 @@ export const signup = async (req: Request, res: Response) => {
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user;
+
+    // Notify admins about new user registration
+    await notifyAdmins({
+      type: 'USER_REGISTERED',
+      title: 'New User Registered',
+      message: `A new user ${name} (${userRole}) has registered.`,
+      data: { userId: id, role: userRole }
+    });
 
     res.status(201).json({
       message: 'User created successfully',

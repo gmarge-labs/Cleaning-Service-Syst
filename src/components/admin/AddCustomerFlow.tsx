@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Upload, X, Eye, EyeOff, User } from 'lucide-react';
 import { Button } from '../ui/button';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface AddCustomerFlowProps {
   onComplete: () => void;
@@ -135,13 +135,56 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
     }
   };
 
-  const handleComplete = () => {
-    toast.success('Customer added successfully! Welcome to the family!', {
-      duration: 4000,
-    });
-    setTimeout(() => {
-      onComplete();
-    }, 1000);
+  const handleComplete = async () => {
+    try {
+      // Validate required fields
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phoneNumber) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      if (!formData.password) {
+        toast.error('Please set a password');
+        return;
+      }
+
+      // Prepare user data
+      const userData = {
+        email: formData.email,
+        password: formData.password,
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phoneNumber,
+        address: `${formData.streetAddress}${formData.apartmentUnit ? ' ' + formData.apartmentUnit : ''}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+        role: 'CUSTOMER',
+      };
+
+      // Send to backend
+      const response = await fetch('http://localhost:4000/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create customer');
+      }
+
+      await response.json(); // Consume the response
+      
+      toast.success('Customer added successfully! Welcome to the family!', {
+        duration: 4000,
+      });
+      
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to add customer');
+    }
   };
 
   const renderStepContent = () => {

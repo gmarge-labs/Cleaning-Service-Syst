@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { ProfileUpdateModal } from './ProfileUpdateModal';
 import { ManagementDashboard } from './dashboards/ManagementDashboard';
 import { SupervisorDashboard } from './dashboards/SupervisorDashboard';
 import { SupportDashboard } from './dashboards/SupportDashboard';
@@ -22,9 +25,11 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
+  const user = useSelector((state: RootState) => state.auth.user);
   const [currentRole, setCurrentRole] = useState<UserRole>('management');
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const renderDashboard = () => {
     switch (currentRole) {
@@ -76,6 +81,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
         onRoleChange={setCurrentRole}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        user={user}
       />
 
       {/* Main Content Area */}
@@ -85,6 +91,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           currentRole={currentRole}
           onLogout={onLogout}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          user={user}
+          onProfileUpdate={() => setIsProfileModalOpen(true)}
         />
 
         {/* Page Content */}
@@ -92,6 +100,12 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           {renderPage()}
         </main>
       </div>
+      
+      {/* Profile Update Modal */}
+      <ProfileUpdateModal 
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </div>
   );
 }

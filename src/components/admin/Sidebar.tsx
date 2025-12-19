@@ -2,6 +2,11 @@ import { Sparkles, LayoutDashboard, Calendar, Users, MessageSquare, BarChart3, P
 import { UserRole, Page } from './AdminDashboard';
 import { Badge } from '../ui/badge';
 
+interface User {
+  id: string;
+  name: string;
+}
+
 interface SidebarProps {
   currentPage: Page;
   currentRole: UserRole;
@@ -10,6 +15,7 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   limitedMenuItems?: { id: string; label: string; icon: string }[];
+  user?: User | null;
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -31,11 +37,21 @@ const menuItems = [
   { id: 'settings' as Page, label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, isOpen, onToggle, limitedMenuItems }: SidebarProps) {
+export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, isOpen, onToggle, limitedMenuItems, user }: SidebarProps) {
   // Filter menu items based on role and limitedMenuItems prop
   const visibleMenuItems = limitedMenuItems 
     ? menuItems.filter(item => limitedMenuItems.some(limited => limited.id === item.id))
     : menuItems.filter(item => !item.adminOnly || currentRole === 'management');
+  
+  // Generate initials from user name
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
     
   return (
     <aside
@@ -74,11 +90,11 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
       <div className="p-4 border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold">JD</span>
+            <span className="text-white font-semibold">{user?.name ? getInitials(user.name) : 'JD'}</span>
           </div>
           {isOpen && (
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-white truncate">John Doe</div>
+              <div className="font-medium text-white truncate">{user?.name || 'John Doe'}</div>
               <div className="text-xs text-neutral-400">{roleLabels[currentRole]}</div>
             </div>
           )}

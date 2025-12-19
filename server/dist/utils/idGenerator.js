@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateUserId = generateUserId;
-const client_1 = require("../generated/prisma/client");
+const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 const PREFIXES = {
     [client_1.Role.CUSTOMER]: 'user',

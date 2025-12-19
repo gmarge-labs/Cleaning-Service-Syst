@@ -4,10 +4,12 @@ import { Badge } from '../ui/badge';
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import { PaymentModal } from './PaymentModal';
+import { parseDateFromDB, formatDisplayDate } from '../../utils/dateUtils';
 
 interface DashboardOverviewProps {
   onStartBooking: () => void;
-  onRescheduleBooking?: () => void;
+  onRescheduleBooking?: (booking: any) => void;
 }
 
 // Mock data - Track completed cleanings for free cleaning rewards
@@ -19,29 +21,30 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [paymentBooking, setPaymentBooking] = useState<any | null>(null);
+
+  const fetchBookings = async () => {
+    if (!user?.id) {
+      setIsLoadingBookings(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/bookings?userId=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+      } else {
+        console.error('Failed to fetch bookings:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!user?.id) {
-        setIsLoadingBookings(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`http://localhost:4000/api/bookings?userId=${user.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setBookings(data);
-        } else {
-          console.error('Failed to fetch bookings:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-      } finally {
-        setIsLoadingBookings(false);
-      }
-    };
-
     fetchBookings();
   }, [user?.id]);
 
@@ -106,7 +109,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
           <div className="p-6 space-y-6">
             {/* Status Badge */}
             <div className="flex items-center gap-3">
-              <Badge className={`${selectedBooking.status === 'DRAFT' ? 'bg-orange-600' : 'bg-green-600'} text-white border-0 text-base px-4 py-2`}>
+              <Badge className={`${selectedBooking.status === 'DRAFT' ? 'bg-orange-600' : selectedBooking.status === 'BOOKED' ? 'bg-blue-600' : 'bg-green-600'} text-white border-0 text-base px-4 py-2`}>
                 {selectedBooking.status}
               </Badge>
             </div>
@@ -117,12 +120,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Calendar className="w-4 h-4 text-secondary-500" />
-                  <span>{new Date(selectedBooking.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}</span>
+                  <span>{selectedBooking && formatDisplayDate(selectedBooking.date)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Clock className="w-4 h-4 text-secondary-500" />
@@ -161,6 +159,32 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
               </div>
             </div>
 
+            {/* Contact & Location */}
+            <div>
+              <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                <Star className="w-5 h-5 text-secondary-500" />
+                Contact & Location
+              </h4>
+              <div className="bg-neutral-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">Name:</span>
+                  <span className="font-medium text-neutral-900">{selectedBooking.guestName || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">Email:</span>
+                  <span className="font-medium text-neutral-900">{selectedBooking.guestEmail || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">Phone:</span>
+                  <span className="font-medium text-neutral-900">{selectedBooking.guestPhone || 'N/A'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-neutral-600">Address:</span>
+                  <span className="font-medium text-neutral-900">{selectedBooking.address || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Pricing */}
             <div className="border-t border-neutral-200 pt-6">
               <div className="flex justify-between items-center">
@@ -171,12 +195,23 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
+              {selectedBooking.status === 'DRAFT' && (
+                <Button
+                  className="flex-1 bg-secondary-500 hover:bg-secondary-600"
+                  onClick={() => {
+                    setPaymentBooking(selectedBooking);
+                    setSelectedBooking(null);
+                  }}
+                >
+                  Pay Now
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => {
                   setSelectedBooking(null);
-                  onRescheduleBooking?.();
+                  onRescheduleBooking?.(selectedBooking);
                 }}
               >
                 Reschedule
@@ -204,7 +239,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
             <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name.split(' ')[0] || 'Customer'}! 👋</h1>
             <p className="text-secondary-100">
               {upcomingBookings.length > 0
-                ? `Your next cleaning is scheduled for ${new Date(upcomingBookings[0].date).toLocaleDateString('en-US', {
+                ? `Your next cleaning is scheduled for ${parseDateFromDB(upcomingBookings[0].date).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric'
                 })}`
@@ -287,7 +322,8 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
                     <h3 className="font-semibold text-neutral-900">{booking.serviceType}</h3>
                     <div className="text-sm text-neutral-600 flex items-center gap-2">
                       <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-4 ${booking.status === 'DRAFT' ? 'bg-orange-100 text-orange-700' :
-                          booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                        booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                          booking.status === 'BOOKED' ? 'bg-blue-100 text-blue-700' :
                             'bg-green-100 text-green-700'
                         }`}>
                         {booking.status}
@@ -301,10 +337,10 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
                 <div className="flex items-center gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-neutral-900">
-                      {new Date(booking.date).getDate()}
+                      {parseDateFromDB(booking.date).getDate()}
                     </div>
                     <div className="text-xs text-neutral-600 uppercase">
-                      {new Date(booking.date).toLocaleDateString('en-US', { month: 'short' })}
+                      {parseDateFromDB(booking.date).toLocaleDateString('en-US', { month: 'short' })}
                     </div>
                   </div>
                   <div>
@@ -315,6 +351,15 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                  {booking.status === 'DRAFT' && (
+                    <Button
+                      size="sm"
+                      className="bg-secondary-500 hover:bg-secondary-600"
+                      onClick={() => setPaymentBooking(booking)}
+                    >
+                      Pay Now
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>View Details</Button>
                   <Button variant="ghost" size="icon" className="text-neutral-400 group-hover:text-secondary-500">
                     <ChevronRight className="w-5 h-5" />
@@ -352,8 +397,15 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
         </button>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {selectedBooking && <BookingDetailsModal />}
+      {paymentBooking && (
+        <PaymentModal
+          booking={paymentBooking}
+          onClose={() => setPaymentBooking(null)}
+          onSuccess={fetchBookings}
+        />
+      )}
     </div>
   );
 }

@@ -1,70 +1,70 @@
-import { useState } from 'react';
-import { Calendar, Clock, MapPin, Star, Phone, MessageSquare, Edit, X, AlertCircle, XCircle, Home } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Clock, MapPin, Edit, X, AlertCircle, XCircle, Home, CreditCard } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { toast } from 'sonner@2.0.3';
-
-// Mock data
-const bookings = [
-  {
-    id: 1,
-    serviceType: 'Deep Cleaning',
-    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-    time: '10:00 AM',
-    address: '123 Main St, Apt 4B, New York, NY 10001',
-    status: 'Confirmed',
-    total: 189.00,
-    estimatedDuration: '3 hours',
-    propertyType: 'Apartment',
-    bedrooms: 2,
-    bathrooms: 1,
-    addOns: ['Inside Windows', 'Pet Hair Removal'],
-    frequency: 'Weekly',
-  },
-  {
-    id: 2,
-    serviceType: 'Standard Cleaning',
-    date: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours from now (within 24 hours)
-    time: '2:00 PM',
-    address: '123 Main St, Apt 4B, New York, NY 10001',
-    status: 'Confirmed',
-    total: 120.00,
-    estimatedDuration: '2 hours',
-    propertyType: 'Apartment',
-    bedrooms: 2,
-    bathrooms: 1,
-    addOns: [],
-    frequency: 'One-time',
-  },
-];
+import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { PaymentModal } from './PaymentModal';
+import { parseDateFromDB, formatDisplayDate } from '../../utils/dateUtils';
 
 interface UpcomingBookingsProps {
-  onReschedule?: () => void;
+  onReschedule?: (booking: any) => void;
 }
 
 export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
-  const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<typeof bookings[0] | null>(null);
-  const [bookingsList, setBookingsList] = useState(bookings);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<any | null>(null);
+  const [bookingsList, setBookingsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [bookingToCancel, setBookingToCancel] = useState<typeof bookings[0] | null>(null);
+  const [bookingToCancel, setBookingToCancel] = useState<any | null>(null);
+  const [paymentBooking, setPaymentBooking] = useState<any | null>(null);
+
+  const fetchBookings = async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/bookings?userId=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Filter for upcoming bookings (today or future)
+        const upcoming = data.filter((b: any) => new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)));
+        setBookingsList(upcoming);
+      } else {
+        console.error('Failed to fetch bookings:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, [user?.id]);
 
   // Calculate cancellation fee based on policy
-  const calculateCancellationFee = (bookingDate: Date, bookingTime: string) => {
+  const calculateCancellationFee = (bookingDate: string, bookingTime: string) => {
     const now = new Date();
     const serviceDateTime = new Date(bookingDate);
-    
+
     // Parse time and set it on the service date
     const [time, period] = bookingTime.split(' ');
     const [hours, minutes] = time.split(':').map(Number);
     let hour24 = hours;
     if (period === 'PM' && hours !== 12) hour24 += 12;
     if (period === 'AM' && hours === 12) hour24 = 0;
-    
+
     serviceDateTime.setHours(hour24, minutes, 0, 0);
-    
+
     // Calculate hours until service
     const hoursUntilService = (serviceDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
+
     if (hoursUntilService >= 24) {
       return 0; // Free cancellation
     } else if (hoursUntilService > 0) {
@@ -74,50 +74,71 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     }
   };
 
-  const handleCancelClick = (booking: typeof bookings[0]) => {
+  const handleCancelClick = (booking: any) => {
     setBookingToCancel(booking);
     setCancelModalOpen(true);
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!bookingToCancel) return;
 
-    const feePercentage = calculateCancellationFee(bookingToCancel.date, bookingToCancel.time);
-    const refundAmount = bookingToCancel.total * (1 - feePercentage);
-    const feeAmount = bookingToCancel.total * feePercentage;
+    try {
+      const response = await fetch(`http://localhost:4000/api/bookings/${bookingToCancel.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'CANCELLED',
+        }),
+      });
 
-    // Remove booking from list
-    setBookingsList(bookingsList.filter(b => b.id !== bookingToCancel.id));
-    
-    // Show success message with refund info
-    if (feePercentage === 0) {
-      toast.success(`Booking cancelled successfully! Full refund of $${bookingToCancel.total.toFixed(2)} will be processed within 5-7 business days.`);
-    } else if (feePercentage === 0.5) {
-      toast.success(`Booking cancelled. Refund of $${refundAmount.toFixed(2)} will be processed within 5-7 business days. Cancellation fee: $${feeAmount.toFixed(2)}`);
-    } else {
-      toast.error(`Booking cancelled. No refund available as cancellation was made after the service time.`);
+      if (!response.ok) {
+        throw new Error('Failed to cancel booking');
+      }
+
+      const feePercentage = calculateCancellationFee(bookingToCancel.date, bookingToCancel.time);
+      const totalAmount = Number(bookingToCancel.totalAmount);
+      const refundAmount = totalAmount * (1 - feePercentage);
+      const feeAmount = totalAmount * feePercentage;
+
+      // Refresh list
+      fetchBookings();
+
+      // Show success message with refund info
+      if (feePercentage === 0) {
+        toast.success(`Booking cancelled successfully! Full refund of $${totalAmount.toFixed(2)} will be processed within 5-7 business days.`);
+      } else if (feePercentage === 0.5) {
+        toast.success(`Booking cancelled. Refund of $${refundAmount.toFixed(2)} will be processed within 5-7 business days. Cancellation fee: $${feeAmount.toFixed(2)}`);
+      } else {
+        toast.error(`Booking cancelled. No refund available as cancellation was made after the service time.`);
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+      toast.error('Failed to cancel booking');
+    } finally {
+      setCancelModalOpen(false);
+      setBookingToCancel(null);
     }
-    
-    setCancelModalOpen(false);
-    setBookingToCancel(null);
   };
 
   const CancellationModal = () => {
     if (!bookingToCancel) return null;
 
     const feePercentage = calculateCancellationFee(bookingToCancel.date, bookingToCancel.time);
-    const refundAmount = bookingToCancel.total * (1 - feePercentage);
-    const feeAmount = bookingToCancel.total * feePercentage;
+    const totalAmount = Number(bookingToCancel.totalAmount);
+    const refundAmount = totalAmount * (1 - feePercentage);
+    const feeAmount = totalAmount * feePercentage;
 
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
         onClick={() => {
           setCancelModalOpen(false);
           setBookingToCancel(null);
         }}
       >
-        <div 
+        <div
           className="bg-white rounded-xl max-w-lg w-full"
           onClick={(e) => e.stopPropagation()}
         >
@@ -142,9 +163,9 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
               <div className="text-sm text-neutral-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{bookingToCancel.date.toLocaleDateString('en-US', { 
+                  <span>{new Date(bookingToCancel.date).toLocaleDateString('en-US', {
                     weekday: 'long',
-                    month: 'long', 
+                    month: 'long',
                     day: 'numeric',
                     year: 'numeric'
                   })}</span>
@@ -173,16 +194,16 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
             <div className="border border-neutral-200 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">Original Amount:</span>
-                <span className="font-medium text-neutral-900">${bookingToCancel.total.toFixed(2)}</span>
+                <span className="font-medium text-neutral-900">${totalAmount.toFixed(2)}</span>
               </div>
-              
+
               {feePercentage > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Cancellation Fee ({(feePercentage * 100).toFixed(0)}%):</span>
                   <span className="font-medium text-red-600">-${feeAmount.toFixed(2)}</span>
                 </div>
               )}
-              
+
               <div className="pt-2 border-t border-neutral-200">
                 <div className="flex justify-between">
                   <span className="font-semibold text-neutral-900">Refund Amount:</span>
@@ -246,11 +267,11 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     if (!selectedBookingForDetails) return null;
 
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
         onClick={() => setSelectedBookingForDetails(null)}
       >
-        <div 
+        <div
           className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
@@ -272,7 +293,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
           <div className="p-6 space-y-6">
             {/* Status Badge */}
             <div className="flex items-center gap-3">
-              <Badge className="bg-green-600 text-white border-0 text-base px-4 py-2">
+              <Badge className={`${selectedBookingForDetails.status === 'DRAFT' ? 'bg-orange-600' : selectedBookingForDetails.status === 'BOOKED' ? 'bg-blue-600' : 'bg-green-600'} text-white border-0 text-base px-4 py-2`}>
                 {selectedBookingForDetails.status}
               </Badge>
             </div>
@@ -283,12 +304,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Calendar className="w-4 h-4 text-secondary-500" />
-                  <span>{selectedBookingForDetails.date.toLocaleDateString('en-US', { 
-                    weekday: 'long',
-                    month: 'long', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}</span>
+                  <span>{selectedBookingForDetails && formatDisplayDate(selectedBookingForDetails.date)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Clock className="w-4 h-4 text-secondary-500" />
@@ -296,7 +312,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Clock className="w-4 h-4 text-secondary-500" />
-                  <span>{selectedBookingForDetails.estimatedDuration}</span>
+                  <span>{selectedBookingForDetails.estimatedDuration || '2-3 hours'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Calendar className="w-4 h-4 text-secondary-500" />
@@ -339,13 +355,13 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
             </div>
 
             {/* Add-ons */}
-            {selectedBookingForDetails.addOns.length > 0 && (
+            {selectedBookingForDetails.addOns && selectedBookingForDetails.addOns.length > 0 && (
               <div>
                 <h4 className="font-semibold text-neutral-900 mb-3">Add-ons</h4>
                 <div className="flex flex-wrap gap-2">
-                  {selectedBookingForDetails.addOns.map((addon, index) => (
+                  {selectedBookingForDetails.addOns.map((addon: any, index: number) => (
                     <Badge key={index} variant="secondary" className="bg-secondary-100 text-secondary-700">
-                      {addon}
+                      {typeof addon === 'string' ? addon : addon.name}
                     </Badge>
                   ))}
                 </div>
@@ -356,24 +372,35 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
             <div className="border-t border-neutral-200 pt-6">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-neutral-900">Total Amount</span>
-                <span className="text-3xl font-bold text-neutral-900">${selectedBookingForDetails.total.toFixed(2)}</span>
+                <span className="text-3xl font-bold text-neutral-900">${Number(selectedBookingForDetails.totalAmount).toFixed(2)}</span>
               </div>
             </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline" 
+              {selectedBookingForDetails.status === 'DRAFT' && (
+                <Button
+                  className="flex-1 bg-secondary-500 hover:bg-secondary-600"
+                  onClick={() => {
+                    setPaymentBooking(selectedBookingForDetails);
+                    setSelectedBookingForDetails(null);
+                  }}
+                >
+                  Pay Now
+                </Button>
+              )}
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => {
                   setSelectedBookingForDetails(null);
-                  onReschedule?.();
+                  onReschedule?.(selectedBookingForDetails);
                 }}
               >
                 Reschedule
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setSelectedBookingForDetails(null)}
               >
@@ -393,7 +420,11 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
         <p className="text-neutral-600">Manage your scheduled cleaning services</p>
       </div>
 
-      {bookingsList.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-neutral-500">Loading bookings...</p>
+        </div>
+      ) : bookingsList.length === 0 ? (
         <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center">
           <div className="text-6xl mb-4">📅</div>
           <h3 className="text-xl font-semibold text-neutral-900 mb-2">No Upcoming Bookings</h3>
@@ -413,19 +444,14 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-2xl font-bold text-neutral-900">{booking.serviceType}</h2>
-                      <Badge className="bg-green-600 text-white border-0">
+                      <Badge className={`${booking.status === 'DRAFT' ? 'bg-orange-600' : booking.status === 'BOOKED' ? 'bg-blue-600' : 'bg-green-600'} text-white border-0`}>
                         {booking.status}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        <span>{booking.date.toLocaleDateString('en-US', { 
-                          weekday: 'long',
-                          month: 'long', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}</span>
+                        <span>{formatDisplayDate(booking.date)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
@@ -433,12 +459,20 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        <span>{booking.estimatedDuration}</span>
+                        <span>{booking.estimatedDuration || '2-3 hours'}</span>
                       </div>
                     </div>
                   </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-neutral-900">
+                      {parseDateFromDB(booking.date).getDate()}
+                    </div>
+                    <div className="text-xs text-neutral-600 uppercase">
+                      {parseDateFromDB(booking.date).toLocaleDateString('en-US', { month: 'short' })}
+                    </div>
+                  </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold text-neutral-900">${booking.total.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-neutral-900">${Number(booking.totalAmount).toFixed(2)}</div>
                     <div className="text-sm text-neutral-600">Total amount</div>
                   </div>
                 </div>
@@ -456,13 +490,13 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                 </div>
 
                 {/* Add-ons */}
-                {booking.addOns.length > 0 && (
+                {booking.addOns && booking.addOns.length > 0 && (
                   <div>
                     <div className="font-medium text-neutral-900 mb-2">Add-ons</div>
                     <div className="flex flex-wrap gap-2">
-                      {booking.addOns.map((addon, index) => (
+                      {booking.addOns.map((addon: any, index: number) => (
                         <Badge key={index} variant="secondary" className="bg-secondary-100 text-secondary-700">
-                          {addon}
+                          {typeof addon === 'string' ? addon : addon.name}
                         </Badge>
                       ))}
                     </div>
@@ -471,7 +505,13 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-200">
-                  <Button variant="outline" className="flex-1 sm:flex-none" onClick={onReschedule}>
+                  {booking.status === 'DRAFT' && (
+                    <Button className="flex-1 sm:flex-none bg-secondary-500 hover:bg-secondary-600" onClick={() => setPaymentBooking(booking)}>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Pay Now
+                    </Button>
+                  )}
+                  <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onReschedule?.(booking)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Reschedule
                   </Button>
@@ -490,6 +530,13 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
       )}
       {cancelModalOpen && <CancellationModal />}
       {selectedBookingForDetails && <BookingDetailsModal />}
+      {paymentBooking && (
+        <PaymentModal
+          booking={paymentBooking}
+          onClose={() => setPaymentBooking(null)}
+          onSuccess={fetchBookings}
+        />
+      )}
     </div>
   );
 }

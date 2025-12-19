@@ -1,63 +1,126 @@
-import { Search, Bell, User, LogOut, Menu } from 'lucide-react';
+import { Search, Bell, User, LogOut, Menu, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { UserRole } from './AdminDashboard';
 import { Badge } from '../ui/badge';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { UserRole } from './AdminDashboard';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+
+interface User {
+  id: string;
+  name: string;
+}
+
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
 
 interface TopBarProps {
   currentRole: UserRole;
   onLogout: () => void;
   onToggleSidebar: () => void;
+  user?: User | null;
+  onProfileUpdate?: () => void;
 }
 
-// Mock notifications data
-const mockNotifications = [
-  {
-    id: 1,
-    type: 'cleaner_application',
-    title: 'New Cleaner Application',
-    message: 'Sarah Martinez submitted an application',
-    time: '5 min ago',
-    unread: true,
-  },
-  {
-    id: 2,
-    type: 'cleaner_application',
-    title: 'New Cleaner Application',
-    message: 'David Johnson submitted an application',
-    time: '1 hour ago',
-    unread: true,
-  },
-  {
-    id: 3,
-    type: 'booking',
-    title: 'New Booking',
-    message: 'Emma Wilson booked a Deep Cleaning service',
-    time: '2 hours ago',
-    unread: true,
-  },
-  {
-    id: 4,
-    type: 'review',
-    title: 'New Review',
-    message: 'Michael Chen left a 5-star review',
-    time: '3 hours ago',
-    unread: false,
-  },
-  {
-    id: 5,
-    type: 'payment',
-    title: 'Payment Received',
-    message: 'Payment of $189.00 received',
-    time: '5 hours ago',
-    unread: false,
-  },
-];
-
-export function TopBar({ currentRole, onLogout, onToggleSidebar }: TopBarProps) {
+export function TopBar({ currentRole, onLogout, onToggleSidebar, user, onProfileUpdate }: TopBarProps) {
+  const authUser = useSelector((state: RootState) => state.auth.user);
+  const token = useSelector((state: RootState) => state.auth.token);
+  
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const unreadCount = mockNotifications.filter(n => n.unread).length;
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
+  // Fetch notifications
+  useEffect(() => {
+    if (authUser?.id) {
+      fetchNotifications();
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [authUser?.id]);
+
+  const fetchNotifications = async () => {
+    if (!authUser?.id) return;
+    
+    try {
+      setIsLoadingNotifications(true);
+      const response = await fetch(
+        `http://localhost:4000/api/notifications/${authUser.id}?limit=5`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.data || []);
+        setUnreadCount(data.data?.filter((n: Notification) => !n.isRead).length || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    
+    return date.toLocaleDateString();
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await fetch(`http://localhost:4000/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      setNotifications(
+        notifications.map(n =>
+          n.id === notificationId ? { ...n, isRead: true } : n
+        )
+      );
+      setUnreadCount(Math.max(0, unreadCount - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  // Generate initials from user name
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <header className="bg-white border-b border-neutral-200 px-6 py-4">
@@ -90,7 +153,12 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar }: TopBarProps) 
           {/* Notifications */}
           <div className="relative">
             <button 
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen);
+                if (!notificationsOpen) {
+                  fetchNotifications();
+                }
+              }}
               className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <Bell className="w-5 h-5 text-neutral-600" />
@@ -126,33 +194,44 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar }: TopBarProps) 
 
                   {/* Notifications List */}
                   <div className="overflow-y-auto flex-1">
-                    {mockNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors ${
-                          notification.unread ? 'bg-blue-50/50' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                            notification.unread ? 'bg-blue-600' : 'bg-neutral-300'
-                          }`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className={`text-sm ${notification.unread ? 'font-semibold text-neutral-900' : 'font-medium text-neutral-700'}`}>
-                                {notification.title}
-                              </h4>
-                              <span className="text-xs text-neutral-500 whitespace-nowrap">
-                                {notification.time}
-                              </span>
+                    {isLoadingNotifications ? (
+                      <div className="p-4 text-center text-neutral-500">
+                        Loading notifications...
+                      </div>
+                    ) : notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-4 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors ${
+                            !notification.isRead ? 'bg-blue-50/50' : ''
+                          }`}
+                          onClick={() => handleMarkAsRead(notification.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                              !notification.isRead ? 'bg-blue-600' : 'bg-neutral-300'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className={`text-sm ${!notification.isRead ? 'font-semibold text-neutral-900' : 'font-medium text-neutral-700'}`}>
+                                  {notification.title}
+                                </h4>
+                                <span className="text-xs text-neutral-500 whitespace-nowrap">
+                                  {formatTime(notification.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-neutral-600 mt-1">
+                                {notification.message}
+                              </p>
                             </div>
-                            <p className="text-sm text-neutral-600 mt-1">
-                              {notification.message}
-                            </p>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-neutral-500">
+                        No notifications yet
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   {/* Footer */}
@@ -171,25 +250,56 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar }: TopBarProps) 
           </div>
 
           {/* User Menu */}
-          <div className="flex items-center gap-3 pl-3 border-l border-neutral-200">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-medium text-neutral-900">John Doe</div>
-              <div className="text-xs text-neutral-500 capitalize">{currentRole}</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <span className="text-white font-semibold">JD</span>
-            </div>
-          </div>
+          <div className="flex items-center gap-3 pl-3 border-l border-neutral-200 relative">
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="text-right hidden sm:block">
+                <div className="text-sm font-medium text-neutral-900">{user?.name || authUser?.name || 'User'}</div>
+                <div className="text-xs text-neutral-500 capitalize">{currentRole}</div>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <span className="text-white font-semibold">{user?.name ? getInitials(user.name) : authUser?.name ? getInitials(authUser.name) : 'U'}</span>
+              </div>
+            </button>
 
-          {/* Logout */}
-          <Button
-            onClick={onLogout}
-            variant="outline"
-            className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
-          </Button>
+            {/* User Dropdown Menu */}
+            {userMenuOpen && (
+              <>
+                {/* Backdrop */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setUserMenuOpen(false)}
+                />
+                
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      onProfileUpdate?.();
+                      setUserMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-neutral-700 hover:bg-neutral-50 transition-colors border-b border-neutral-100"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="text-sm">Update Profile</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      onLogout();
+                      setUserMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm">Logout</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>

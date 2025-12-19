@@ -10,12 +10,14 @@ import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { formatDateForDB, formatDisplayDate } from '../../../utils/dateUtils';
 
 interface SchedulingStepProps {
   data: BookingData;
   onUpdate: (data: Partial<BookingData>) => void;
   onNext: () => void;
   onBack?: () => void;
+  mode?: 'new' | 'reschedule';
 }
 
 const timeSlots = [
@@ -45,7 +47,7 @@ const SERVICE_PRICES: Record<string, number> = {
 
 const ROOM_PRICE = 15;
 
-export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingStepProps) {
+export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }: SchedulingStepProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(data.date);
   const [selectedTime, setSelectedTime] = useState<string>(data.time || '');
   const [frequency, setFrequency] = useState<string>(data.frequency || 'One-time');
@@ -58,12 +60,35 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
   const [newCustomPet, setNewCustomPet] = useState<string>('');
   const [petPresent, setPetPresent] = useState<boolean | null>(data.petPresent ?? null);
 
+  // 24-hour restriction logic
+  const isTimeSlotValid = (date: Date, time: string) => {
+    const now = new Date();
+    const selectedDateTime = new Date(date);
+
+    // Parse time
+    const [timeStr, period] = time.split(' ');
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) hour24 += 12;
+    if (period === 'AM' && hours === 12) hour24 = 0;
+
+    selectedDateTime.setHours(hour24, minutes, 0, 0);
+
+    const diffInHours = (selectedDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffInHours >= 24;
+  };
+
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
-    onUpdate({ date });
+    setSelectedTime(''); // Reset time when date changes to force re-validation
+    onUpdate({ date, time: '' });
   };
 
   const handleTimeSelect = (time: string) => {
+    if (selectedDate && !isTimeSlotValid(selectedDate, time)) {
+      toast.error('Rescheduling requires at least 24 hours notice from the current time.');
+      return;
+    }
     setSelectedTime(time);
     onUpdate({ time });
   };
@@ -136,6 +161,38 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
     return subtotal * (1 - discountRate);
   };
 
+  const handleReschedule = async () => {
+    if (!isValid()) {
+      toast.error('Please select a date and time first');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/bookings/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate ? formatDateForDB(selectedDate) : null,
+          time: selectedTime,
+          status: 'RESCHEDULED',
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || result.message || 'Failed to reschedule booking');
+
+      toast.success('Booking rescheduled successfully!');
+      onNext();
+    } catch (error) {
+      console.error('Reschedule error:', error);
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!isValid()) {
       toast.error('Please select a date and time first');
@@ -151,8 +208,10 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
       guestName: !user ? (data.name || null) : null,
       guestEmail: !user ? (data.email || null) : null,
       guestPhone: !user ? (data.phone || null) : null,
+      address: data.address || null,
       totalAmount: totalAmount,
       frequency: frequency,
+      date: selectedDate ? formatDateForDB(selectedDate) : null,
       status: 'DRAFT',
     };
 
@@ -167,9 +226,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
       if (!response.ok) throw new Error(result.error || result.message || 'Failed to save draft');
 
       toast.success('Booking saved as draft!');
-      onNext(); // Move to payment or confirmation? User said "next to continue to payment", so maybe stay or move? 
-      // Usually saving draft might stay or go to dashboard. But user said "next to continue to payment", so I'll just save and maybe stay or go to next.
-      // Let's go to next (Payment) so they can see it's saved but can still pay.
+      onNext();
     } catch (error) {
       console.error('Save draft error:', error);
       toast.error(error instanceof Error ? error.message : 'An error occurred');
@@ -178,7 +235,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
     }
   };
 
-  // Disable dates in the past and today (no next-day booking)
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
@@ -187,19 +243,19 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
     <div className="space-y-6">
       <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-neutral-900 mb-2">Schedule Your Cleaning</h2>
+          <h2 className="text-3xl font-bold text-neutral-900 mb-2">
+            {mode === 'reschedule' ? 'Reschedule Your Cleaning' : 'Schedule Your Cleaning'}
+          </h2>
           <p className="text-neutral-600">Choose a date and time that works best for you</p>
         </div>
 
-        {/* No Next-Day Alert */}
         <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-orange-900">
-            <strong>Note:</strong> Next-day bookings available. Please select a date starting tomorrow or later.
+            <strong>Note:</strong> {mode === 'reschedule' ? 'Rescheduling requires at least 24 hours notice from the current time.' : 'Next-day bookings available. Please select a date starting tomorrow or later.'}
           </div>
         </div>
 
-        {/* Date Selection */}
         <div>
           <Label className="text-base font-semibold mb-4 flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-secondary-500" />
@@ -217,18 +273,12 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
           {selectedDate && (
             <p className="text-center mt-3 text-sm text-neutral-600">
               Selected: <span className="font-semibold text-secondary-500">
-                {selectedDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                {formatDisplayDate(selectedDate)}
               </span>
             </p>
           )}
         </div>
 
-        {/* Time Selection - Nested, only appears after date is selected */}
         {selectedDate && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-3">
             <div>
@@ -239,7 +289,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
               <p className="text-xs text-neutral-600 mb-3">Choose your preferred arrival time</p>
             </div>
 
-            {/* Scrollable time slots container - shows 3 slots, scroll for more */}
             <div className="max-h-[220px] overflow-y-auto space-y-2 pr-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
               {timeSlots.map((time) => (
                 <button
@@ -250,7 +299,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     : 'border-neutral-200 hover:border-secondary-300 bg-white'
                     }`}
                 >
-                  {/* Radio Button */}
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${selectedTime === time
                     ? 'border-secondary-500 bg-secondary-500'
                     : 'border-neutral-300'
@@ -258,25 +306,20 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     {selectedTime === time && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
 
-                  {/* Time Display */}
                   <div className="flex-1 text-left">
                     <div className="font-semibold text-sm text-neutral-900">{time}</div>
                     <div className="text-xs text-neutral-600">±30 min arrival window</div>
                   </div>
 
-                  {/* Icon */}
                   <Clock className="w-4 h-4 text-neutral-400 flex-shrink-0" />
                 </button>
               ))}
             </div>
-
-            {/* Scroll hint */}
             <p className="text-xs text-neutral-500 italic text-center">Scroll to view more time slots</p>
           </div>
         )}
 
-        {/* Frequency Selection */}
-        {selectedDate && selectedTime && (
+        {mode !== 'reschedule' && selectedDate && selectedTime && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-4">
             <div>
               <Label className="text-sm font-semibold text-secondary-700 flex items-center gap-2">
@@ -292,8 +335,8 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                   key={f.id}
                   onClick={() => handleFrequencyChange(f.id)}
                   className={`p-3 rounded-xl border-2 text-center transition-all ${frequency === f.id
-                      ? 'border-secondary-500 bg-secondary-50 shadow-sm'
-                      : 'border-neutral-200 hover:border-secondary-300 bg-white'
+                    ? 'border-secondary-500 bg-secondary-50 shadow-sm'
+                    : 'border-neutral-200 hover:border-secondary-300 bg-white'
                     }`}
                 >
                   <div className={`text-sm font-bold ${frequency === f.id ? 'text-secondary-600' : 'text-neutral-900'}`}>
@@ -310,8 +353,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
           </div>
         )}
 
-        {/* Pet Information - Nested, only appears after time is selected */}
-        {selectedDate && selectedTime && (
+        {mode !== 'reschedule' && selectedDate && selectedTime && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-4">
             <div>
               <Label className="text-sm font-semibold text-secondary-700 flex items-center gap-2">
@@ -321,20 +363,16 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
               <p className="text-xs text-neutral-600 mb-3">Let us know if you have any pets</p>
             </div>
 
-            {/* Do you have pets? */}
             <div className="space-y-2">
               {hasPet === null || hasPet === undefined ? (
-                // Show both options when no selection
                 <>
                   <button
                     type="button"
                     onClick={() => handleHasPetChange(true)}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
                   >
-                    {/* Radio Button */}
                     <div className="w-5 h-5 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
                     </div>
-
                     <div className="text-xl flex-shrink-0">🐾</div>
                     <div className="flex-1 text-left text-sm font-medium text-neutral-900">Yes, I have pets</div>
                   </button>
@@ -344,42 +382,34 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     onClick={() => handleHasPetChange(false)}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
                   >
-                    {/* Radio Button */}
                     <div className="w-5 h-5 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
                     </div>
-
                     <div className="text-xl flex-shrink-0">🚫</div>
                     <div className="flex-1 text-left text-sm font-medium text-neutral-900">No pets</div>
                   </button>
                 </>
               ) : hasPet === true ? (
-                // Show only "Yes" when selected
                 <button
                   type="button"
                   onClick={() => setHasPet(null)}
                   className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-secondary-500 bg-secondary-50 shadow-sm transition-all"
                 >
-                  {/* Radio Button */}
                   <div className="w-5 h-5 rounded-full border-2 border-secondary-500 bg-secondary-500 flex items-center justify-center flex-shrink-0 transition-all">
                     <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
-
                   <div className="text-xl flex-shrink-0">🐾</div>
                   <div className="flex-1 text-left text-sm font-medium text-neutral-900">Yes, I have pets</div>
                   <Check className="w-5 h-5 text-secondary-500 flex-shrink-0" />
                 </button>
               ) : (
-                // Show only "No" when selected
                 <button
                   type="button"
                   onClick={() => setHasPet(null)}
                   className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-secondary-500 bg-secondary-50 shadow-sm transition-all"
                 >
-                  {/* Radio Button */}
                   <div className="w-5 h-5 rounded-full border-2 border-secondary-500 bg-secondary-500 flex items-center justify-center flex-shrink-0 transition-all">
                     <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
-
                   <div className="text-xl flex-shrink-0">🚫</div>
                   <div className="flex-1 text-left text-sm font-medium text-neutral-900">No pets</div>
                   <Check className="w-5 h-5 text-secondary-500 flex-shrink-0" />
@@ -387,7 +417,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
               )}
             </div>
 
-            {/* Pet Type Selection - Further nested, only show if user has pets */}
             {hasPet && (
               <div className="ml-10 pl-4 border-l-2 border-secondary-100 space-y-4 pt-2">
                 <div>
@@ -395,7 +424,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     What type of pets do you have? *
                   </Label>
                   <div className="space-y-2">
-                    {petTypes.filter(type => type !== 'Other').map((type) => (
+                    {petTypes.map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -405,7 +434,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                           : 'border-neutral-200 hover:border-secondary-300 bg-white'
                           }`}
                       >
-                        {/* Checkbox */}
                         <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${selectedPets.includes(type)
                           ? 'border-secondary-500 bg-secondary-500'
                           : 'border-neutral-300'
@@ -418,7 +446,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                   </div>
                 </div>
 
-                {/* Custom pet types */}
                 <div>
                   <Label className="text-xs font-medium text-neutral-700 mb-2 block">
                     Other pet type (optional)
@@ -447,7 +474,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     </Button>
                   </div>
 
-                  {/* Display added custom pets */}
                   {customPets.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {customPets.map((pet, index) => (
@@ -469,7 +495,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                   )}
                 </div>
 
-                {/* Will pets be present during cleaning? */}
                 {hasAnyPetSelected && (
                   <div>
                     <Label className="text-xs font-medium text-neutral-700 mb-2 block">
@@ -477,14 +502,12 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                     </Label>
                     <div className="space-y-2">
                       {petPresent === null || petPresent === undefined ? (
-                        // Show both options when no selection
                         <>
                           <button
                             type="button"
                             onClick={() => handlePetPresentChange(true)}
                             className="w-full flex items-center gap-2 p-2.5 rounded-lg border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
                           >
-                            {/* Radio Button */}
                             <div className="w-4 h-4 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
                             </div>
                             <div className="text-xs font-medium text-neutral-900">Yes, pets will be home</div>
@@ -495,20 +518,17 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                             onClick={() => handlePetPresentChange(false)}
                             className="w-full flex items-center gap-2 p-2.5 rounded-lg border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
                           >
-                            {/* Radio Button */}
                             <div className="w-4 h-4 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
                             </div>
                             <div className="text-xs font-medium text-neutral-900">No, pets will be away</div>
                           </button>
                         </>
                       ) : petPresent === true ? (
-                        // Show only "Yes" when selected
                         <button
                           type="button"
                           onClick={() => setPetPresent(null)}
                           className="w-full flex items-center gap-2 p-2.5 rounded-lg border-2 border-secondary-500 bg-secondary-50 shadow-sm transition-all"
                         >
-                          {/* Radio Button */}
                           <div className="w-4 h-4 rounded-full border-2 border-secondary-500 bg-secondary-500 flex items-center justify-center flex-shrink-0 transition-all">
                             <div className="w-1.5 h-1.5 rounded-full bg-white" />
                           </div>
@@ -516,13 +536,11 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
                           <Check className="w-4 h-4 text-secondary-500 flex-shrink-0 ml-auto" />
                         </button>
                       ) : (
-                        // Show only "No" when selected
                         <button
                           type="button"
                           onClick={() => setPetPresent(null)}
                           className="w-full flex items-center gap-2 p-2.5 rounded-lg border-2 border-secondary-500 bg-secondary-50 shadow-sm transition-all"
                         >
-                          {/* Radio Button */}
                           <div className="w-4 h-4 rounded-full border-2 border-secondary-500 bg-secondary-500 flex items-center justify-center flex-shrink-0 transition-all">
                             <div className="w-1.5 h-1.5 rounded-full bg-white" />
                           </div>
@@ -538,8 +556,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
           </div>
         )}
 
-        {/* Special Instructions - Nested, only appears after pet information is answered */}
-        {selectedDate && selectedTime && (hasPet === true || hasPet === false) && (
+        {mode !== 'reschedule' && selectedDate && selectedTime && (hasPet === true || hasPet === false) && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-3">
             <div>
               <Label htmlFor="instructions" className="text-sm font-semibold text-secondary-700 block">
@@ -560,17 +577,16 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
           </div>
         )}
 
-        {/* Summary */}
         {isValid() && (
           <div className="p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg space-y-2">
             <p className="text-sm font-semibold text-neutral-900">Booking Summary:</p>
             <p className="text-sm text-neutral-700">
-              📅 {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              📅 {selectedDate && formatDisplayDate(selectedDate)}
             </p>
             <p className="text-sm text-neutral-700">
               ⏰ {selectedTime} (±30 min arrival window)
             </p>
-            {hasPet && hasAnyPetSelected && (
+            {mode !== 'reschedule' && hasPet && hasAnyPetSelected && (
               <p className="text-sm text-neutral-700">
                 🐾 {[...selectedPets, ...customPets].join(', ')} - {petPresent ? 'Will be home during cleaning' : 'Will be away during cleaning'}
               </p>
@@ -579,7 +595,6 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
         )}
       </div>
 
-      {/* Navigation Buttons */}
       <div className="flex justify-between gap-4">
         <Button
           onClick={onBack}
@@ -589,20 +604,22 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack }: SchedulingSte
           Back
         </Button>
         <div className="flex gap-3">
+          {mode !== 'reschedule' && (
+            <Button
+              onClick={handleSaveDraft}
+              variant="outline"
+              disabled={!isValid() || isLoading}
+              className="px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
+            >
+              {isLoading ? 'Saving...' : 'Save as Draft'}
+            </Button>
+          )}
           <Button
-            onClick={handleSaveDraft}
-            variant="outline"
-            disabled={!isValid() || isLoading}
-            className="px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
-          >
-            {isLoading ? 'Saving...' : 'Save as Draft'}
-          </Button>
-          <Button
-            onClick={onNext}
+            onClick={mode === 'reschedule' ? handleReschedule : onNext}
             disabled={!isValid() || isLoading}
             className="bg-secondary-500 hover:bg-secondary-600 px-8"
           >
-            Continue to Payment
+            {isLoading ? 'Processing...' : mode === 'reschedule' ? 'Confirm Reschedule' : 'Continue to Payment'}
           </Button>
         </div>
       </div>

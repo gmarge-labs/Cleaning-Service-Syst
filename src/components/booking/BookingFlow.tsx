@@ -9,13 +9,16 @@ import { ConfirmationStep } from './steps/ConfirmationStep';
 import { ProgressIndicator } from './ProgressIndicator';
 import { PricingSidebar } from './PricingSidebar';
 import { ArrowLeft } from 'lucide-react';
+import { parseDateFromDB } from '../../utils/dateUtils';
 
 export interface BookingData {
+  id?: string;
   // Account
   accountType?: 'create' | 'login' | 'guest';
   name?: string;
   email?: string;
   phone?: string;
+  address?: string;
 
   // Service
   serviceType?: string;
@@ -55,6 +58,7 @@ interface BookingFlowProps {
   isAuthenticated?: boolean;
   initialStep?: number; // Allow starting at a specific step (for rescheduling)
   mode?: 'new' | 'reschedule'; // Track if this is a new booking or reschedule
+  rescheduleBooking?: any; // The booking being rescheduled
 }
 
 const STEPS = [
@@ -81,7 +85,7 @@ const RESCHEDULE_STEPS = [
   'Confirmation',
 ];
 
-export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, initialStep = 0, mode = 'new' }: BookingFlowProps) {
+export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, initialStep = 0, mode = 'new', rescheduleBooking }: BookingFlowProps) {
   // Determine which steps to show based on mode
   let steps;
   if (mode === 'reschedule') {
@@ -91,7 +95,12 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
   }
 
   const [currentStep, setCurrentStep] = useState(initialStep);
-  const [bookingData, setBookingData] = useState<BookingData>({});
+  const [bookingData, setBookingData] = useState<BookingData>(
+    mode === 'reschedule' && rescheduleBooking ? {
+      ...rescheduleBooking,
+      date: parseDateFromDB(rescheduleBooking.date),
+    } : {}
+  );
 
   const updateBookingData = (data: Partial<BookingData>) => {
     setBookingData(prev => ({ ...prev, ...data }));
@@ -124,7 +133,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       case 'Add-ons':
         return <AddOnsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Schedule':
-        return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} />;
+        return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} mode={mode} />;
       case 'Payment':
         return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Confirmation':

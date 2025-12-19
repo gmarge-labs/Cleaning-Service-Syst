@@ -23,23 +23,25 @@ type View = 'landing' | 'booking' | 'dashboard' | 'admin' | 'supervisor' | 'supp
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('landing');
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const userRole = user?.role?.toLowerCase() as 'customer' | 'admin' | 'supervisor' | 'support' | null;
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
 
   const [bookingInitialStep, setBookingInitialStep] = useState(0); // Track initial step for booking flow
   const [bookingMode, setBookingMode] = useState<'new' | 'reschedule'>('new'); // Track booking mode
+  const [rescheduleBooking, setRescheduleBooking] = useState<any>(null);
 
   const handleStartBooking = () => {
     setBookingInitialStep(0); // Start from beginning
     setBookingMode('new');
+    setRescheduleBooking(null);
     setCurrentView('booking');
   };
 
-  const handleRescheduleBooking = () => {
+  const handleRescheduleBooking = (booking: any) => {
     // For reschedule mode: only show Schedule and Confirmation steps
     setBookingInitialStep(0); // Start at first step of reschedule flow
     setBookingMode('reschedule');
+    setRescheduleBooking(booking);
     setCurrentView('booking');
   };
 
@@ -174,6 +176,7 @@ export default function App() {
             isAuthenticated={isAuthenticated}
             initialStep={bookingInitialStep}
             mode={bookingMode}
+            rescheduleBooking={rescheduleBooking}
           />
         ) : currentView === 'cleaner' ? (
           <CleanerApp
