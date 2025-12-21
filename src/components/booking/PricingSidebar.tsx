@@ -1,34 +1,64 @@
-import { BookingData } from './BookingFlow';
+import { BookingData, SystemSettings } from './BookingFlow';
 import { Tag, Clock, Calendar } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 interface PricingSidebarProps {
   bookingData: BookingData;
+  settings?: SystemSettings | null;
 }
 
-const SERVICE_PRICES: Record<string, number> = {
+const DEFAULT_SERVICE_PRICES: Record<string, number> = {
   'Standard Cleaning': 89,
   'Deep Cleaning': 159,
   'Move In/Out': 199,
   'Post-Construction': 249,
 };
 
-const ROOM_PRICE = 15;
+const DEFAULT_ROOM_PRICE = 15;
 
-const FREQUENCY_DISCOUNTS: Record<string, number> = {
+const DEFAULT_FREQUENCY_DISCOUNTS: Record<string, number> = {
   'Weekly': 0.15,
   'Bi-weekly': 0.10,
   'Monthly': 0.05,
 };
 
-export function PricingSidebar({ bookingData }: PricingSidebarProps) {
+export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
+  // Use settings or defaults
+  const servicePrices = settings?.servicePrices ?? DEFAULT_SERVICE_PRICES;
+  const roomPrices = settings?.roomPrices ?? {};
+  const frequencyDiscounts = settings?.pricing ? {
+    'Weekly': settings.pricing.weeklyDiscount / 100,
+    'Bi-weekly': settings.pricing.biWeeklyDiscount / 100,
+    'Monthly': settings.pricing.monthlyDiscount / 100,
+  } : DEFAULT_FREQUENCY_DISCOUNTS;
+
   // Calculate base price
-  const basePrice = bookingData.serviceType ? SERVICE_PRICES[bookingData.serviceType] || 0 : 0;
+  const basePrice = bookingData.serviceType ? servicePrices[bookingData.serviceType] || 0 : 0;
   
   // Calculate room pricing
-  const roomCount = (bookingData.bedrooms || 0) + (bookingData.bathrooms || 0) + (bookingData.rooms?.length || 0);
-  const roomPrice = roomCount * ROOM_PRICE;
+  // Bedrooms and Bathrooms use a default or specific price if defined
+  const bedroomPrice = roomPrices['Bedroom'] ?? DEFAULT_ROOM_PRICE;
+  const bathroomPrice = roomPrices['Bathroom'] ?? DEFAULT_ROOM_PRICE;
+  const toiletPrice = roomPrices['Toilet'] ?? 10;
+
+  let roomPrice = (bookingData.bedrooms || 0) * bedroomPrice;
+  roomPrice += (bookingData.bathrooms || 0) * bathroomPrice;
+  roomPrice += (bookingData.toilets || 0) * toiletPrice;
+
+  // Additional rooms
+  if (bookingData.rooms && bookingData.roomQuantities) {
+    bookingData.rooms.forEach(roomId => {
+      const quantity = bookingData.roomQuantities?.[roomId] || 1;
+      // Map roomId to settings key (e.g., 'living-room' -> 'Living Room')
+      const settingsKey = roomId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      const price = roomPrices[settingsKey] ?? DEFAULT_ROOM_PRICE;
+      roomPrice += price * quantity;
+    });
+  }
   
+  const roomCount = (bookingData.bedrooms || 0) + (bookingData.bathrooms || 0) + (bookingData.toilets || 0) + 
+    (bookingData.rooms?.reduce((acc, r) => acc + (bookingData.roomQuantities?.[r] || 1), 0) || 0);
+
   // Calculate add-ons
   const addOnsTotal = bookingData.addOns?.reduce((sum, addon) => {
     return sum + (addon.price * (addon.quantity || 1));
@@ -38,7 +68,7 @@ export function PricingSidebar({ bookingData }: PricingSidebarProps) {
   const subtotal = basePrice + roomPrice + addOnsTotal;
   
   // Calculate discount
-  const discountRate = bookingData.frequency ? FREQUENCY_DISCOUNTS[bookingData.frequency] || 0 : 0;
+  const discountRate = bookingData.frequency ? frequencyDiscounts[bookingData.frequency] || 0 : 0;
   const discount = subtotal * discountRate;
   
   // Calculate total

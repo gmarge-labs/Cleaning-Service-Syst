@@ -85,7 +85,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
     };
 
     try {
-      const response = await fetch('http://localhost:4000/api/bookings', {
+      const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +99,9 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
         throw new Error(result.error || result.message || 'Failed to create booking');
       }
 
+      // Update booking data with the ID and response details
       onUpdate({
+        id: result.booking?.id,
         totalAmount: totalAmount,
         paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? undefined : paymentMethod),
       });

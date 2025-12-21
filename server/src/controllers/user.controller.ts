@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { generateUserId } from '../utils/idGenerator';
+import { sendWelcomeEmail } from '../utils/email.service';
 
 const prisma = new PrismaClient();
 
@@ -306,6 +307,15 @@ export const createUser = async (req: Request, res: Response) => {
         address: address || null,
       },
     });
+
+    // Send welcome email to the new user
+    console.log('📧 User created successfully, sending welcome email...');
+    const emailSent = await sendWelcomeEmail(user, password);
+    if (emailSent) {
+      console.log('✅ Welcome email sent successfully');
+    } else {
+      console.warn('⚠️ User created but welcome email failed to send');
+    }
 
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);

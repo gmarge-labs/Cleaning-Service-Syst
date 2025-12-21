@@ -32,7 +32,7 @@ export function PaymentModal({ booking, onClose, onSuccess }: PaymentModalProps)
         setIsLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:4000/api/bookings/${booking.id}`, {
+            const response = await fetch(`/api/bookings/${booking.id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

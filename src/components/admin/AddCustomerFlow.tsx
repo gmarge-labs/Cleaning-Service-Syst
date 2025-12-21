@@ -159,7 +159,7 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
       };
 
       // Send to backend
-      const response = await fetch('http://localhost:4000/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

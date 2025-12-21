@@ -14,9 +14,13 @@ app.use(express_1.default.json());
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const booking_routes_1 = __importDefault(require("./routes/booking.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
+const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
+const settings_routes_1 = __importDefault(require("./routes/settings.routes"));
 app.use('/api/auth', auth_routes_1.default);
 app.use('/api/bookings', booking_routes_1.default);
 app.use('/api/users', user_routes_1.default);
+app.use('/api/notifications', notification_routes_1.default);
+app.use('/api/settings', settings_routes_1.default);
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
 });

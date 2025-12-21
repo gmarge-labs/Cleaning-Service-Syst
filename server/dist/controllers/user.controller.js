@@ -26,6 +26,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createUser = exports.getAllUsers = exports.deletePaymentMethod = exports.addPaymentMethod = exports.deleteAddress = exports.addAddress = exports.changePassword = exports.updateProfile = exports.getProfile = void 0;
 const client_1 = require("@prisma/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const idGenerator_1 = require("../utils/idGenerator");
+const email_service_1 = require("../utils/email.service");
 const prisma = new client_1.PrismaClient();
 const getProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
@@ -56,13 +58,41 @@ const getProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.getProfile = getProfile;
 const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
-    const { name, phone, notificationSettings } = req.body;
+    const { name, phone, address, notificationSettings, currentPassword, newPassword } = req.body;
     try {
+        // If password change is requested, validate current password first
+        if (currentPassword && newPassword) {
+            const user = yield prisma.user.findUnique({ where: { id: userId } });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            const isMatch = yield bcrypt_1.default.compare(currentPassword, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ message: 'Current password is incorrect' });
+            }
+            // Hash new password
+            const hashedPassword = yield bcrypt_1.default.hash(newPassword, 10);
+            // Update user with new password
+            const updatedUser = yield prisma.user.update({
+                where: { id: userId },
+                data: {
+                    name,
+                    phone,
+                    address,
+                    notificationSettings,
+                    password: hashedPassword,
+                },
+            });
+            const { password } = updatedUser, profile = __rest(updatedUser, ["password"]);
+            return res.json(profile);
+        }
+        // Update without password change
         const updatedUser = yield prisma.user.update({
             where: { id: userId },
             data: {
                 name,
                 phone,
+                address,
                 notificationSettings,
             },
         });
@@ -189,19 +219,63 @@ exports.deletePaymentMethod = deletePaymentMethod;
 // Admin User Management
 const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        // Get pagination parameters from query
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 8;
+        const skip = (page - 1) * limit;
+        const roleFilter = req.query.role; // 'CUSTOMER' for customer management, undefined for all users
+        // Build where clause based on role filter
+        const whereClause = roleFilter ? { role: roleFilter } : {};
+        // Get total count
+        const totalCount = yield prisma.user.count({
+            where: whereClause
+        });
+        // Fetch users with optional role filter
         const users = yield prisma.user.findMany({
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                phone: true,
-                createdAt: true,
-                updatedAt: true,
+            skip,
+            take: limit,
+            include: {
+                bookings: {
+                    select: {
+                        id: true,
+                        totalAmount: true,
+                        status: true,
+                    }
+                },
+                addresses: {
+                    where: { isDefault: true },
+                    take: 1,
+                    select: {
+                        street: true,
+                        city: true,
+                        state: true,
+                    }
+                }
             }
         });
-        res.json(users);
+        // Transform the data to include a formatted address
+        const usersWithAddress = users.map((user) => {
+            var _a;
+            const { password } = user, userData = __rest(user, ["password"]);
+            const primaryAddress = (_a = user.addresses) === null || _a === void 0 ? void 0 : _a[0];
+            return Object.assign(Object.assign({}, userData), { address: primaryAddress
+                    ? `${primaryAddress.street}, ${primaryAddress.city}, ${primaryAddress.state}`
+                    : user.address || null });
+        });
+        // Return paginated response
+        res.json({
+            data: usersWithAddress,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasNextPage: page < Math.ceil(totalCount / limit),
+                hasPrevPage: page > 1,
+            }
+        });
     }
     catch (error) {
         console.error('Get all users error:', error);
@@ -210,7 +284,7 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAllUsers = getAllUsers;
 const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone, address } = req.body;
     try {
         const existingUser = yield prisma.user.findUnique({
             where: { email: email.toLowerCase() },
@@ -219,21 +293,27 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             return res.status(400).json({ error: 'User with this email already exists' });
         }
         const hashedPassword = yield bcrypt_1.default.hash(password, 10);
-        // Import generateUserId utility or use a simple one if not available
-        // For now, let's use a simple cuid-like or just let Prisma handle it if we change schema
-        // But schema has id as String @id without default.
-        // Let's check auth.controller.ts for how it's done there.
-        const { generateUserId } = require('../utils/idGenerator');
-        const id = yield generateUserId(role);
+        const id = yield (0, idGenerator_1.generateUserId)(role || 'CUSTOMER');
         const user = yield prisma.user.create({
             data: {
                 id,
                 name,
                 email: email.toLowerCase(),
                 password: hashedPassword,
-                role,
+                role: role || 'CUSTOMER',
+                phone: phone || null,
+                address: address || null,
             },
         });
+        // Send welcome email to the new user
+        console.log('📧 User created successfully, sending welcome email...');
+        const emailSent = yield (0, email_service_1.sendWelcomeEmail)(user, password);
+        if (emailSent) {
+            console.log('✅ Welcome email sent successfully');
+        }
+        else {
+            console.warn('⚠️ User created but welcome email failed to send');
+        }
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
         res.status(201).json(userWithoutPassword);
     }

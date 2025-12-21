@@ -73,7 +73,7 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
         updateData.newPassword = formData.newPassword;
       }
       
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}`, {
+      const response = await fetch(`/api/users/${user?.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

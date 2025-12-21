@@ -141,3 +141,43 @@ export const createNotification = async (
     console.error('Create notification error:', error);
   }
 };
+
+// Get unread notification counts by type
+export const getUnreadCountsByType = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  try {
+    const bookingCount = await prisma.notification.count({
+      where: {
+        userId,
+        isRead: false,
+        type: 'BOOKING_CREATED'
+      },
+    });
+
+    const reviewCount = await prisma.notification.count({
+      where: {
+        userId,
+        isRead: false,
+        type: 'REVIEW_RECEIVED'
+      },
+    });
+
+    const messageCount = await prisma.notification.count({
+      where: {
+        userId,
+        isRead: false,
+        type: 'MESSAGE_RECEIVED'
+      },
+    });
+
+    res.json({
+      bookings: bookingCount,
+      reviews: reviewCount,
+      messaging: messageCount,
+    });
+  } catch (error) {
+    console.error('Get unread counts by type error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

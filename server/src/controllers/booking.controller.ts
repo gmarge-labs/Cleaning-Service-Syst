@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../utils/notification';
+import { sendBookingConfirmation } from '../utils/email.service';
 
 const prisma = new PrismaClient();
 
 export const createBooking = async (req: Request, res: Response) => {
   try {
     const bookingData = req.body;
-    console.log('Received booking data:', JSON.stringify(bookingData, null, 2));
     
     // Basic validation
     if (!bookingData.serviceType || !bookingData.date || bookingData.totalAmount === undefined) {
@@ -17,7 +17,7 @@ export const createBooking = async (req: Request, res: Response) => {
     let { 
       userId, guestName, guestEmail, guestPhone, address,
       serviceType, propertyType, bedrooms, bathrooms, toilets,
-      rooms, addOns, date, time, frequency, specialInstructions,
+      rooms, roomQuantities, addOns, kitchenAddOns, laundryRoomDetails, date, time, frequency, specialInstructions,
       hasPet, petDetails, paymentMethod, tipAmount, totalAmount, status
     } = bookingData;
 
@@ -42,6 +42,16 @@ export const createBooking = async (req: Request, res: Response) => {
     const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
     const customId = `BK-${dateStr}-${randomStr}`;
 
+    // Combine rooms and roomQuantities to ensure all selected rooms are captured
+    const combinedRooms: Record<string, number> = {};
+    if (Array.isArray(rooms)) {
+      rooms.forEach((room: string) => {
+        combinedRooms[room] = roomQuantities?.[room] || 1;
+      });
+    } else if (roomQuantities) {
+      Object.assign(combinedRooms, roomQuantities);
+    }
+
     const booking = await prisma.booking.create({
       data: {
         id: customId,
@@ -55,8 +65,10 @@ export const createBooking = async (req: Request, res: Response) => {
         bedrooms: bedrooms || 0,
         bathrooms: bathrooms || 0,
         toilets: toilets || 0,
-        rooms: bookingData.roomQuantities || rooms || {},
+        rooms: combinedRooms,
         addOns: addOns || [],
+        kitchenAddOns: kitchenAddOns ? JSON.parse(JSON.stringify(kitchenAddOns)) : null,
+        laundryRoomDetails: laundryRoomDetails ? JSON.parse(JSON.stringify(laundryRoomDetails)) : null,
         date: new Date(date),
         time,
         frequency: frequency || 'One-time',
@@ -70,12 +82,37 @@ export const createBooking = async (req: Request, res: Response) => {
       },
     });
 
+    // Notify admins about the new booking
+    await notifyAdmins({
+      type: 'BOOKING_CREATED',
+      title: 'New Booking Created',
+      message: `A new booking has been created by ${guestName || 'Guest'} for ${serviceType} on ${new Date(date).toLocaleDateString()}`,
+      data: {
+        bookingId: customId,
+        customerId: userId,
+        customerName: guestName,
+        serviceType,
+        bookingDate: date,
+        totalAmount: totalAmount.toString()
+      }
+    });
+
+    // Send confirmation email to customer
+    if (guestEmail) {
+      await sendBookingConfirmation(booking, guestEmail);
+    }
+
     res.status(201).json({
       message: 'Booking created successfully',
       booking,
     });
   } catch (error) {
     console.error('Create booking error details:', error);
+    console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     res.status(500).json({ 
       message: 'Internal server error', 
       error: error instanceof Error ? error.message : String(error) 
@@ -89,7 +126,7 @@ export const getBookings = async (req: Request, res: Response) => {
     
     const bookings = await prisma.booking.findMany({
       where: userId ? { userId: String(userId) } : {},
-      orderBy: { date: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     res.json(bookings);
@@ -103,17 +140,45 @@ export const updateBooking = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-
     const { id: _, ...dataWithoutId } = updateData;
+
+    // Check if this is a reschedule (date is being changed)
+    const existingBooking = await prisma.booking.findUnique({
+      where: { id },
+    });
+
+    if (!existingBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
 
     const booking = await prisma.booking.update({
       where: { id },
       data: {
         ...dataWithoutId,
-        // Ensure date is handled correctly if provided
         date: updateData.date ? new Date(updateData.date) : undefined,
       },
     });
+
+    // If date was changed (reschedule), notify admins
+    if (updateData.date && existingBooking.date !== new Date(updateData.date)) {
+      const oldDate = existingBooking.date.toLocaleDateString();
+      const newDate = new Date(updateData.date).toLocaleDateString();
+      
+      await notifyAdmins({
+        type: 'BOOKING_UPDATED',
+        title: 'Booking Rescheduled',
+        message: `Booking ${id} has been rescheduled from ${oldDate} to ${newDate} by customer ${existingBooking.guestName || 'Guest'}`,
+        data: {
+          bookingId: id,
+          customerId: existingBooking.userId,
+          customerName: existingBooking.guestName,
+          serviceType: existingBooking.serviceType,
+          oldDate: oldDate,
+          newDate: newDate,
+          totalAmount: existingBooking.totalAmount.toString()
+        }
+      });
+    }
 
     res.json({
       message: 'Booking updated successfully',

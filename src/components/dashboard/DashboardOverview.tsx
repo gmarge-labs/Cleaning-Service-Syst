@@ -30,7 +30,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/bookings?userId=${user.id}`);
+      const response = await fetch(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data);

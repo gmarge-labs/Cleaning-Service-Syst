@@ -43,7 +43,7 @@ export function CustomersPage() {
   const fetchCustomers = async (page: number) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:4000/api/users?role=CUSTOMER&page=${page}&limit=${itemsPerPage}`);
+      const response = await fetch(`/api/users?role=CUSTOMER&page=${page}&limit=${itemsPerPage}`);
       if (!response.ok) throw new Error('Failed to fetch customers');
       const data = await response.json();
       

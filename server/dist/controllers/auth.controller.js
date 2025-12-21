@@ -27,6 +27,7 @@ exports.login = exports.signup = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const client_1 = require("@prisma/client");
 const idGenerator_1 = require("../utils/idGenerator");
+const notification_1 = require("../utils/notification");
 const prisma = new client_1.PrismaClient();
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -64,6 +65,13 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
         // Return user without password
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
+        // Notify admins about new user registration
+        yield (0, notification_1.notifyAdmins)({
+            type: 'USER_REGISTERED',
+            title: 'New User Registered',
+            message: `A new user ${name} (${userRole}) has registered.`,
+            data: { userId: id, role: userRole }
+        });
         res.status(201).json({
             message: 'User created successfully',
             user: userWithoutPassword,

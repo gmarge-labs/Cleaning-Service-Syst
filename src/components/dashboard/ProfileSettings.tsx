@@ -50,7 +50,7 @@ export function ProfileSettings() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}`);
+      const response = await fetch(`/api/users/${user?.id}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -76,7 +76,7 @@ export function ProfileSettings() {
   const handleSavePersonal = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}`, {
+      const response = await fetch(`/api/users/${user?.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,7 +100,7 @@ export function ProfileSettings() {
   const handleSaveNotifications = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}`, {
+      const response = await fetch(`/api/users/${user?.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +123,7 @@ export function ProfileSettings() {
   const handleAddAddress = async (addressData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}/addresses`, {
+      const response = await fetch(`/api/users/${user?.id}/addresses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addressData),
@@ -145,7 +145,7 @@ export function ProfileSettings() {
 
   const handleDeleteAddress = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/users/addresses/${id}`, {
+      const response = await fetch(`/api/users/addresses/${id}`, {
         method: 'DELETE',
       });
 
@@ -161,7 +161,7 @@ export function ProfileSettings() {
   const handleAddPayment = async (paymentData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}/payment-methods`, {
+      const response = await fetch(`/api/users/${user?.id}/payment-methods`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentData),
@@ -183,7 +183,7 @@ export function ProfileSettings() {
 
   const handleDeletePayment = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/users/payment-methods/${id}`, {
+      const response = await fetch(`/api/users/payment-methods/${id}`, {
         method: 'DELETE',
       });
 
@@ -204,7 +204,7 @@ export function ProfileSettings() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${user?.id}/password`, {
+      const response = await fetch(`/api/users/${user?.id}/password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

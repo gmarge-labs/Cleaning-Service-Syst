@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../ui/button';
-import { BookingData } from '../BookingFlow';
+import { BookingData, SystemSettings } from '../BookingFlow';
 import { Check, Plus, Minus } from 'lucide-react';
 
 interface AddOnsStepProps {
@@ -8,6 +8,7 @@ interface AddOnsStepProps {
   onUpdate: (data: Partial<BookingData>) => void;
   onNext: () => void;
   onBack: () => void;
+  settings?: SystemSettings | null;
 }
 
 interface AddOn {
@@ -20,7 +21,7 @@ interface AddOn {
   unit?: string;
 }
 
-const addOnsData: AddOn[] = [
+const defaultAddOnsData: AddOn[] = [
   {
     id: 'windows',
     name: 'Inside Windows',
@@ -48,7 +49,13 @@ const addOnsData: AddOn[] = [
   },
 ];
 
-export function AddOnsStep({ data, onUpdate, onNext, onBack }: AddOnsStepProps) {
+export function AddOnsStep({ data, onUpdate, onNext, onBack, settings }: AddOnsStepProps) {
+  // Use prices from settings if available
+  const addOnsData = defaultAddOnsData.map(addon => ({
+    ...addon,
+    price: settings?.addonPrices?.[addon.name] ?? addon.price
+  }));
+
   const [selectedAddOns, setSelectedAddOns] = useState<Array<{ id: string; name: string; price: number; quantity: number }>>(
     data.addOns || []
   );

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_UPDATED' | 'BOOKING_CANCELLED' | 'USER_REGISTERED' | 'SYSTEM_ALERT';
+export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_UPDATED' | 'BOOKING_CANCELLED' | 'USER_REGISTERED' | 'SYSTEM_ALERT' | 'REVIEW_RECEIVED' | 'MESSAGE_RECEIVED';
 
 interface CreateNotificationParams {
   userId: string;
@@ -61,4 +61,8 @@ export const notifyAdmins = async (params: Omit<CreateNotificationParams, 'userI
     console.error('Error notifying admins:', error);
     return [];
   }
+};
+
+export const notifyUser = async (params: CreateNotificationParams) => {
+  return createNotification(params);
 };

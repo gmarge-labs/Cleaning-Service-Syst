@@ -170,7 +170,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:4000/api/bookings/${data.id}`, {
+      const response = await fetch(`/api/bookings/${data.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,6 +193,33 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     }
   };
 
+  const handleContinueToPayment = () => {
+    // Build petDetails object with all pet information before moving to payment
+    const petDetails = hasPet ? {
+      dog: selectedPets.includes('Dog'),
+      cat: selectedPets.includes('Cat'),
+      other: customPets.length > 0,
+      customPets: customPets,
+      petPresent: petPresent,
+      petInstructions: instructions.includes('pet') || instructions.includes('Pet') ? instructions : undefined,
+    } : null;
+
+    // Update booking data with all scheduling and pet information
+    onUpdate({
+      date: selectedDate,
+      time: selectedTime,
+      frequency: frequency,
+      specialInstructions: instructions,
+      hasPet: hasPet ?? undefined,
+      petDetails: petDetails,
+      selectedPets: selectedPets,
+      customPets: customPets,
+      petPresent: petPresent ?? undefined,
+    });
+    
+    onNext();
+  };
+
   const handleSaveDraft = async () => {
     if (!isValid()) {
       toast.error('Please select a date and time first');
@@ -201,6 +228,16 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
 
     setIsLoading(true);
     const totalAmount = calculateTotal();
+
+    // Build petDetails object with all pet information
+    const petDetails = hasPet ? {
+      dog: selectedPets.includes('Dog'),
+      cat: selectedPets.includes('Cat'),
+      other: customPets.length > 0,
+      customPets: customPets,
+      petPresent: petPresent,
+      petInstructions: instructions.includes('pet') || instructions.includes('Pet') ? instructions : undefined,
+    } : null;
 
     const bookingPayload = {
       ...data,
@@ -212,11 +249,13 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
       totalAmount: totalAmount,
       frequency: frequency,
       date: selectedDate ? formatDateForDB(selectedDate) : null,
+      hasPet: hasPet ?? false,
+      petDetails: petDetails,
       status: 'DRAFT',
     };
 
     try {
-      const response = await fetch('http://localhost:4000/api/bookings', {
+      const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingPayload),
@@ -615,7 +654,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
             </Button>
           )}
           <Button
-            onClick={mode === 'reschedule' ? handleReschedule : onNext}
+            onClick={mode === 'reschedule' ? handleReschedule : handleContinueToPayment}
             disabled={!isValid() || isLoading}
             className="bg-secondary-500 hover:bg-secondary-600 px-8"
           >

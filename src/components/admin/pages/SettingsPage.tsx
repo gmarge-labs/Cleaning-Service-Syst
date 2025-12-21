@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
 import { Switch } from '../../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Building, DollarSign, Bell, Plug, Save, Key, Tag, AlertCircle, TrendingDown } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Building, DollarSign, Bell, Plug, Save, Key, Tag, AlertCircle, TrendingDown, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '../../ui/badge';
 
+const API_URL = '/api';
+
 export function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [currentIntegration, setCurrentIntegration] = useState<string>('');
+  const [tempApiKey, setTempApiKey] = useState('');
+
   const [generalSettings, setGeneralSettings] = useState({
     companyName: 'SparkleVille',
     email: 'hello@sparkleville.com',
@@ -25,6 +34,11 @@ export function SettingsPage() {
     biWeeklyDiscount: 5,
     monthlyDiscount: 15,
     cancellationFee: 50,
+  });
+
+  const [cleanerPay, setCleanerPay] = useState({
+    level1: 18,
+    level2: 22,
   });
 
   const [servicePrices, setServicePrices] = useState({
@@ -59,6 +73,13 @@ export function SettingsPage() {
     'Dish Washing': 20,
   });
 
+  const [notificationTemplates, setNotificationTemplates] = useState({
+    confirmation: 'Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed...',
+    reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
+    completion: 'Hi {customer_name}, Your cleaning service has been completed. We hope you\'re satisfied with the results...',
+    welcome: 'Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services.',
+  });
+
   const [integrations, setIntegrations] = useState({
     stripe: { enabled: true, apiKey: 'sk_test_***************' },
     plivo: { enabled: true, apiKey: 'MA***************' },
@@ -67,29 +88,115 @@ export function SettingsPage() {
     googleCalendar: { enabled: true, apiKey: 'AIza***************' },
   });
 
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_URL}/settings`);
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const data = await response.json();
+      
+      if (data) {
+        if (data.general) setGeneralSettings(data.general);
+        if (data.pricing) setPricingSettings(data.pricing);
+        if (data.cleanerPay) setCleanerPay(data.cleanerPay);
+        if (data.servicePrices) setServicePrices(data.servicePrices);
+        if (data.roomPrices) setRoomPrices(data.roomPrices);
+        if (data.addonPrices) setAddonPrices(data.addonPrices);
+        if (data.notifications) setNotificationTemplates(data.notifications);
+        if (data.integrations) setIntegrations(data.integrations);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveSettings = async (updates: any) => {
+    try {
+      setIsSaving(true);
+      const response = await fetch(`${API_URL}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) throw new Error('Failed to update settings');
+      
+      toast.success('Settings updated successfully!');
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveServicePrices = () => {
-    toast.success('Service prices updated successfully!');
+    saveSettings({ servicePrices });
   };
 
   const handleSaveRoomPrices = () => {
-    toast.success('Room prices updated successfully!');
+    saveSettings({ roomPrices });
   };
 
   const handleSaveAddonPrices = () => {
-    toast.success('Add-on prices updated successfully!');
+    saveSettings({ addonPrices });
   };
 
   const handleSaveGeneralPricing = () => {
-    toast.success('General pricing settings updated successfully!');
+    saveSettings({ pricing: pricingSettings });
+  };
+
+  const handleSaveCleanerPay = () => {
+    saveSettings({ cleanerPay });
   };
 
   const handleSaveGeneralSettings = () => {
-    toast.success('Company information updated successfully!');
+    saveSettings({ general: generalSettings });
   };
 
   const handleSaveNotificationTemplates = () => {
-    toast.success('Notification templates saved successfully!');
+    saveSettings({ notifications: notificationTemplates });
   };
+
+  const handleSaveIntegrations = () => {
+    saveSettings({ integrations });
+  };
+
+  const handleOpenConfigModal = (integrationKey: string, currentApiKey: string) => {
+    setCurrentIntegration(integrationKey);
+    setTempApiKey(currentApiKey || '');
+    setIsConfigModalOpen(true);
+  };
+
+  const handleSaveApiKey = () => {
+    if (currentIntegration) {
+      setIntegrations({
+        ...integrations,
+        [currentIntegration]: {
+          ...integrations[currentIntegration as keyof typeof integrations],
+          apiKey: tempApiKey
+        }
+      });
+      setIsConfigModalOpen(false);
+      toast.success('API key updated! Remember to save your changes.');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <Loader2 className="w-8 h-8 text-secondary-500 animate-spin" />
+        <p className="text-neutral-600">Loading system settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -183,8 +290,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveGeneralSettings} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveGeneralSettings} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Changes
               </Button>
             </div>
@@ -193,6 +304,73 @@ export function SettingsPage() {
 
         {/* Pricing Settings */}
         <TabsContent value="pricing" className="space-y-6">
+          {/* Cleaner Pay */}
+          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <DollarSign className="w-6 h-6 text-secondary-500" />
+              <h2 className="text-xl font-semibold text-neutral-900">Cleaner Pay</h2>
+            </div>
+
+            <p className="text-sm text-neutral-600 mb-4">
+              Set hourly wage rates for different cleaner levels
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="border-2 border-neutral-200 rounded-xl p-5 hover:border-secondary-300 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="level1-pay" className="text-base font-semibold">Level 1 Cleaners</Label>
+                  <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">Entry Level</Badge>
+                </div>
+                <p className="text-xs text-neutral-600 mb-3">Standard cleaning professionals</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-neutral-600">$</span>
+                  <Input
+                    id="level1-pay"
+                    type="number"
+                    value={cleanerPay.level1}
+                    onChange={(e) => setCleanerPay({ ...cleanerPay, level1: parseFloat(e.target.value) || 0 })}
+                    min="0"
+                    step="0.50"
+                    className="text-lg font-semibold flex-1"
+                  />
+                  <span className="text-neutral-600">/hour</span>
+                </div>
+              </div>
+
+              <div className="border-2 border-neutral-200 rounded-xl p-5 hover:border-secondary-300 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="level2-pay" className="text-base font-semibold">Level 2 Cleaners</Label>
+                  <Badge className="bg-purple-100 text-purple-700 border-purple-300 text-xs">Experienced</Badge>
+                </div>
+                <p className="text-xs text-neutral-600 mb-3">Advanced cleaning specialists</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-neutral-600">$</span>
+                  <Input
+                    id="level2-pay"
+                    type="number"
+                    value={cleanerPay.level2}
+                    onChange={(e) => setCleanerPay({ ...cleanerPay, level2: parseFloat(e.target.value) || 0 })}
+                    min="0"
+                    step="0.50"
+                    className="text-lg font-semibold flex-1"
+                  />
+                  <span className="text-neutral-600">/hour</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveCleanerPay} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Cleaner Pay
+              </Button>
+            </div>
+          </div>
+
           {/* Service Prices */}
           <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
             <div className="flex items-center gap-4 mb-6">
@@ -220,8 +398,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveServicePrices} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveServicePrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Service Prices
               </Button>
             </div>
@@ -258,8 +440,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveRoomPrices} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveRoomPrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Room Prices
               </Button>
             </div>
@@ -292,8 +478,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveAddonPrices} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveAddonPrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Add-on Prices
               </Button>
             </div>
@@ -344,7 +534,7 @@ export function SettingsPage() {
                         id="weekly-discount"
                         type="number"
                         value={pricingSettings.weeklyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, weeklyDiscount: parseInt(e.target.value) })}
+                        onChange={(e) => setPricingSettings({ ...pricingSettings, weeklyDiscount: parseInt(e.target.value) || 0 })}
                         min="0"
                         max="100"
                         className="text-lg font-semibold"
@@ -367,7 +557,7 @@ export function SettingsPage() {
                         id="biweekly-discount"
                         type="number"
                         value={pricingSettings.biWeeklyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, biWeeklyDiscount: parseInt(e.target.value) })}
+                        onChange={(e) => setPricingSettings({ ...pricingSettings, biWeeklyDiscount: parseInt(e.target.value) || 0 })}
                         min="0"
                         max="100"
                         className="text-lg font-semibold"
@@ -390,7 +580,7 @@ export function SettingsPage() {
                         id="monthly-discount"
                         type="number"
                         value={pricingSettings.monthlyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, monthlyDiscount: parseInt(e.target.value) })}
+                        onChange={(e) => setPricingSettings({ ...pricingSettings, monthlyDiscount: parseInt(e.target.value) || 0 })}
                         min="0"
                         max="100"
                         className="text-lg font-semibold"
@@ -441,7 +631,7 @@ export function SettingsPage() {
                     id="cancellation-fee"
                     type="number"
                     value={pricingSettings.cancellationFee}
-                    onChange={(e) => setPricingSettings({ ...pricingSettings, cancellationFee: parseInt(e.target.value) })}
+                    onChange={(e) => setPricingSettings({ ...pricingSettings, cancellationFee: parseInt(e.target.value) || 0 })}
                     min="0"
                     className="max-w-xs"
                   />
@@ -450,8 +640,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveGeneralPricing} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveGeneralPricing} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Discount Settings
               </Button>
             </div>
@@ -471,6 +665,8 @@ export function SettingsPage() {
                 <Label htmlFor="confirmation-template">Booking Confirmation Email</Label>
                 <Textarea
                   id="confirmation-template"
+                  value={notificationTemplates.confirmation}
+                  onChange={(e) => setNotificationTemplates({ ...notificationTemplates, confirmation: e.target.value })}
                   placeholder="Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed..."
                   rows={4}
                   className="mt-1.5"
@@ -481,6 +677,8 @@ export function SettingsPage() {
                 <Label htmlFor="reminder-template">24h Reminder Template</Label>
                 <Textarea
                   id="reminder-template"
+                  value={notificationTemplates.reminder}
+                  onChange={(e) => setNotificationTemplates({ ...notificationTemplates, reminder: e.target.value })}
                   placeholder="Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}..."
                   rows={4}
                   className="mt-1.5"
@@ -491,7 +689,21 @@ export function SettingsPage() {
                 <Label htmlFor="completion-template">Service Completion Email</Label>
                 <Textarea
                   id="completion-template"
+                  value={notificationTemplates.completion}
+                  onChange={(e) => setNotificationTemplates({ ...notificationTemplates, completion: e.target.value })}
                   placeholder="Hi {customer_name}, Your cleaning service has been completed. We hope you're satisfied with the results..."
+                  rows={4}
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="welcome-template">Welcome Email (New User)</Label>
+                <Textarea
+                  id="welcome-template"
+                  value={notificationTemplates.welcome}
+                  onChange={(e) => setNotificationTemplates({ ...notificationTemplates, welcome: e.target.value })}
+                  placeholder="Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services."
                   rows={4}
                   className="mt-1.5"
                 />
@@ -499,8 +711,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button onClick={handleSaveNotificationTemplates} className="bg-secondary-500 hover:bg-secondary-600">
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleSaveNotificationTemplates} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Templates
               </Button>
             </div>
@@ -517,30 +733,51 @@ export function SettingsPage() {
 
             <div className="space-y-4">
               {Object.entries(integrations).map(([key, integration]) => (
-                <div key={key} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+                <div key={key} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:border-secondary-200 transition-colors">
                   <div className="flex-1">
                     <h3 className="font-semibold text-neutral-900 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</h3>
                     <p className="text-sm text-neutral-600 mt-1">
-                      API Key: {integration.apiKey || 'Not configured'}
+                      API Key: {integration.apiKey ? '•••••••••••••••' : 'Not configured'}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleOpenConfigModal(key, integration.apiKey)}
+                    >
                       <Key className="w-4 h-4 mr-2" />
                       Configure
                     </Button>
-                    <Switch
-                      checked={integration.enabled}
-                      onCheckedChange={(checked) => {
-                        setIntegrations({
-                          ...integrations,
-                          [key]: { ...integration, enabled: checked }
-                        });
-                      }}
-                    />
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium ${integration.enabled ? 'text-green-600' : 'text-neutral-400'}`}>
+                        {integration.enabled ? 'ON' : 'OFF'}
+                      </span>
+                      <Switch
+                        checked={integration.enabled}
+                        onCheckedChange={(checked: boolean) => {
+                          setIntegrations({
+                            ...integrations,
+                            [key]: { ...integration, enabled: checked }
+                          });
+                        }}
+                        className="data-[state=checked]:bg-green-500"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveIntegrations} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Integrations
+              </Button>
             </div>
           </div>
         </TabsContent>
@@ -583,6 +820,47 @@ export function SettingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* API Key Configuration Modal */}
+      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5 text-secondary-500" />
+              Configure {currentIntegration.replace(/([A-Z])/g, ' $1').trim()}
+            </DialogTitle>
+            <DialogDescription>
+              Enter your API key for this integration. The key will be securely stored in your settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="api-key">API Key</Label>
+              <Input
+                id="api-key"
+                type="text"
+                value={tempApiKey}
+                onChange={(e) => setTempApiKey(e.target.value)}
+                placeholder="Enter your API key..."
+                className="mt-1.5"
+              />
+            </div>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-900">
+                <strong>Tip:</strong> Keep your API keys secure. Never share them publicly or commit them to version control.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfigModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveApiKey} className="bg-secondary-500 hover:bg-secondary-600">
+              Save API Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

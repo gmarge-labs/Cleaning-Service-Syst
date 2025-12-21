@@ -78,6 +78,8 @@ model Booking {
   
   // Add-ons
   addOns              Json?         // Store add-ons as JSON
+  kitchenAddOns       Json?         // Store kitchen-specific add-ons as JSON (kitchen index -> array of add-on IDs)
+  laundryRoomDetails  Json?         // Store laundry room details as JSON (laundry index -> {baskets, rounds})
   
   // Scheduling
   date                DateTime
@@ -132,5 +134,18 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+}
+
+model SystemSettings {
+  id                String   @id @default("default")
+  general           Json     // companyName, email, phone, address, businessHours, serviceArea
+  pricing           Json     // depositPercentage, weeklyDiscount, biWeeklyDiscount, monthlyDiscount, cancellationFee
+  cleanerPay        Json     // Cleaner hourly wages by level
+  servicePrices     Json     // Standard Cleaning, Deep Cleaning, etc.
+  roomPrices        Json     // Bedroom, Bathroom, etc.
+  addonPrices       Json     // Inside Windows, Inside Fridge, etc.
+  integrations      Json     // stripe, plivo, sendgrid, etc.
+  notifications     Json     // templates for emails/reminders
+  updatedAt         DateTime @updatedAt
 }
 

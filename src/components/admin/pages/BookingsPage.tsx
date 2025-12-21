@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, DollarSign, Search, Eye, X, CheckCircle, Users, Wrench, FileText, User, Star, Phone, Mail, Send, Bed, Bath } from 'lucide-react';
+import { Calendar, Clock, MapPin, DollarSign, Search, Eye, X, CheckCircle, Users, Wrench, FileText, User, Star, Phone, Mail, Send, Download } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -39,7 +39,7 @@ export function BookingsPage() {
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:4000/api/bookings');
+      const response = await fetch('/api/bookings');
       const data = await response.json();
       if (response.ok) {
         setBookings(data);
@@ -52,23 +52,29 @@ export function BookingsPage() {
     }
   };
 
-  const unpublishedBookings = bookings.filter(b => b.status === 'PENDING' || b.status === 'BOOKED').map(b => ({
-    ...b,
-    customer: b.guestName || 'Unknown Customer',
-    service: b.serviceType,
-    date: new Date(b.date),
-    total: parseFloat(b.totalAmount),
-  }));
+  const unpublishedBookings = bookings
+    .filter(b => b.status === 'PENDING' || b.status === 'BOOKED')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map(b => ({
+      ...b,
+      customer: b.guestName || 'Unknown Customer',
+      service: b.serviceType,
+      date: new Date(b.date),
+      total: parseFloat(b.totalAmount),
+    }));
 
-  const publishedJobs = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'RESCHEDULED' || b.status === 'COMPLETED').map(b => ({
-    ...b,
-    customer: b.guestName || 'Unknown Customer',
-    service: b.serviceType,
-    date: new Date(b.date),
-    total: parseFloat(b.totalAmount),
-    claimedBy: [], // Placeholder until assignments are implemented
-    requiredCleaners: b.bedrooms > 2 ? 2 : 1, // Simple logic for now
-  }));
+  const publishedJobs = bookings
+    .filter(b => b.status === 'CONFIRMED' || b.status === 'RESCHEDULED' || b.status === 'COMPLETED')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map(b => ({
+      ...b,
+      customer: b.guestName || 'Unknown Customer',
+      service: b.serviceType,
+      date: new Date(b.date),
+      total: parseFloat(b.totalAmount),
+      claimedBy: [], // Placeholder until assignments are implemented
+      requiredCleaners: b.bedrooms > 2 ? 2 : 1, // Simple logic for now
+    }));
 
   const filteredUnpublishedBookings = unpublishedBookings.filter((booking) =>
     booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -268,12 +274,24 @@ export function BookingsPage() {
               <h2 className="text-2xl font-bold text-neutral-900">Booking Details</h2>
               <p className="text-sm text-neutral-600">Booking ID: {viewDetailsModal.id}</p>
             </div>
-            <button
-              onClick={() => setViewDetailsModal(null)}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <X className="w-6 h-6 text-neutral-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+                disabled={isExporting}
+                className="hidden sm:flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {isExporting ? 'Exporting...' : 'Download PDF'}
+              </Button>
+              <button
+                onClick={() => setViewDetailsModal(null)}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-neutral-600" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -397,6 +415,63 @@ export function BookingsPage() {
               </div>
             )}
 
+            {/* Kitchen Add-ons */}
+            {viewDetailsModal && viewDetailsModal.kitchenAddOns && (
+              <>
+                {Object.keys(viewDetailsModal.kitchenAddOns).length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-neutral-900 mb-3">Kitchen Add-ons</h4>
+                    <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                      {Object.entries(viewDetailsModal.kitchenAddOns).map(([kitchenIndex, addons]: [string, any]) => (
+                        addons && addons.length > 0 && (
+                          <div key={kitchenIndex} className="border-b border-neutral-200 pb-3 last:border-b-0">
+                            <p className="text-sm font-medium text-neutral-600 mb-2">Kitchen #{parseInt(kitchenIndex) + 1}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {addons.map((addon: string, idx: number) => (
+                                <Badge key={idx} variant="outline" className="bg-white border-secondary-200 text-secondary-700">
+                                  {addon}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Laundry Room Details */}
+            {viewDetailsModal && viewDetailsModal.laundryRoomDetails && (
+              <>
+                {Object.keys(viewDetailsModal.laundryRoomDetails).length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-neutral-900 mb-3">Laundry Room Details</h4>
+                    <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                      {Object.entries(viewDetailsModal.laundryRoomDetails).map(([laundryIndex, details]: [string, any]) => (
+                        details && (
+                          <div key={laundryIndex} className="border-b border-neutral-200 pb-3 last:border-b-0">
+                            <p className="text-sm font-medium text-neutral-600 mb-2">Laundry Room #{parseInt(laundryIndex) + 1}</p>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-neutral-600">Baskets:</span>
+                                <span className="font-medium text-neutral-900">{details.baskets}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-neutral-600">Rounds:</span>
+                                <span className="font-medium text-neutral-900">{details.rounds}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* Pets Information */}
             {viewDetailsModal.hasPet && (
               <div>
@@ -406,6 +481,14 @@ export function BookingsPage() {
                     {viewDetailsModal.petDetails?.dog && <Badge className="bg-neutral-900 text-white">Dogs</Badge>}
                     {viewDetailsModal.petDetails?.cat && <Badge className="bg-neutral-900 text-white">Cats</Badge>}
                     {viewDetailsModal.petDetails?.other && <Badge className="bg-neutral-900 text-white">Other Pets</Badge>}
+                  </div>
+                  {viewDetailsModal.petDetails?.customPets && viewDetailsModal.petDetails.customPets.length > 0 && (
+                    <div className="text-sm text-neutral-700">
+                      <strong>Other pet types:</strong> {viewDetailsModal.petDetails.customPets.join(', ')}
+                    </div>
+                  )}
+                  <div className="text-sm text-neutral-700">
+                    <strong>Pet presence:</strong> {viewDetailsModal.petDetails?.petPresent ? 'Pets will be home during cleaning' : 'Pets will be away during cleaning'}
                   </div>
                   {viewDetailsModal.petDetails?.petInstructions && (
                     <div className="text-sm text-neutral-700 italic border-l-2 border-secondary-500 pl-3">
@@ -979,7 +1062,7 @@ export function BookingsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
           <div className="text-2xl font-bold text-orange-600">{unpublishedBookings.length}</div>
-          <div className="text-sm text-neutral-600">Unpublished</div>
+          <div className="text-sm text-neutral-600">UnClaimed</div>
         </div>
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
           <div className="text-2xl font-bold text-yellow-600">{publishedJobs.filter(j => j.status === 'Open').length}</div>
@@ -1006,7 +1089,7 @@ export function BookingsPage() {
                 : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
             >
-              Unpublished ({unpublishedBookings.length})
+              Unclaimed ({unpublishedBookings.length})
             </button>
             <button
               onClick={() => setActiveTab('published')}
@@ -1015,7 +1098,7 @@ export function BookingsPage() {
                 : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
             >
-              Published ({publishedJobs.length})
+              Claimed ({publishedJobs.length})
             </button>
           </div>
         </div>
@@ -1047,10 +1130,14 @@ export function BookingsPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Customer</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Service</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Date</th>
+              
                   {activeTab === 'published' && (
                     <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Total</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Total Charge</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner pay</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Expenses</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Profit</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Actions</th>
                 </tr>
               </thead>
@@ -1093,6 +1180,15 @@ export function BookingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
+                        </td>
+                        <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
+                        </td>
+                        <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
+                        </td>
+                        <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
@@ -1102,7 +1198,7 @@ export function BookingsPage() {
                               <Eye className="w-4 h-4 mr-1" />
                               View
                             </Button>
-                            <Button
+                            {/* <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditJobModal(booking)}
@@ -1110,7 +1206,7 @@ export function BookingsPage() {
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Publish
-                            </Button>
+                            </Button> */}
                           </div>
                         </td>
                       </tr>
@@ -1165,6 +1261,15 @@ export function BookingsPage() {
                             <DollarSign className="w-4 h-4" />
                             {job.total.toFixed(2)}
                           </div>
+                        </td>
+                        <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
+                        </td>
+                        <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
+                        </td>
+                        <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">""</span>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">

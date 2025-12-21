@@ -28,7 +28,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/bookings?userId=${user.id}`);
+      const response = await fetch(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         // Filter for upcoming bookings (today or future)
@@ -83,7 +83,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     if (!bookingToCancel) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/bookings/${bookingToCancel.id}`, {
+      const response = await fetch(`/api/bookings/${bookingToCancel.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -343,6 +343,25 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
               </div>
             </div>
 
+            {/* Additional Rooms */}
+            {selectedBookingForDetails.rooms && Object.keys(selectedBookingForDetails.rooms).length > 0 && (
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-3">Additional Rooms</h4>
+                <div className="bg-neutral-50 rounded-lg p-4 space-y-2 text-sm">
+                  {typeof selectedBookingForDetails.rooms === 'object' && !Array.isArray(selectedBookingForDetails.rooms) ? (
+                    Object.entries(selectedBookingForDetails.rooms).map(([room, count]: [string, any]) => 
+                      count > 0 && (
+                        <div key={room} className="flex justify-between">
+                          <span className="text-neutral-600 capitalize">{room.replace(/([A-Z])/g, ' $1').replace(/-/g, ' ')}:</span>
+                          <span className="font-medium text-neutral-900">x{count}</span>
+                        </div>
+                      )
+                    )
+                  ) : null}
+                </div>
+              </div>
+            )}
+
             {/* Address */}
             <div>
               <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
@@ -364,6 +383,95 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                       {typeof addon === 'string' ? addon : addon.name}
                     </Badge>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Kitchen Add-ons */}
+            {selectedBookingForDetails && selectedBookingForDetails.kitchenAddOns && (
+              <>
+                {Object.keys(selectedBookingForDetails.kitchenAddOns).length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-neutral-900 mb-3">Kitchen Add-ons</h4>
+                    <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                      {Object.entries(selectedBookingForDetails.kitchenAddOns).map(([kitchenIndex, addons]: [string, any]) => (
+                        addons && addons.length > 0 && (
+                          <div key={kitchenIndex} className="border-b border-neutral-200 pb-3 last:border-b-0">
+                            <p className="text-sm font-medium text-neutral-600 mb-2">Kitchen #{parseInt(kitchenIndex) + 1}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {addons.map((addon: string, idx: number) => (
+                                <Badge key={idx} variant="outline" className="bg-white border-secondary-200 text-secondary-700">
+                                  {addon}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Laundry Room Details */}
+            {selectedBookingForDetails && selectedBookingForDetails.laundryRoomDetails && (
+              <>
+                {Object.keys(selectedBookingForDetails.laundryRoomDetails).length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-neutral-900 mb-3">Laundry Room Details</h4>
+                    <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                      {Object.entries(selectedBookingForDetails.laundryRoomDetails).map(([laundryIndex, details]: [string, any]) => (
+                        details && (
+                          <div key={laundryIndex} className="border-b border-neutral-200 pb-3 last:border-b-0">
+                            <p className="text-sm font-medium text-neutral-600 mb-2">Laundry Room #{parseInt(laundryIndex) + 1}</p>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-neutral-600">Baskets:</span>
+                                <span className="font-medium text-neutral-900">{details.baskets}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-neutral-600">Rounds:</span>
+                                <span className="font-medium text-neutral-900">{details.rounds}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Pets Information */}
+            {selectedBookingForDetails.hasPet && (
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-3">Pets Information</h4>
+                <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                  <div className="flex gap-2">
+                    {selectedBookingForDetails.petDetails?.dog && <Badge className="bg-neutral-900 text-white">Dogs</Badge>}
+                    {selectedBookingForDetails.petDetails?.cat && <Badge className="bg-neutral-900 text-white">Cats</Badge>}
+                    {selectedBookingForDetails.petDetails?.other && <Badge className="bg-neutral-900 text-white">Other Pets</Badge>}
+                  </div>
+                  {selectedBookingForDetails.petDetails?.customPets && selectedBookingForDetails.petDetails.customPets.length > 0 && (
+                    <div className="text-sm text-neutral-700">
+                      <strong>Other pet types:</strong> {selectedBookingForDetails.petDetails.customPets.join(', ')}
+                    </div>
+                  )}
+                  <div className="text-sm text-neutral-700">
+                    <strong>Pet presence:</strong> {selectedBookingForDetails.petDetails?.petPresent ? 'Pets will be home during cleaning' : 'Pets will be away during cleaning'}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Special Instructions */}
+            {selectedBookingForDetails.specialInstructions && (
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-3">Special Instructions</h4>
+                <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
+                  <p className="text-neutral-700 italic">"{selectedBookingForDetails.specialInstructions}"</p>
                 </div>
               </div>
             )}

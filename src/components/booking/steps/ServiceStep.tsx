@@ -1,5 +1,5 @@
 import { Button } from '../../ui/button';
-import { BookingData } from '../BookingFlow';
+import { BookingData, SystemSettings } from '../BookingFlow';
 import { Home, Sparkles, Building2, Hammer, Check } from 'lucide-react';
 
 interface ServiceStepProps {
@@ -7,9 +7,10 @@ interface ServiceStepProps {
   onUpdate: (data: Partial<BookingData>) => void;
   onNext: () => void;
   onBack?: () => void;
+  settings?: SystemSettings | null;
 }
 
-const services = [
+const defaultServices = [
   {
     id: 'Standard Cleaning',
     icon: Home,
@@ -48,8 +49,14 @@ const services = [
   },
 ];
 
-export function ServiceStep({ data, onUpdate, onNext, onBack }: ServiceStepProps) {
+export function ServiceStep({ data, onUpdate, onNext, onBack, settings }: ServiceStepProps) {
   const selectedService = data.serviceType;
+
+  // Use prices from settings if available
+  const services = defaultServices.map(service => ({
+    ...service,
+    price: settings?.servicePrices?.[service.name] ?? service.price
+  }));
 
   const handleSelect = (serviceName: string) => {
     onUpdate({ serviceType: serviceName });

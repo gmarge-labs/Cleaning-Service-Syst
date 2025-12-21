@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AccountStep } from './steps/AccountStep';
 import { ServiceStep } from './steps/ServiceStep';
 import { PropertyDetailsStep } from './steps/PropertyDetailsStep';
@@ -8,8 +8,10 @@ import { PaymentStep } from './steps/PaymentStep';
 import { ConfirmationStep } from './steps/ConfirmationStep';
 import { ProgressIndicator } from './ProgressIndicator';
 import { PricingSidebar } from './PricingSidebar';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { parseDateFromDB } from '../../utils/dateUtils';
+
+const API_URL = '/api';
 
 export interface BookingData {
   id?: string;
@@ -45,11 +47,28 @@ export interface BookingData {
   selectedPets?: string[];
   customPets?: string[];
   petPresent?: boolean;
+  petDetails?: any;
 
   // Payment
   paymentMethod?: string;
   tipAmount?: number;
   totalAmount?: number;
+}
+
+export interface SystemSettings {
+  general: any;
+  pricing: {
+    depositPercentage: number;
+    weeklyDiscount: number;
+    biWeeklyDiscount: number;
+    monthlyDiscount: number;
+    cancellationFee: number;
+  };
+  servicePrices: Record<string, number>;
+  roomPrices: Record<string, number>;
+  addonPrices: Record<string, number>;
+  notifications: any;
+  integrations: any;
 }
 
 interface BookingFlowProps {
@@ -95,12 +114,32 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
   }
 
   const [currentStep, setCurrentStep] = useState(initialStep);
+  const [isLoading, setIsLoading] = useState(true);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [bookingData, setBookingData] = useState<BookingData>(
     mode === 'reschedule' && rescheduleBooking ? {
       ...rescheduleBooking,
       date: parseDateFromDB(rescheduleBooking.date),
     } : {}
   );
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`${API_URL}/settings`);
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   const updateBookingData = (data: Partial<BookingData>) => {
     setBookingData(prev => ({ ...prev, ...data }));
@@ -120,6 +159,15 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <Loader2 className="w-8 h-8 text-secondary-500 animate-spin" />
+        <p className="text-neutral-600">Preparing your booking experience...</p>
+      </div>
+    );
+  }
+
   const renderStep = () => {
     const currentStepName = steps[currentStep];
 
@@ -127,11 +175,11 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       case 'Account':
         return <AccountStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} />;
       case 'Service':
-        return <ServiceStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={currentStep > 0 ? prevStep : undefined} />;
+        return <ServiceStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={currentStep > 0 ? prevStep : undefined} settings={settings} />;
       case 'Details':
         return <PropertyDetailsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Add-ons':
-        return <AddOnsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
+        return <AddOnsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
       case 'Schedule':
         return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} mode={mode} />;
       case 'Payment':
@@ -192,7 +240,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
           {/* Pricing Sidebar - Show after first step and before confirmation */}
           {currentStep > 0 && currentStep < totalSteps && (
             <div className="lg:col-span-1">
-              <PricingSidebar bookingData={bookingData} />
+              <PricingSidebar bookingData={bookingData} settings={settings} />
             </div>
           )}
         </div>

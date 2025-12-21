@@ -1,10 +1,17 @@
 import { Sparkles, LayoutDashboard, Calendar, Users, MessageSquare, BarChart3, Package, Settings, ChevronLeft, ChevronRight, Shield, Star } from 'lucide-react';
 import { UserRole, Page } from './AdminDashboard';
 import { Badge } from '../ui/badge';
+import { useState, useEffect } from 'react';
 
 interface User {
   id: string;
   name: string;
+}
+
+interface NotificationCounts {
+  bookings: number;
+  reviews: number;
+  messaging: number;
 }
 
 interface SidebarProps {
@@ -26,18 +33,48 @@ const roleLabels: Record<UserRole, string> = {
 
 const menuItems = [
   { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'bookings' as Page, label: 'Bookings', icon: Calendar, badge: 12 },
+  { id: 'bookings' as Page, label: 'Bookings', icon: Calendar, badgeType: 'bookings' },
   { id: 'cleaners' as Page, label: 'Cleaners', icon: Users },
   { id: 'customers' as Page, label: 'Customers', icon: Users },
-  { id: 'reviews' as Page, label: 'Reviews', icon: Star, badge: 8 },
+  { id: 'reviews' as Page, label: 'Reviews', icon: Star, badgeType: 'reviews' },
   { id: 'users' as Page, label: 'User Management', icon: Shield, adminOnly: true },
-  { id: 'messaging' as Page, label: 'Messaging', icon: MessageSquare, badge: 3 },
+  { id: 'messaging' as Page, label: 'Messaging', icon: MessageSquare, badgeType: 'messaging' },
   { id: 'analytics' as Page, label: 'Analytics', icon: BarChart3 },
   { id: 'inventory' as Page, label: 'Inventory', icon: Package },
   { id: 'settings' as Page, label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, isOpen, onToggle, limitedMenuItems, user }: SidebarProps) {
+  const [notificationCounts, setNotificationCounts] = useState<NotificationCounts>({
+    bookings: 0,
+    reviews: 0,
+    messaging: 0,
+  });
+
+  // Fetch notification counts
+  useEffect(() => {
+    const fetchNotificationCounts = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await fetch(`/api/notifications/${user.id}/unread-counts-by-type`);
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationCounts(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notification counts:', error);
+      }
+    };
+
+    fetchNotificationCounts();
+    
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchNotificationCounts, 5000);
+    
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   // Filter menu items based on role and limitedMenuItems prop
   const visibleMenuItems = limitedMenuItems 
     ? menuItems.filter(item => limitedMenuItems.some(limited => limited.id === item.id))
@@ -51,6 +88,12 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // Get badge count for an item
+  const getBadgeCount = (item: any): number => {
+    if (!item.badgeType) return 0;
+    return notificationCounts[item.badgeType as keyof NotificationCounts] || 0;
   };
     
   return (
@@ -129,6 +172,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
+            const badgeCount = getBadgeCount(item);
 
             return (
               <button
@@ -144,9 +188,9 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
                 {isOpen && (
                   <>
                     <span className="flex-1 text-left">{item.label}</span>
-                    {item.badge && (
+                    {badgeCount > 0 && (
                       <Badge className="bg-red-600 text-white border-0 text-xs">
-                        {item.badge}
+                        {badgeCount}
                       </Badge>
                     )}
                   </>

@@ -55,7 +55,7 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar, user, onProfile
     try {
       setIsLoadingNotifications(true);
       const response = await fetch(
-        `http://localhost:4000/api/notifications/${authUser.id}?limit=5`,
+        `/api/notifications/${authUser.id}?limit=5`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -94,7 +94,7 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar, user, onProfile
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await fetch(`http://localhost:4000/api/notifications/${notificationId}/read`, {
+      await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

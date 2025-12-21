@@ -87,7 +87,7 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setIsFetching(true);
-      const response = await fetch('http://localhost:4000/api/users');
+      const response = await fetch('/api/users');
       const data = await response.json();
       if (response.ok) {
         // Handle paginated response format from API
@@ -117,7 +117,7 @@ export function UserManagementPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:4000/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

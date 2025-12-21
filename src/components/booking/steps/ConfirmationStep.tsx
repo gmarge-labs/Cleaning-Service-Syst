@@ -13,7 +13,8 @@ interface ConfirmationStepProps {
 }
 
 export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new' }: ConfirmationStepProps) {
-  const confirmationNumber = `SC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  // Use booking ID from data if available, otherwise generate one
+  const bookingId = data.id || `BK-${Date.now().toString().slice(-8)}`;
   
   // Show toast notification for reschedule
   useEffect(() => {
@@ -46,8 +47,8 @@ export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new'
 
         {/* Confirmation Number */}
         <div className="text-center p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg">
-          <p className="text-sm text-neutral-600 mb-1">Confirmation Number</p>
-          <p className="text-2xl font-bold text-secondary-500 tracking-wider">{confirmationNumber}</p>
+          <p className="text-sm text-neutral-600 mb-1">Booking ID</p>
+          <p className="text-2xl font-bold text-secondary-500 tracking-wider">{bookingId}</p>
         </div>
 
         {/* Free Cleaning Reward Banner */}
