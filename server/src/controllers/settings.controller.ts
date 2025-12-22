@@ -52,6 +52,38 @@ const DEFAULT_SETTINGS = {
     'Organization': 45,
     'Dish Washing': 20,
   },
+  durationSettings: {
+    baseMinutes: 60,
+    perBedroom: 30,
+    perBathroom: 45,
+    perToilet: 15,
+    perOtherRoom: 20,
+    // Specific Room Durations
+    perKitchen: 45,
+    perLivingRoom: 30,
+    perDiningRoom: 20,
+    perLaundryRoom: 20,
+    perBalcony: 20,
+    perBasement: 45,
+    perGarage: 30,
+    perHomeOffice: 20,
+    // Kitchen Add-ons
+    perInsideFridge: 20,
+    perInsideOven: 25,
+    perMicrowave: 10,
+    perDishes: 20,
+    // Laundry
+    perLaundryBasket: 30,
+    // General Add-ons
+    perWindow: 15,
+    perPetHair: 30,
+    perOrganizationHour: 60,
+    
+    standardCleaningMultiplier: 1.0,
+    deepCleaningMultiplier: 1.5,
+    moveInOutMultiplier: 2.0,
+    postConstructionMultiplier: 2.5,
+  },
   integrations: {
     stripe: { enabled: true, apiKey: 'sk_test_***************' },
     plivo: { enabled: true, apiKey: 'MA***************' },

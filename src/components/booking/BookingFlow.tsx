@@ -67,6 +67,7 @@ export interface SystemSettings {
   servicePrices: Record<string, number>;
   roomPrices: Record<string, number>;
   addonPrices: Record<string, number>;
+  durationSettings?: any;
   notifications: any;
   integrations: any;
 }

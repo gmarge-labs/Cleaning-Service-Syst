@@ -31,10 +31,24 @@ export function BookingsPage() {
   const itemsPerPage = 10;
 
   const [bookings, setBookings] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>(null);
 
   useEffect(() => {
     fetchBookings();
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+      if (response.ok) {
+        setSettings(data);
+      }
+    } catch (error) {
+      console.error('Fetch settings error:', error);
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -73,7 +87,7 @@ export function BookingsPage() {
       date: new Date(b.date),
       total: parseFloat(b.totalAmount),
       claimedBy: [], // Placeholder until assignments are implemented
-      requiredCleaners: b.bedrooms > 2 ? 2 : 1, // Simple logic for now
+      requiredCleaners: b.cleanerCount || 1,
     }));
 
   const filteredUnpublishedBookings = unpublishedBookings.filter((booking) =>
@@ -104,9 +118,34 @@ export function BookingsPage() {
     setShowManualBooking(false);
   };
 
-  const handlePublishJob = (jobData: any) => {
-    toast.success(`Job ${jobData.bookingId} has been published successfully!`);
-    setEditJobModal(null);
+  const handlePublishJob = async (jobData: any) => {
+    try {
+      const response = await fetch(`/api/bookings/${jobData.bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'CONFIRMED',
+          cleanerCount: jobData.requiredCleaners,
+          paymentPerHour: jobData.paymentPerHour,
+          toolsRequired: jobData.toolsRequired,
+          specialInstructions: jobData.specialInstructions,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(`Job ${jobData.bookingId} has been published successfully!`);
+        setEditJobModal(null);
+        fetchBookings();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to publish job');
+      }
+    } catch (error) {
+      console.error('Publish job error:', error);
+      toast.error('An error occurred while publishing the job');
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -319,7 +358,17 @@ export function BookingsPage() {
 
             {/* Service Info */}
             <div className="bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg p-6">
-              <h3 className="text-2xl font-bold text-neutral-900 mb-4">{viewDetailsModal.service}</h3>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-2xl font-bold text-neutral-900">{viewDetailsModal.service}</h3>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-secondary-600">
+                    ${viewDetailsModal.total.toFixed(2)}
+                  </div>
+                  <Badge variant="outline" className="bg-white/50 border-secondary-200 text-secondary-700">
+                    {viewDetailsModal.status}
+                  </Badge>
+                </div>
+              </div>
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Calendar className="w-4 h-4 text-secondary-500" />
@@ -336,7 +385,13 @@ export function BookingsPage() {
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Clock className="w-4 h-4 text-secondary-500" />
-                  <span>{viewDetailsModal.estimatedDuration || 'N/A'}</span>
+                  <span>
+                    Duration: {Math.floor((viewDetailsModal.estimatedDuration || 0) / 60)}h {(viewDetailsModal.estimatedDuration || 0) % 60}m
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-neutral-700">
+                  <Users className="w-4 h-4 text-secondary-500" />
+                  <span>Staff Required: {viewDetailsModal.cleanerCount || 1}</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Calendar className="w-4 h-4 text-secondary-500" />
@@ -499,6 +554,42 @@ export function BookingsPage() {
               </div>
             )}
 
+            {/* Job Parameters (if published) */}
+            {(viewDetailsModal.paymentPerHour || viewDetailsModal.toolsRequired || viewDetailsModal.specialInstructions) && (
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <Wrench className="w-5 h-5 text-secondary-500" />
+                  Job Parameters
+                </h4>
+                <div className="bg-neutral-50 rounded-lg p-4 space-y-3 text-sm">
+                  {viewDetailsModal.paymentPerHour && (
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Payment per Hour:</span>
+                      <span className="font-medium text-neutral-900">${viewDetailsModal.paymentPerHour}</span>
+                    </div>
+                  )}
+                  {viewDetailsModal.toolsRequired && (
+                    <div>
+                      <span className="text-neutral-600 block mb-1">Tools Required:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {viewDetailsModal.toolsRequired.split(',').map((tool: string, i: number) => (
+                          <Badge key={i} variant="outline" className="bg-white">{tool.trim()}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {viewDetailsModal.specialInstructions && (
+                    <div>
+                      <span className="text-neutral-600 block mb-1">Special Instructions:</span>
+                      <p className="text-neutral-900 bg-white p-3 rounded border border-neutral-200 italic">
+                        "{viewDetailsModal.specialInstructions}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Special Instructions */}
             {viewDetailsModal.specialInstructions && (
               <div>
@@ -514,6 +605,12 @@ export function BookingsPage() {
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-neutral-900">Total Amount</span>
                 <span className="text-3xl font-bold text-neutral-900">${viewDetailsModal.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-neutral-900">Estimated Cleaner Pay</span>
+                <span className="text-xl font-bold text-neutral-700">
+                  ${((viewDetailsModal.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-neutral-900">Payment Method</span>
@@ -538,7 +635,7 @@ export function BookingsPage() {
 
     const [jobData, setJobData] = useState({
       bookingId: editJobModal.id,
-      requiredCleaners: 1,
+      requiredCleaners: editJobModal.cleanerCount || 1,
       paymentPerHour: 25,
       toolsRequired: '',
       specialInstructions: '',
@@ -571,14 +668,26 @@ export function BookingsPage() {
           <div className="p-6 space-y-6">
             {/* Booking Summary */}
             <div className="bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg p-4">
-              <div className="font-semibold text-neutral-900 mb-1">{editJobModal.service}</div>
-              <div className="text-sm text-neutral-600">{editJobModal.customer}</div>
-              <div className="text-sm text-neutral-600">
-                {editJobModal.date.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })} at {editJobModal.time}
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-semibold text-neutral-900 mb-1">{editJobModal.service}</div>
+                  <div className="text-sm text-neutral-600">{editJobModal.customer}</div>
+                  <div className="text-sm text-neutral-600">
+                    {editJobModal.date.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })} at {editJobModal.time}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-secondary-600">
+                    Estimated: {Math.floor((editJobModal.estimatedDuration || 0) / 60)}h {(editJobModal.estimatedDuration || 0) % 60}m
+                  </div>
+                  <div className="text-xs text-neutral-500">
+                    Calculated Staff: {editJobModal.cleanerCount || 1}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1130,6 +1239,7 @@ export function BookingsPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Customer</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Service</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Date</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Duration</th>
               
                   {activeTab === 'published' && (
                     <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
@@ -1145,7 +1255,7 @@ export function BookingsPage() {
                 {activeTab === 'unpublished' ? (
                   paginatedUnpublished.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-neutral-500">
+                      <td colSpan={10} className="p-8 text-center text-neutral-500">
                         No unpublished bookings found.
                       </td>
                     </tr>
@@ -1174,19 +1284,33 @@ export function BookingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6">
+                          <div className="text-sm text-neutral-600">
+                            {Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
                           <div className="flex items-center gap-1 text-neutral-900 font-semibold">
                             <DollarSign className="w-4 h-4" />
                             {booking.total.toFixed(2)}
                           </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <DollarSign className="w-4 h-4" />
+                            {((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <DollarSign className="w-4 h-4" />
+                            {((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-green-600 font-semibold">
+                            <DollarSign className="w-4 h-4" />
+                            {(booking.total - ((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
@@ -1215,7 +1339,7 @@ export function BookingsPage() {
                 ) : (
                   paginatedPublished.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-neutral-500">
+                      <td colSpan={11} className="p-8 text-center text-neutral-500">
                         No published jobs found.
                       </td>
                     </tr>
@@ -1244,6 +1368,11 @@ export function BookingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6">
+                          <div className="text-sm text-neutral-600">
+                            {Math.floor((job.estimatedDuration || 0) / 60)}h {(job.estimatedDuration || 0) % 60}m
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
                           <div className="flex flex-col">
                             <span className={`font-semibold ${job.claimedBy.length >= job.requiredCleaners
                               ? 'text-green-600'
@@ -1263,13 +1392,22 @@ export function BookingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <DollarSign className="w-4 h-4" />
+                            {((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <DollarSign className="w-4 h-4" />
+                            {((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
-                        <span className="text-sm text-neutral-900">""</span>
+                          <div className="flex items-center gap-1 text-green-600 font-semibold">
+                            <DollarSign className="w-4 h-4" />
+                            {(job.total - ((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">

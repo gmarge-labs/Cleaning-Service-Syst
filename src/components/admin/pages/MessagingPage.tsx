@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Search, Paperclip, Smile, MoreVertical, Phone, Video } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Textarea } from '../../ui/textarea';
 import { Badge } from '../../ui/badge';
+import { useSocket } from '../../../hooks/useSocket';
+import { toast } from 'sonner';
 
 // Mock data
 const conversations = [
   {
-    id: 1,
+    id: 'cl-001',
     name: 'Maria Garcia',
     role: 'Cleaner',
     photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
@@ -18,7 +20,7 @@ const conversations = [
     online: true,
   },
   {
-    id: 2,
+    id: 'cust-001',
     name: 'Sarah Johnson',
     role: 'Customer',
     photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
@@ -28,7 +30,7 @@ const conversations = [
     online: false,
   },
   {
-    id: 3,
+    id: 'cl-002',
     name: 'John Smith',
     role: 'Cleaner',
     photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
@@ -39,10 +41,11 @@ const conversations = [
   },
 ];
 
-const messages = [
+const initialMessages = [
   {
     id: 1,
     sender: 'Maria Garcia',
+    senderId: 'cl-001',
     text: 'Hi! I wanted to check about tomorrow\'s booking at 123 Main St.',
     time: '10:30 AM',
     isOwn: false,
@@ -50,30 +53,10 @@ const messages = [
   {
     id: 2,
     sender: 'You',
+    senderId: 'admin-001',
     text: 'Hello Maria! Yes, it\'s confirmed for 10 AM. The customer requested deep cleaning.',
     time: '10:32 AM',
     isOwn: true,
-  },
-  {
-    id: 3,
-    sender: 'Maria Garcia',
-    text: 'Perfect! I have all the supplies ready. Should I bring any special equipment?',
-    time: '10:33 AM',
-    isOwn: false,
-  },
-  {
-    id: 4,
-    sender: 'You',
-    text: 'They also requested carpet cleaning, so please bring the carpet cleaner.',
-    time: '10:35 AM',
-    isOwn: true,
-  },
-  {
-    id: 5,
-    sender: 'Maria Garcia',
-    text: 'Got it! I can take the 2 PM slot tomorrow',
-    time: '10:36 AM',
-    isOwn: false,
   },
 ];
 
@@ -81,6 +64,42 @@ export function MessagingPage() {
   const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
   const [messageText, setMessageText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [chatMessages, setChatMessages] = useState(initialMessages);
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastSubject, setBroadcastSubject] = useState('Important Announcement from SparkleVille');
+  const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'cleaners' | 'customers' | 'staff'>('all');
+  const { socket, sendMessage, broadcastMessage } = useSocket();
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('receive_message', (data) => {
+        if (data.senderId === selectedConversation.id) {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              sender: selectedConversation.name,
+              senderId: data.senderId,
+              text: data.text,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isOwn: false,
+            },
+          ]);
+        }
+      });
+
+      socket.on('broadcast_received', (data) => {
+        toast.info(`Broadcast to ${data.target}`, {
+          description: data.text,
+        });
+      });
+
+      return () => {
+        socket.off('receive_message');
+        socket.off('broadcast_received');
+      };
+    }
+  }, [socket, selectedConversation]);
 
   const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -88,8 +107,27 @@ export function MessagingPage() {
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
-      // Handle sending message
+      sendMessage(selectedConversation.id, messageText);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          sender: 'You',
+          senderId: 'admin-001',
+          text: messageText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isOwn: true,
+        },
+      ]);
       setMessageText('');
+    }
+  };
+
+  const handleSendBroadcast = () => {
+    if (broadcastText.trim()) {
+      broadcastMessage(broadcastTarget, broadcastText, broadcastSubject);
+      toast.success(`Broadcast sent to ${broadcastTarget}`);
+      setBroadcastText('');
     }
   };
 
@@ -201,7 +239,7 @@ export function MessagingPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
+            {chatMessages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
@@ -272,16 +310,52 @@ export function MessagingPage() {
               Send to
             </label>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">All Cleaners</Button>
-              <Button variant="outline" size="sm">All Customers</Button>
-              <Button variant="outline" size="sm">All Staff</Button>
+              <Button 
+                variant={broadcastTarget === 'cleaners' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setBroadcastTarget('cleaners')}
+              >
+                All Cleaners
+              </Button>
+              <Button 
+                variant={broadcastTarget === 'customers' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setBroadcastTarget('customers')}
+              >
+                All Customers
+              </Button>
+              <Button 
+                variant={broadcastTarget === 'staff' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setBroadcastTarget('staff')}
+              >
+                All Staff
+              </Button>
+              <Button 
+                variant={broadcastTarget === 'all' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setBroadcastTarget('all')}
+              >
+                Everyone
+              </Button>
             </div>
           </div>
+          <Input
+            placeholder="Announcement Subject"
+            value={broadcastSubject}
+            onChange={(e) => setBroadcastSubject(e.target.value)}
+          />
           <Textarea
             placeholder="Type your announcement..."
             rows={3}
+            value={broadcastText}
+            onChange={(e) => setBroadcastText(e.target.value)}
           />
-          <Button className="bg-secondary-500 hover:bg-secondary-600">
+          <Button 
+            className="bg-secondary-500 hover:bg-secondary-600"
+            onClick={handleSendBroadcast}
+            disabled={!broadcastText.trim()}
+          >
             Send Announcement
           </Button>
         </div>

@@ -1,53 +1,50 @@
 import { MessageSquare, Calendar, CheckCircle2, Clock, AlertCircle, User } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
-
-// Mock data
-const tickets = [
-  {
-    id: 1,
-    customer: 'Sarah Johnson',
-    subject: 'Reschedule Request',
-    status: 'New',
-    priority: 'High',
-    time: '5 min ago',
-  },
-  {
-    id: 2,
-    customer: 'Michael Chen',
-    subject: 'Payment Issue',
-    status: 'In Progress',
-    priority: 'Medium',
-    time: '15 min ago',
-  },
-  {
-    id: 3,
-    customer: 'Emily Rodriguez',
-    subject: 'Service Inquiry',
-    status: 'New',
-    priority: 'Low',
-    time: '1 hour ago',
-  },
-];
-
-const upcomingFollowUps = [
-  {
-    id: 1,
-    customer: 'John Smith',
-    reason: 'Post-service follow-up',
-    dueDate: new Date('2025-11-23'),
-    status: 'Pending',
-  },
-  {
-    id: 2,
-    customer: 'Lisa Wang',
-    reason: 'Resolve complaint',
-    dueDate: new Date('2025-11-23'),
-    status: 'Overdue',
-  },
-];
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 export function SupportDashboard() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/dashboard/support/stats');
+      const data = await response.json();
+      if (response.ok) {
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error('Fetch support dashboard data error:', error);
+      toast.error('Failed to load support dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary-500"></div>
+      </div>
+    );
+  }
+
+  const tickets = dashboardData?.tickets || [];
+  const upcomingFollowUps = dashboardData?.upcomingFollowUps || [];
+  const stats = dashboardData?.stats || {
+    openTickets: 0,
+    pendingFollowUps: 0,
+    resolvedToday: 0,
+    avgResponseTime: 0
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -64,7 +61,7 @@ export function SupportDashboard() {
               <MessageSquare className="w-6 h-6 text-secondary-500" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">12</div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">{stats.openTickets}</div>
           <div className="text-sm text-neutral-600">Open Tickets</div>
         </div>
 
@@ -74,7 +71,7 @@ export function SupportDashboard() {
               <Clock className="w-6 h-6 text-orange-600" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">3</div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">{stats.pendingFollowUps}</div>
           <div className="text-sm text-neutral-600">Pending Follow-ups</div>
         </div>
 
@@ -84,7 +81,7 @@ export function SupportDashboard() {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">45</div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">{stats.resolvedToday}</div>
           <div className="text-sm text-neutral-600">Resolved Today</div>
         </div>
 
@@ -94,7 +91,7 @@ export function SupportDashboard() {
               <User className="w-6 h-6 text-purple-600" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">4.8</div>
+          <div className="text-3xl font-bold text-neutral-900 mb-1">{stats.avgResponseTime}</div>
           <div className="text-sm text-neutral-600">Avg Response Time (min)</div>
         </div>
       </div>

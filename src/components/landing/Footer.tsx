@@ -1,6 +1,8 @@
 import { Sparkles, Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Link, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 interface FooterProps {
   onAdminLogin?: () => void;
@@ -9,6 +11,7 @@ interface FooterProps {
 
 export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
   const navigate = useNavigate();
+  const { general } = useSelector((state: RootState) => state.settings);
 
   const footerLinks = {
     company: [
@@ -63,7 +66,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
               <Sparkles className="w-20 h-20 text-white" />
             </div>
             <div>
-              <div className="font-bold text-xl text-white">SparkleVille</div>
+              <div className="font-bold text-xl text-white">{general.companyName}</div>
               <div className="text-xs text-neutral-400">Professional Cleaning</div>
             </div>
           </div>
@@ -81,7 +84,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="font-bold text-xl text-white">SparkleVille</div>
+                <div className="font-bold text-xl text-white">{general.companyName}</div>
                 <div className="text-xs text-neutral-400">Professional Cleaning</div>
               </div>
             </div>
@@ -93,15 +96,15 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-neutral-300 hover:text-white transition-colors font-medium">
                 <Phone className="w-5 h-5" />
-                <span>(555) 123-4567</span>
+                <span>{general.phone}</span>
               </div>
               <div className="flex items-center gap-3 text-neutral-300 hover:text-white transition-colors font-medium">
                 <Mail className="w-5 h-5" />
-                <span>hello@sparkleville.com</span>
+                <span>{general.email}</span>
               </div>
               <div className="flex items-center gap-3 text-neutral-300 hover:text-white transition-colors font-medium">
                 <MapPin className="w-5 h-5" />
-                <span>123 Clean Street, Suite 100</span>
+                <span>{general.address}</span>
               </div>
             </div>
           </div>

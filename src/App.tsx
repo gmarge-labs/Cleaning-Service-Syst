@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from './store/store';
+import { RootState, AppDispatch } from './store/store';
 import { logout } from './store/slices/authSlice';
+import { fetchSettings } from './store/slices/settingsSlice';
 import { Layout } from './components/layout/Layout';
 import { HomePage } from './pages/HomePage';
 import { ServicesPage } from './pages/ServicesPage';
@@ -18,13 +19,21 @@ import { SupervisorDashboard } from './components/supervisor/SupervisorDashboard
 import { SupportDashboard } from './components/support/SupportDashboard';
 import { BookingFlow } from './components/booking/BookingFlow';
 import { CleanerApp } from './components/cleaner/CleanerApp';
+import { useSocket } from './hooks/useSocket';
 
 type View = 'landing' | 'booking' | 'dashboard' | 'admin' | 'supervisor' | 'support' | 'cleaner';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('landing');
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Initialize real-time communication
+  useSocket();
+
+  useEffect(() => {
+    dispatch(fetchSettings());
+  }, [dispatch]);
 
   const [bookingInitialStep, setBookingInitialStep] = useState(0); // Track initial step for booking flow
   const [bookingMode, setBookingMode] = useState<'new' | 'reschedule'>('new'); // Track booking mode

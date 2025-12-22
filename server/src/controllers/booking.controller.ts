@@ -1,9 +1,30 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../utils/notification';
-import { sendBookingConfirmation } from '../utils/email.service';
+import { sendBookingConfirmation, sendInvoiceEmail } from '../utils/email.service';
 
 const prisma = new PrismaClient();
+
+export const sendInvoice = async (req: Request, res: Response) => {
+  try {
+    const { bookingId, email, total, balanceDue } = req.body;
+    
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    await sendInvoiceEmail(booking, email, total, balanceDue);
+
+    res.json({ message: 'Invoice sent successfully' });
+  } catch (error) {
+    console.error('Send invoice error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 export const createBooking = async (req: Request, res: Response) => {
   try {
@@ -52,6 +73,52 @@ export const createBooking = async (req: Request, res: Response) => {
       Object.assign(combinedRooms, roomQuantities);
     }
 
+    // Calculate estimated duration and cleaner count
+    let estimatedDuration = 0;
+    let cleanerCount = 1;
+
+    try {
+      const settings = await prisma.systemSettings.findUnique({ where: { id: 'default' } });
+      if (settings && settings.durationSettings) {
+        const ds = settings.durationSettings as any;
+        
+        // Base time
+        let totalMinutes = ds.baseMinutes || 60;
+        
+        // Room times
+        totalMinutes += (bedrooms || 0) * (ds.perBedroom || 30);
+        totalMinutes += (bathrooms || 0) * (ds.perBathroom || 45);
+        totalMinutes += (toilets || 0) * (ds.perToilet || 15);
+        
+        // Other rooms
+        if (rooms && Array.isArray(rooms)) {
+          rooms.forEach((room: string) => {
+            if (!['Bedroom', 'Bathroom', 'Toilet'].includes(room)) {
+              totalMinutes += (roomQuantities?.[room] || 1) * (ds.perOtherRoom || 20);
+            }
+          });
+        }
+
+        // Service Multiplier
+        let multiplier = 1.0;
+        if (serviceType === 'Deep Cleaning') multiplier = ds.deepCleaningMultiplier || 1.5;
+        else if (serviceType === 'Move In/Out') multiplier = ds.moveInOutMultiplier || 2.0;
+        else if (serviceType === 'Post-Construction') multiplier = ds.postConstructionMultiplier || 2.5;
+        else multiplier = ds.standardCleaningMultiplier || 1.0;
+
+        estimatedDuration = Math.round(totalMinutes * multiplier);
+        
+        // Cleaner count: 1 cleaner per 4 hours (240 mins)
+        cleanerCount = Math.ceil(estimatedDuration / 240);
+        if (cleanerCount < 1) cleanerCount = 1;
+      }
+    } catch (err) {
+      console.error('Error calculating duration:', err);
+      // Fallback to basic calculation if settings fail
+      estimatedDuration = 120 + ((bedrooms || 0) + (bathrooms || 0)) * 30;
+      cleanerCount = Math.ceil(estimatedDuration / 240);
+    }
+
     const booking = await prisma.booking.create({
       data: {
         id: customId,
@@ -78,6 +145,8 @@ export const createBooking = async (req: Request, res: Response) => {
         paymentMethod: paymentMethod || null,
         tipAmount: tipAmount || 0,
         totalAmount,
+        estimatedDuration,
+        cleanerCount,
         status: status || 'BOOKED',
       },
     });
@@ -99,7 +168,11 @@ export const createBooking = async (req: Request, res: Response) => {
 
     // Send confirmation email to customer
     if (guestEmail) {
-      await sendBookingConfirmation(booking, guestEmail);
+      console.log(`📧 Calling sendBookingConfirmation for ${guestEmail}`);
+      const emailResult = await sendBookingConfirmation(booking, guestEmail);
+      console.log(`📧 sendBookingConfirmation result: ${emailResult}`);
+    } else {
+      console.warn('⚠️ No guestEmail found, skipping confirmation email');
     }
 
     res.status(201).json({
@@ -158,6 +231,62 @@ export const updateBooking = async (req: Request, res: Response) => {
         date: updateData.date ? new Date(updateData.date) : undefined,
       },
     });
+
+    // Handle Cancellation
+    if (updateData.status === 'CANCELLED' && existingBooking.status !== 'CANCELLED') {
+      const now = new Date();
+      const serviceDateTime = new Date(existingBooking.date);
+      
+      // Parse time (e.g., "10:00 AM")
+      const timeStr = existingBooking.time;
+      const [time, period] = timeStr.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let hour24 = hours;
+      if (period === 'PM' && hours !== 12) hour24 += 12;
+      if (period === 'AM' && hours === 12) hour24 = 0;
+      
+      serviceDateTime.setHours(hour24, minutes, 0, 0);
+      
+      const hoursUntilService = (serviceDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      let refundAmount = 0;
+      let penaltyCharge = 0;
+      const totalAmount = Number(existingBooking.totalAmount);
+      
+      if (hoursUntilService >= 24) {
+        refundAmount = totalAmount;
+        penaltyCharge = 0;
+      } else if (hoursUntilService > 0) {
+        refundAmount = totalAmount * 0.5;
+        penaltyCharge = totalAmount * 0.5;
+      } else {
+        refundAmount = 0;
+        penaltyCharge = totalAmount;
+      }
+
+      // Notify admins
+      await notifyAdmins({
+        type: 'BOOKING_CANCELLED',
+        title: 'Booking Cancelled',
+        message: `Booking ${id} has been cancelled by customer ${existingBooking.guestName || 'Guest'}. Refund: $${refundAmount.toFixed(2)}, Penalty: $${penaltyCharge.toFixed(2)}`,
+        data: {
+          bookingId: id,
+          customerId: existingBooking.userId,
+          customerName: existingBooking.guestName,
+          serviceType: existingBooking.serviceType,
+          refundAmount,
+          penaltyCharge,
+          totalAmount: totalAmount.toString()
+        }
+      });
+
+      return res.json({
+        message: 'Booking cancelled successfully',
+        booking,
+        refundAmount,
+        penaltyCharge
+      });
+    }
 
     // If date was changed (reschedule), notify admins
     if (updateData.date && existingBooking.date !== new Date(updateData.date)) {

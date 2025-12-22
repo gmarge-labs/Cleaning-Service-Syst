@@ -6,27 +6,27 @@ import { Textarea } from '../../ui/textarea';
 import { Switch } from '../../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { Building, DollarSign, Bell, Plug, Save, Key, Tag, AlertCircle, TrendingDown, Loader2 } from 'lucide-react';
+import { Building, DollarSign, Bell, Plug, Save, Key, Tag, AlertCircle, TrendingDown, Loader2, Plus, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../ui/badge';
+
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../../store/store';
+import { updateGeneralSettings } from '../../../store/slices/settingsSlice';
 
 const API_URL = '/api';
 
 export function SettingsPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { general: reduxGeneral } = useSelector((state: RootState) => state.settings);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [currentIntegration, setCurrentIntegration] = useState<string>('');
   const [tempApiKey, setTempApiKey] = useState('');
 
-  const [generalSettings, setGeneralSettings] = useState({
-    companyName: 'SparkleVille',
-    email: 'hello@sparkleville.com',
-    phone: '(555) 123-4567',
-    address: '123 Clean Street, Suite 100',
-    businessHours: '8:00 AM - 8:00 PM',
-    serviceArea: '10001, 10002, 10003',
-  });
+  const [generalSettings, setGeneralSettings] = useState(reduxGeneral);
 
   const [pricingSettings, setPricingSettings] = useState({
     depositPercentage: 20,
@@ -73,6 +73,39 @@ export function SettingsPage() {
     'Dish Washing': 20,
   });
 
+  const [durationSettings, setDurationSettings] = useState({
+    baseMinutes: 60,
+    perBedroom: 30,
+    perBathroom: 45,
+    perToilet: 15,
+    perOtherRoom: 20,
+    // Specific Room Durations
+    perKitchen: 45,
+    perLivingRoom: 30,
+    perDiningRoom: 20,
+    perLaundryRoom: 20,
+    perBalcony: 20,
+    perBasement: 45,
+    perGarage: 30,
+    perHomeOffice: 20,
+    // Kitchen Add-ons
+    perInsideFridge: 20,
+    perInsideOven: 25,
+    perMicrowave: 10,
+    perDishes: 20,
+    // Laundry
+    perLaundryBasket: 30,
+    // General Add-ons
+    perWindow: 15,
+    perPetHair: 30,
+    perOrganizationHour: 60,
+    
+    standardCleaningMultiplier: 1.0,
+    deepCleaningMultiplier: 1.5,
+    moveInOutMultiplier: 2.0,
+    postConstructionMultiplier: 2.5,
+  });
+
   const [notificationTemplates, setNotificationTemplates] = useState({
     confirmation: 'Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed...',
     reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
@@ -106,6 +139,7 @@ export function SettingsPage() {
         if (data.servicePrices) setServicePrices(data.servicePrices);
         if (data.roomPrices) setRoomPrices(data.roomPrices);
         if (data.addonPrices) setAddonPrices(data.addonPrices);
+        if (data.durationSettings) setDurationSettings(data.durationSettings);
         if (data.notifications) setNotificationTemplates(data.notifications);
         if (data.integrations) setIntegrations(data.integrations);
       }
@@ -157,8 +191,13 @@ export function SettingsPage() {
     saveSettings({ cleanerPay });
   };
 
-  const handleSaveGeneralSettings = () => {
-    saveSettings({ general: generalSettings });
+  const handleSaveGeneralSettings = async () => {
+    await saveSettings({ general: generalSettings });
+    dispatch(updateGeneralSettings(generalSettings));
+  };
+
+  const handleSaveDurationSettings = () => {
+    saveSettings({ durationSettings });
   };
 
   const handleSaveNotificationTemplates = () => {
@@ -206,13 +245,44 @@ export function SettingsPage() {
         <p className="text-neutral-600 mt-1">Configure your platform settings and integrations</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="pricing">Pricing</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="api">API Keys</TabsTrigger>
+      <Tabs defaultValue="general" className="space-y-8">
+        <TabsList className="grid grid-cols-3 md:grid-cols-9 h-auto p-1 bg-neutral-100/50 border border-neutral-200 rounded-xl">
+          <TabsTrigger value="general" className="py-2.5">
+            <Building className="w-4 h-4 mr-2" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="services" className="py-2.5">
+            <Tag className="w-4 h-4 mr-2" />
+            Services
+          </TabsTrigger>
+          <TabsTrigger value="rooms" className="py-2.5">
+            <Building className="w-4 h-4 mr-2" />
+            Rooms
+          </TabsTrigger>
+          <TabsTrigger value="addons" className="py-2.5">
+            <Plus className="w-4 h-4 mr-2" />
+            Add-ons
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="py-2.5">
+            <DollarSign className="w-4 h-4 mr-2" />
+            Pricing
+          </TabsTrigger>
+          <TabsTrigger value="duration" className="py-2.5">
+            <Clock className="w-4 h-4 mr-2" />
+            Duration
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="py-2.5">
+            <Bell className="w-4 h-4 mr-2" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="py-2.5">
+            <Plug className="w-4 h-4 mr-2" />
+            Integrations
+          </TabsTrigger>
+          <TabsTrigger value="api" className="py-2.5">
+            <Key className="w-4 h-4 mr-2" />
+            API Keys
+          </TabsTrigger>
         </TabsList>
 
         {/* General Settings */}
@@ -302,6 +372,130 @@ export function SettingsPage() {
           </div>
         </TabsContent>
 
+        {/* Services Settings */}
+        <TabsContent value="services" className="space-y-6">
+          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <DollarSign className="w-6 h-6 text-secondary-500" />
+              <h2 className="text-xl font-semibold text-neutral-900">Service Prices</h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {Object.entries(servicePrices).map(([service, price]) => (
+                <div key={service}>
+                  <Label htmlFor={`service-${service}`}>{service}</Label>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-neutral-600">$</span>
+                    <Input
+                      id={`service-${service}`}
+                      type="number"
+                      value={price}
+                      onChange={(e) => setServicePrices({ ...servicePrices, [service]: parseInt(e.target.value) || 0 })}
+                      min="0"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveServicePrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Service Prices
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Rooms Settings */}
+        <TabsContent value="rooms" className="space-y-6">
+          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <DollarSign className="w-6 h-6 text-secondary-500" />
+              <h2 className="text-xl font-semibold text-neutral-900">Room Prices</h2>
+            </div>
+
+            <p className="text-sm text-neutral-600 mb-4">
+              Price per room added during booking
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {Object.entries(roomPrices).map(([room, price]) => (
+                <div key={room}>
+                  <Label htmlFor={`room-${room}`}>{room}</Label>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-neutral-600">$</span>
+                    <Input
+                      id={`room-${room}`}
+                      type="number"
+                      value={price}
+                      onChange={(e) => setRoomPrices({ ...roomPrices, [room]: parseInt(e.target.value) || 0 })}
+                      min="0"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveRoomPrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Room Prices
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Add-ons Settings */}
+        <TabsContent value="addons" className="space-y-6">
+          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <DollarSign className="w-6 h-6 text-secondary-500" />
+              <h2 className="text-xl font-semibold text-neutral-900">Add-on Prices</h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {Object.entries(addonPrices).map(([addon, price]) => (
+                <div key={addon}>
+                  <Label htmlFor={`addon-${addon}`}>{addon}</Label>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-neutral-600">$</span>
+                    <Input
+                      id={`addon-${addon}`}
+                      type="number"
+                      value={price}
+                      onChange={(e) => setAddonPrices({ ...addonPrices, [addon]: parseInt(e.target.value) || 0 })}
+                      min="0"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveAddonPrices} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Add-on Prices
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
         {/* Pricing Settings */}
         <TabsContent value="pricing" className="space-y-6">
           {/* Cleaner Pay */}
@@ -367,124 +561,6 @@ export function SettingsPage() {
               >
                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Cleaner Pay
-              </Button>
-            </div>
-          </div>
-
-          {/* Service Prices */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-              <DollarSign className="w-6 h-6 text-secondary-500" />
-              <h2 className="text-xl font-semibold text-neutral-900">Service Prices</h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {Object.entries(servicePrices).map(([service, price]) => (
-                <div key={service}>
-                  <Label htmlFor={`service-${service}`}>{service}</Label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-neutral-600">$</span>
-                    <Input
-                      id={`service-${service}`}
-                      type="number"
-                      value={price}
-                      onChange={(e) => setServicePrices({ ...servicePrices, [service]: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveServicePrices} 
-                disabled={isSaving}
-                className="bg-secondary-500 hover:bg-secondary-600"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Save Service Prices
-              </Button>
-            </div>
-          </div>
-
-          {/* Room Prices */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-              <DollarSign className="w-6 h-6 text-secondary-500" />
-              <h2 className="text-xl font-semibold text-neutral-900">Room Prices</h2>
-            </div>
-
-            <p className="text-sm text-neutral-600 mb-4">
-              Price per room added during booking
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {Object.entries(roomPrices).map(([room, price]) => (
-                <div key={room}>
-                  <Label htmlFor={`room-${room}`}>{room}</Label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-neutral-600">$</span>
-                    <Input
-                      id={`room-${room}`}
-                      type="number"
-                      value={price}
-                      onChange={(e) => setRoomPrices({ ...roomPrices, [room]: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveRoomPrices} 
-                disabled={isSaving}
-                className="bg-secondary-500 hover:bg-secondary-600"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Save Room Prices
-              </Button>
-            </div>
-          </div>
-
-          {/* Add-on Prices */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-              <DollarSign className="w-6 h-6 text-secondary-500" />
-              <h2 className="text-xl font-semibold text-neutral-900">Add-on Prices</h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {Object.entries(addonPrices).map(([addon, price]) => (
-                <div key={addon}>
-                  <Label htmlFor={`addon-${addon}`}>{addon}</Label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-neutral-600">$</span>
-                    <Input
-                      id={`addon-${addon}`}
-                      type="number"
-                      value={price}
-                      onChange={(e) => setAddonPrices({ ...addonPrices, [addon]: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveAddonPrices} 
-                disabled={isSaving}
-                className="bg-secondary-500 hover:bg-secondary-600"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Save Add-on Prices
               </Button>
             </div>
           </div>
@@ -647,6 +723,285 @@ export function SettingsPage() {
               >
                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Discount Settings
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Duration Settings */}
+        <TabsContent value="duration" className="space-y-6">
+          <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <Clock className="w-6 h-6 text-secondary-500" />
+              <h2 className="text-xl font-semibold text-neutral-900">Cleaning Duration Settings</h2>
+            </div>
+
+            <p className="text-sm text-neutral-600 mb-6">
+              Configure how the system calculates the estimated time for each booking. 
+              This affects cleaner assignment (1 cleaner per 4 hours).
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Base & Core Room Times */}
+              <div className="space-y-6">
+                <h3 className="font-semibold text-neutral-900 border-b pb-2">Base & Core Room Times (Minutes)</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="base-mins">Base Time</Label>
+                    <Input
+                      id="base-mins"
+                      type="number"
+                      value={durationSettings.baseMinutes}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, baseMinutes: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-bedroom">Per Bedroom</Label>
+                    <Input
+                      id="per-bedroom"
+                      type="number"
+                      value={durationSettings.perBedroom}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perBedroom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-bathroom">Per Bathroom</Label>
+                    <Input
+                      id="per-bathroom"
+                      type="number"
+                      value={durationSettings.perBathroom}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perBathroom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-toilet">Per Toilet</Label>
+                    <Input
+                      id="per-toilet"
+                      type="number"
+                      value={durationSettings.perToilet}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perToilet: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-other">Default Other Room</Label>
+                    <Input
+                      id="per-other"
+                      type="number"
+                      value={durationSettings.perOtherRoom}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perOtherRoom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Specific Room Times */}
+              <div className="space-y-6">
+                <h3 className="font-semibold text-neutral-900 border-b pb-2">Specific Room Times (Minutes)</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="per-kitchen">Kitchen</Label>
+                    <Input
+                      id="per-kitchen"
+                      type="number"
+                      value={durationSettings.perKitchen || 45}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perKitchen: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-living">Living Room</Label>
+                    <Input
+                      id="per-living"
+                      type="number"
+                      value={durationSettings.perLivingRoom || 30}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perLivingRoom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-dining">Dining Room</Label>
+                    <Input
+                      id="per-dining"
+                      type="number"
+                      value={durationSettings.perDiningRoom || 20}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perDiningRoom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-laundry">Laundry Room</Label>
+                    <Input
+                      id="per-laundry"
+                      type="number"
+                      value={durationSettings.perLaundryRoom || 20}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perLaundryRoom: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-balcony">Balcony/Patio</Label>
+                    <Input
+                      id="per-balcony"
+                      type="number"
+                      value={durationSettings.perBalcony || 20}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perBalcony: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-basement">Basement</Label>
+                    <Input
+                      id="per-basement"
+                      type="number"
+                      value={durationSettings.perBasement || 45}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perBasement: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Kitchen Add-on Times */}
+              <div className="space-y-6">
+                <h3 className="font-semibold text-neutral-900 border-b pb-2">Kitchen Add-on Times (Minutes)</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="per-fridge">Inside Fridge</Label>
+                    <Input
+                      id="per-fridge"
+                      type="number"
+                      value={durationSettings.perInsideFridge || 20}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perInsideFridge: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-oven">Inside Oven</Label>
+                    <Input
+                      id="per-oven"
+                      type="number"
+                      value={durationSettings.perInsideOven || 25}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perInsideOven: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-microwave">Microwave</Label>
+                    <Input
+                      id="per-microwave"
+                      type="number"
+                      value={durationSettings.perMicrowave || 10}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perMicrowave: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-dishes">Dishes</Label>
+                    <Input
+                      id="per-dishes"
+                      type="number"
+                      value={durationSettings.perDishes || 20}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perDishes: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Add-on Times */}
+              <div className="space-y-6">
+                <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Add-on Times (Minutes)</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="per-basket">Laundry (Per Basket)</Label>
+                    <Input
+                      id="per-basket"
+                      type="number"
+                      value={durationSettings.perLaundryBasket || 30}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perLaundryBasket: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-window">Inside Window (Per Window)</Label>
+                    <Input
+                      id="per-window"
+                      type="number"
+                      value={durationSettings.perWindow || 15}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perWindow: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-pethair">Pet Hair Removal</Label>
+                    <Input
+                      id="per-pethair"
+                      type="number"
+                      value={durationSettings.perPetHair || 30}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perPetHair: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="per-org">Organization (Per Hour)</Label>
+                    <Input
+                      id="per-org"
+                      type="number"
+                      value={durationSettings.perOrganizationHour || 60}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, perOrganizationHour: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Multipliers */}
+              <div className="space-y-6">
+                <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Multipliers</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="std-mult">Standard Cleaning</Label>
+                    <Input
+                      id="std-mult"
+                      type="number"
+                      step="0.1"
+                      value={durationSettings.standardCleaningMultiplier}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, standardCleaningMultiplier: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deep-mult">Deep Cleaning</Label>
+                    <Input
+                      id="deep-mult"
+                      type="number"
+                      step="0.1"
+                      value={durationSettings.deepCleaningMultiplier}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, deepCleaningMultiplier: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="move-mult">Move In/Out</Label>
+                    <Input
+                      id="move-mult"
+                      type="number"
+                      step="0.1"
+                      value={durationSettings.moveInOutMultiplier}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, moveInOutMultiplier: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="post-mult">Post-Construction</Label>
+                    <Input
+                      id="post-mult"
+                      type="number"
+                      step="0.1"
+                      value={durationSettings.postConstructionMultiplier}
+                      onChange={(e) => setDurationSettings({ ...durationSettings, postConstructionMultiplier: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-neutral-200">
+              <Button 
+                onClick={handleSaveDurationSettings} 
+                disabled={isSaving}
+                className="bg-secondary-500 hover:bg-secondary-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Duration Settings
               </Button>
             </div>
           </div>

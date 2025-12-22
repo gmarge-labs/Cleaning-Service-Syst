@@ -46,7 +46,7 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
   roomPrice += (bookingData.toilets || 0) * toiletPrice;
 
   // Additional rooms
-  if (bookingData.rooms && bookingData.roomQuantities) {
+  if (bookingData.rooms) {
     bookingData.rooms.forEach(roomId => {
       const quantity = bookingData.roomQuantities?.[roomId] || 1;
       // Map roomId to settings key (e.g., 'living-room' -> 'Living Room')
@@ -61,11 +61,33 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
 
   // Calculate add-ons
   const addOnsTotal = bookingData.addOns?.reduce((sum, addon) => {
-    return sum + (addon.price * (addon.quantity || 1));
+    const price = settings?.addonPrices?.[addon.name] ?? addon.price;
+    return sum + (price * (addon.quantity || 1));
   }, 0) || 0;
+
+  // Add kitchen add-ons if any
+  let kitchenAddOnsTotal = 0;
+  if (bookingData.kitchenAddOns) {
+    Object.values(bookingData.kitchenAddOns).forEach((addons: any) => {
+      addons.forEach((addonId: string) => {
+        const settingsKey = addonId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const price = settings?.addonPrices?.[settingsKey] ?? 20;
+        kitchenAddOnsTotal += price;
+      });
+    });
+  }
+
+  // Add laundry details if any
+  let laundryTotal = 0;
+  if (bookingData.laundryRoomDetails) {
+    Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
+      const price = settings?.addonPrices?.['Laundry Service'] ?? 30;
+      laundryTotal += price * (details.baskets || 1);
+    });
+  }
   
   // Calculate subtotal
-  const subtotal = basePrice + roomPrice + addOnsTotal;
+  const subtotal = basePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
   
   // Calculate discount
   const discountRate = bookingData.frequency ? frequencyDiscounts[bookingData.frequency] || 0 : 0;
@@ -74,8 +96,85 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
   // Calculate total
   const total = subtotal - discount;
   
-  // Estimated time (2 hours base + 30 min per room)
-  const estimatedHours = 2 + (roomCount * 0.5);
+  // Calculate estimated duration
+  let estimatedHours = 2 + (roomCount * 0.5); // Fallback
+  let cleanerCount = 1;
+
+  if (settings?.durationSettings) {
+    const ds = settings.durationSettings as any;
+    let totalMinutes = ds.baseMinutes || 60;
+    
+    totalMinutes += (bookingData.bedrooms || 0) * (ds.perBedroom || 30);
+    totalMinutes += (bookingData.bathrooms || 0) * (ds.perBathroom || 45);
+    totalMinutes += (bookingData.toilets || 0) * (ds.perToilet || 15);
+    
+    if (bookingData.rooms) {
+      bookingData.rooms.forEach(roomId => {
+        const quantity = bookingData.roomQuantities?.[roomId] || 1;
+        let roomDuration = ds.perOtherRoom || 20;
+        
+        // Specific room durations
+        if (roomId === 'kitchen') roomDuration = ds.perKitchen || 45;
+        else if (roomId === 'living-room') roomDuration = ds.perLivingRoom || 30;
+        else if (roomId === 'dining-room') roomDuration = ds.perDiningRoom || 20;
+        else if (roomId === 'laundry-room') roomDuration = ds.perLaundryRoom || 20;
+        else if (roomId === 'balcony') roomDuration = ds.perBalcony || 20;
+        else if (roomId === 'basement') roomDuration = ds.perBasement || 45;
+        else if (roomId === 'garage') roomDuration = ds.perGarage || 30;
+        else if (roomId === 'home-office') roomDuration = ds.perHomeOffice || 20;
+        
+        totalMinutes += quantity * roomDuration;
+      });
+    }
+
+    // Kitchen Add-ons Duration
+    if (bookingData.kitchenAddOns) {
+      Object.values(bookingData.kitchenAddOns).forEach((addons: any) => {
+        addons.forEach((addonId: string) => {
+          let addonDuration = 0;
+          if (addonId === 'inside-fridge') addonDuration = ds.perInsideFridge || 20;
+          else if (addonId === 'inside-oven') addonDuration = ds.perInsideOven || 25;
+          else if (addonId === 'microwave') addonDuration = ds.perMicrowave || 10;
+          else if (addonId === 'dishes') addonDuration = ds.perDishes || 20;
+          totalMinutes += addonDuration;
+        });
+      });
+    }
+
+    // Laundry Details Duration
+    if (bookingData.laundryRoomDetails) {
+      Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
+        const basketDuration = ds.perLaundryBasket || 30;
+        totalMinutes += (details.baskets || 1) * basketDuration;
+      });
+    }
+
+    // General Add-ons Duration
+    if (bookingData.addOns) {
+      bookingData.addOns.forEach(addon => {
+        let addonDuration = 0;
+        const quantity = addon.quantity || 1;
+        
+        // Map addon names/ids to duration settings
+        if (addon.name === 'Inside Windows') addonDuration = ds.perWindow || 15;
+        else if (addon.name === 'Pet Hair Removal') addonDuration = ds.perPetHair || 30;
+        else if (addon.name === 'Organization') addonDuration = ds.perOrganizationHour || 60;
+        
+        totalMinutes += addonDuration * quantity;
+      });
+    }
+
+    let multiplier = 1.0;
+    if (bookingData.serviceType === 'Deep Cleaning') multiplier = ds.deepCleaningMultiplier || 1.5;
+    else if (bookingData.serviceType === 'Move In/Out') multiplier = ds.moveInOutMultiplier || 2.0;
+    else if (bookingData.serviceType === 'Post-Construction') multiplier = ds.postConstructionMultiplier || 2.5;
+    else multiplier = ds.standardCleaningMultiplier || 1.0;
+
+    const totalMins = Math.round(totalMinutes * multiplier);
+    estimatedHours = Number((totalMins / 60).toFixed(1));
+    cleanerCount = Math.ceil(totalMins / 240);
+    if (cleanerCount < 1) cleanerCount = 1;
+  }
 
   return (
     <div className="sticky top-28">
@@ -97,10 +196,16 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
               </div>
             </div>
 
-            {/* Estimated Time */}
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
-              <Clock className="w-4 h-4" />
-              <span>Estimated: {estimatedHours} hours</span>
+            {/* Estimated Time & Cleaners */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-sm text-neutral-600">
+                <Clock className="w-4 h-4" />
+                <span>Estimated: {estimatedHours} hours</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-secondary-600 font-medium">
+                <Tag className="w-4 h-4" />
+                <span>{cleanerCount} Professional Cleaner{cleanerCount > 1 ? 's' : ''} Required</span>
+              </div>
             </div>
           </div>
         )}

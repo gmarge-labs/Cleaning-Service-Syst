@@ -60,6 +60,16 @@ export const signup = async (req: Request, res: Response) => {
       data: { userId: id, role: userRole }
     });
 
+    // Send welcome email
+    try {
+      console.log(`📧 Calling sendWelcomeEmail for ${user.email}`);
+      const { sendWelcomeEmail } = await import('../utils/email.service');
+      const emailResult = await sendWelcomeEmail(user);
+      console.log(`📧 sendWelcomeEmail result: ${emailResult}`);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
     res.status(201).json({
       message: 'User created successfully',
       user: userWithoutPassword,

@@ -31,8 +31,11 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
       const response = await fetch(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
-        // Filter for upcoming bookings (today or future)
-        const upcoming = data.filter((b: any) => new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)));
+        // Filter for upcoming bookings (today or future) and not cancelled
+        const upcoming = data.filter((b: any) => 
+          new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
+          b.status !== 'CANCELLED'
+        );
         setBookingsList(upcoming);
       } else {
         console.error('Failed to fetch bookings:', response.statusText);
@@ -97,19 +100,19 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
         throw new Error('Failed to cancel booking');
       }
 
-      const feePercentage = calculateCancellationFee(bookingToCancel.date, bookingToCancel.time);
+      const result = await response.json();
+      const refundAmount = result.refundAmount ?? 0;
+      const penaltyCharge = result.penaltyCharge ?? 0;
       const totalAmount = Number(bookingToCancel.totalAmount);
-      const refundAmount = totalAmount * (1 - feePercentage);
-      const feeAmount = totalAmount * feePercentage;
 
       // Refresh list
       fetchBookings();
 
       // Show success message with refund info
-      if (feePercentage === 0) {
+      if (penaltyCharge === 0) {
         toast.success(`Booking cancelled successfully! Full refund of $${totalAmount.toFixed(2)} will be processed within 5-7 business days.`);
-      } else if (feePercentage === 0.5) {
-        toast.success(`Booking cancelled. Refund of $${refundAmount.toFixed(2)} will be processed within 5-7 business days. Cancellation fee: $${feeAmount.toFixed(2)}`);
+      } else if (refundAmount > 0) {
+        toast.success(`Booking cancelled. Refund of $${refundAmount.toFixed(2)} will be processed within 5-7 business days. Cancellation fee: $${penaltyCharge.toFixed(2)}`);
       } else {
         toast.error(`Booking cancelled. No refund available as cancellation was made after the service time.`);
       }
@@ -139,11 +142,11 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
         }}
       >
         <div
-          className="bg-white rounded-xl max-w-lg w-full"
+          className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-6 border-b border-neutral-200">
+          <div className="p-6 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                 <XCircle className="w-6 h-6 text-red-600" />
@@ -156,7 +159,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Booking Summary */}
             <div className="bg-neutral-50 rounded-lg p-4">
               <div className="font-semibold text-neutral-900 mb-2">{bookingToCancel.serviceType}</div>
@@ -240,7 +243,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
           </div>
 
           {/* Actions */}
-          <div className="p-6 border-t border-neutral-200 flex gap-3">
+          <div className="p-6 border-t border-neutral-200 flex gap-3 flex-shrink-0">
             <Button
               variant="outline"
               className="flex-1"

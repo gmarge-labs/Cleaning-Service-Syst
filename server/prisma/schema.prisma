@@ -96,10 +96,37 @@ model Booking {
   tipAmount           Decimal?      @default(0)
   totalAmount         Decimal
   
+  // Duration and Staffing
+  estimatedDuration   Int?          // Estimated duration in minutes
+  cleanerCount        Int           @default(1)
+  paymentPerHour      Decimal?
+  toolsRequired       String?
+  
   status              BookingStatus @default(PENDING)
+  
+  reviews             Review[]
   
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  bookingId   String?
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  rating      Int
+  comment     String
+  status      ReviewStatus @default(PENDING)
+  adminReply  String?
+  repliedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
 }
 
 enum BookingStatus {
@@ -144,8 +171,23 @@ model SystemSettings {
   servicePrices     Json     // Standard Cleaning, Deep Cleaning, etc.
   roomPrices        Json     // Bedroom, Bathroom, etc.
   addonPrices       Json     // Inside Windows, Inside Fridge, etc.
+  durationSettings  Json?    // Base minutes, minutes per room, multipliers
   integrations      Json     // stripe, plivo, sendgrid, etc.
   notifications     Json     // templates for emails/reminders
   updatedAt         DateTime @updatedAt
+}
+
+model InventoryItem {
+  id               String   @id @default(cuid())
+  name             String
+  category         String
+  quantity         Int
+  unit             String
+  reorderThreshold Int
+  vendor           String?
+  cost             Decimal  @db.Decimal(10, 2)
+  lastRestocked    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 

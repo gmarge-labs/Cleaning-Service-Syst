@@ -1,12 +1,12 @@
 import sgMail from '@sendgrid/mail';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 interface EmailOptions {
   to: string;
   subject: string;
-  templateType: 'confirmation' | 'reminder' | 'completion' | 'welcome';
+  templateType: 'confirmation' | 'reminder' | 'completion' | 'welcome' | 'broadcast';
   variables: Record<string, string>;
 }
 
@@ -16,6 +16,18 @@ let lastApiKey = '';
 
 async function initializeSendGrid() {
   try {
+    // Check environment variable first
+    const envApiKey = process.env.SENDGRID_API_KEY;
+    if (envApiKey && envApiKey !== 'your_sendgrid_api_key') {
+      if (!isInitialized || lastApiKey !== envApiKey) {
+        sgMail.setApiKey(envApiKey);
+        lastApiKey = envApiKey;
+        isInitialized = true;
+        console.log('✅ SendGrid initialized with API key from environment variable');
+      }
+      return;
+    }
+
     const settings = await prisma.systemSettings.findUnique({
       where: { id: 'default' }
     });
@@ -30,7 +42,7 @@ async function initializeSendGrid() {
           sgMail.setApiKey(currentApiKey);
           lastApiKey = currentApiKey;
           isInitialized = true;
-          console.log('✅ SendGrid initialized successfully with API key:', currentApiKey.substring(0, 10) + '...');
+          console.log('✅ SendGrid initialized successfully with API key from settings:', currentApiKey.substring(0, 10) + '...');
         }
       } else {
         console.warn('⚠️ SendGrid is not enabled or API key is missing in settings');
@@ -50,10 +62,13 @@ async function initializeSendGrid() {
 function processTemplate(template: string, variables: Record<string, string>): string {
   let processed = template;
   
-  // Replace all {variable_name} placeholders with actual values
+  // Replace all {variable_name} and {{variable_name}} placeholders with actual values
   Object.keys(variables).forEach(key => {
-    const placeholder = `{${key}}`;
-    processed = processed.replace(new RegExp(placeholder, 'g'), variables[key]);
+    const value = variables[key] || '';
+    // Handle {key}
+    processed = processed.replace(new RegExp(`{${key}}`, 'g'), value);
+    // Handle {{key}}
+    processed = processed.replace(new RegExp(`{{${key}}}`, 'g'), value);
   });
   
   return processed;
@@ -83,11 +98,15 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
 
     const templates = settings.notifications as any;
-    const template = templates[options.templateType];
+    let template = templates[options.templateType];
 
     if (!template) {
-      console.error(`Template ${options.templateType} not found`);
-      return false;
+      if (options.templateType === 'broadcast') {
+        template = "Hello {name},\n\n{message}\n\nBest regards,\nThe SparkleVille Team";
+      } else {
+        console.error(`Template ${options.templateType} not found`);
+        return false;
+      }
     }
 
     // Process template with variables
@@ -97,6 +116,10 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const general = settings.general as any;
     const fromEmail = general?.email || 'hello@sparkleville.com';
     const companyName = general?.companyName || 'SparkleVille';
+    const companyAddress = general?.address || '';
+    const companyPhone = general?.phone || '';
+
+    console.log(`📤 Sending email from: ${fromEmail} (${companyName}) to: ${options.to}`);
 
     // Send email
     const msg = {
@@ -108,20 +131,41 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       subject: options.subject,
       text: emailContent,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">${companyName}</h1>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
-            <div style="white-space: pre-wrap; line-height: 1.6; color: #374151;">
-              ${emailContent.replace(/\n/g, '<br>')}
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            .email-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; }
+            .header { background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0; }
+            .content { background: white; padding: 40px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; line-height: 1.6; color: #374151; }
+            .footer { margin-top: 30px; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #7C3AED; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
+            .info-box { background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="header">
+              <h1 style="color: white; margin: 0; font-size: 28px; letter-spacing: -0.025em;">${companyName}</h1>
             </div>
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px;">
-              <p>Need help? Contact us at ${fromEmail}</p>
+            <div class="content">
+              <div style="white-space: pre-wrap;">${emailContent.replace(/\n/g, '<br>')}</div>
+              
+              <div style="margin-top: 30px; text-align: center;">
+                <a href="https://sparkleville.com/login" class="button">View Your Dashboard</a>
+              </div>
+            </div>
+            <div class="footer">
+              <p><strong>${companyName}</strong></p>
+              ${companyAddress ? `<p>${companyAddress}</p>` : ''}
+              ${companyPhone ? `<p>${companyPhone}</p>` : ''}
+              <p>You received this email because you have an account with ${companyName}.</p>
               <p style="margin-top: 10px;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
             </div>
           </div>
-        </div>
+        </body>
+        </html>
       `
     };
 
@@ -146,7 +190,9 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
     templateType: 'confirmation',
     variables: {
       customer_name: booking.guestName || 'Valued Customer',
+      name: booking.guestName || 'Valued Customer',
       service_type: booking.serviceType,
+      service: booking.serviceType,
       date: new Date(booking.date).toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -156,7 +202,7 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
       time: booking.time,
       address: booking.address || 'Your specified location',
       booking_id: booking.id,
-      total_amount: `$${booking.totalAmount.toFixed(2)}`
+      total_amount: `$${Number(booking.totalAmount).toFixed(2)}`
     }
   });
 }
@@ -203,6 +249,38 @@ export async function sendBookingCompletion(booking: any, customerEmail: string)
   });
 }
 
+// Send invoice email to customer
+export async function sendInvoiceEmail(booking: any, email: string, total: number, balanceDue: number) {
+  console.log('📧 Preparing to send invoice email to:', email);
+  
+  const settings = await prisma.systemSettings.findUnique({
+    where: { id: 'default' }
+  });
+
+  const general = settings?.general as any;
+  const companyName = general?.companyName || 'SparkleVille';
+
+  return sendEmail({
+    to: email,
+    subject: `Invoice for your ${booking.serviceType} - ${companyName}`,
+    templateType: 'confirmation', // Reusing confirmation template for now, or could add 'invoice'
+    variables: {
+      customer_name: booking.guestName || 'Customer',
+      service_type: booking.serviceType,
+      date: new Date(booking.date).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      time: booking.time,
+      total_amount: total.toFixed(2),
+      balance_due: balanceDue.toFixed(2),
+      booking_id: booking.id
+    }
+  });
+}
+
 // Send welcome email to new user
 export async function sendWelcomeEmail(user: any, temporaryPassword?: string) {
   console.log('📧 Preparing to send welcome email to:', user.email);
@@ -241,6 +319,7 @@ The ${companyName} Team`;
     templateType: 'welcome',
     variables: {
       customer_name: user.name,
+      name: user.name,
       service_type: 'Account Created',
       date: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
@@ -254,4 +333,53 @@ The ${companyName} Team`;
       })
     }
   });
+}
+
+export async function sendBroadcastEmail(target: string, subject: string, message: string) {
+  try {
+    let users: any[] = [];
+    
+    if (target === 'all') {
+      users = await prisma.user.findMany({
+        where: { email: { not: '' } },
+        select: { email: true, name: true }
+      });
+    } else if (target === 'cleaners') {
+      users = await prisma.user.findMany({
+        where: { role: Role.CLEANER, email: { not: '' } },
+        select: { email: true, name: true }
+      });
+    } else if (target === 'customers') {
+      users = await prisma.user.findMany({
+        where: { role: Role.CUSTOMER, email: { not: '' } },
+        select: { email: true, name: true }
+      });
+    } else if (target === 'staff') {
+      users = await prisma.user.findMany({
+        where: { 
+          role: { in: [Role.ADMIN, Role.SUPERVISOR, Role.SUPPORT] },
+          email: { not: '' } 
+        },
+        select: { email: true, name: true }
+      });
+    }
+
+    console.log(`📢 Broadcasting email to ${users.length} ${target} users`);
+
+    for (const user of users) {
+      await sendEmail({
+        to: user.email,
+        subject: subject,
+        templateType: 'broadcast',
+        variables: {
+          name: user.name,
+          message: message
+        }
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error('Error sending broadcast email:', error);
+    return false;
+  }
 }

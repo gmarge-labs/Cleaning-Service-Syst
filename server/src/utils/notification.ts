@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { emitToUser } from './socket';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +21,7 @@ export const createNotification = async ({
   data = {}
 }: CreateNotificationParams) => {
   try {
-    return await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId,
         type,
@@ -30,6 +31,11 @@ export const createNotification = async ({
         isRead: false
       }
     });
+
+    // Emit real-time notification via socket
+    emitToUser(userId, 'new_notification', notification);
+
+    return notification;
   } catch (error) {
     console.error('Error creating notification:', error);
     return null;

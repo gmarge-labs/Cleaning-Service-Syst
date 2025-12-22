@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, Download, Mail, ArrowLeft } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { BookingData } from '../booking/BookingFlow';
+import { BookingData, SystemSettings } from '../booking/BookingFlow';
 import { ServiceStep } from '../booking/steps/ServiceStep';
 import { PropertyDetailsStep } from '../booking/steps/PropertyDetailsStep';
 import { AddOnsStep } from '../booking/steps/AddOnsStep';
 import { SchedulingStep } from '../booking/steps/SchedulingStep';
 import { PricingSidebar } from '../booking/PricingSidebar';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
+import { toast } from 'sonner';
 
 interface AdminBookingData extends BookingData {
   // Additional admin-specific fields
@@ -227,17 +228,22 @@ function AdminPaymentStep({
 function InvoiceStep({ 
   data, 
   onComplete,
-  onBack 
+  onBack,
+  settings
 }: { 
   data: AdminBookingData; 
   onComplete: () => void;
   onBack: () => void;
+  settings: SystemSettings | null;
 }) {
   const [emailSent, setEmailSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   // Calculate pricing
   const getServicePrice = (serviceType?: string) => {
+    if (settings?.servicePrices && serviceType) {
+      return settings.servicePrices[serviceType] || 0;
+    }
     const prices: Record<string, number> = {
       'Standard Cleaning': 89,
       'Deep Cleaning': 159,
@@ -247,38 +253,98 @@ function InvoiceStep({
     return prices[serviceType || ''] || 0;
   };
 
-  const ROOM_PRICE = 15;
-  const roomCount = (data.bedrooms || 0) + (data.bathrooms || 0) + (data.rooms?.length || 0);
-  const roomPrice = roomCount * ROOM_PRICE;
+  const roomPrices = settings?.roomPrices || {};
+  const bedroomPrice = roomPrices['Bedroom'] ?? 15;
+  const bathroomPrice = roomPrices['Bathroom'] ?? 15;
+  const toiletPrice = roomPrices['Toilet'] ?? 10;
+
+  let roomPrice = (data.bedrooms || 0) * bedroomPrice;
+  roomPrice += (data.bathrooms || 0) * bathroomPrice;
+  roomPrice += (data.toilets || 0) * toiletPrice;
+
+  if (data.rooms) {
+    data.rooms.forEach(roomId => {
+      const quantity = data.roomQuantities?.[roomId] || 1;
+      const settingsKey = roomId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      const price = roomPrices[settingsKey] ?? 15;
+      roomPrice += price * quantity;
+    });
+  }
+
+  const roomCount = (data.bedrooms || 0) + (data.bathrooms || 0) + (data.toilets || 0) + 
+    (data.rooms?.reduce((acc, r) => acc + (data.roomQuantities?.[r] || 1), 0) || 0);
   
   const servicePrice = getServicePrice(data.serviceType);
-  const addOnsTotal = data.addOns?.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) || 0;
-  
-  const subtotal = servicePrice + roomPrice + addOnsTotal;
+  const addOnsTotal = data.addOns?.reduce((sum, addon) => {
+    const price = settings?.addonPrices?.[addon.name] ?? addon.price;
+    return sum + (price * (addon.quantity || 1));
+  }, 0) || 0;
+
+  // Add kitchen add-ons if any
+  let kitchenAddOnsTotal = 0;
+  if (data.kitchenAddOns) {
+    Object.values(data.kitchenAddOns).forEach((addons: any) => {
+      addons.forEach((addonId: string) => {
+        const settingsKey = addonId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const price = settings?.addonPrices?.[settingsKey] ?? 20;
+        kitchenAddOnsTotal += price;
+      });
+    });
+  }
+
+  let laundryTotal = 0;
+  if (data.laundryRoomDetails) {
+    Object.values(data.laundryRoomDetails).forEach((details: any) => {
+      const price = settings?.addonPrices?.['Laundry Service'] ?? 30;
+      laundryTotal += price * (details.baskets || 1);
+    });
+  }
+
+  const subtotal = servicePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
   
   // Calculate discount
-  const FREQUENCY_DISCOUNTS: Record<string, number> = {
-    'Weekly': 0.10,
-    'Bi-weekly': 0.05,
-    'Monthly': 0.15,
-  };
-  const discountRate = data.frequency ? FREQUENCY_DISCOUNTS[data.frequency] || 0 : 0;
+  const discountRate = data.frequency === 'Weekly' ? (settings?.pricing?.weeklyDiscount || 10) / 100 :
+                       data.frequency === 'Bi-weekly' ? (settings?.pricing?.biWeeklyDiscount || 5) / 100 :
+                       data.frequency === 'Monthly' ? (settings?.pricing?.monthlyDiscount || 15) / 100 : 0;
+  
   const discount = subtotal * discountRate;
   
   const total = subtotal - discount;
-  const deposit = data.depositPaid ? total * 0.2 : 0;
+  const deposit = data.depositPaid ? total * ((settings?.pricing?.depositPercentage || 20) / 100) : 0;
   const balanceDue = total - deposit;
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
   const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
+    if (!data.id) {
+      toast.error('Please complete the booking first to generate an ID');
+      return;
+    }
     setIsSending(true);
-    // Simulate email sending
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/bookings/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: data.id,
+          email: data.customerEmail,
+          total,
+          balanceDue
+        })
+      });
+      if (response.ok) {
+        setEmailSent(true);
+        toast.success('Invoice sent successfully!');
+      } else {
+        toast.error('Failed to send invoice');
+      }
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      toast.error('Error sending invoice');
+    } finally {
       setIsSending(false);
-      setEmailSent(true);
-    }, 1500);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -370,19 +436,100 @@ function InvoiceStep({
                   <td className="text-right text-neutral-900">${servicePrice.toFixed(2)}</td>
                   <td className="text-right font-medium text-neutral-900">${servicePrice.toFixed(2)}</td>
                 </tr>
-                {roomPrice > 0 && (
+
+                {/* Bedrooms */}
+                {(data.bedrooms || 0) > 0 && (
                   <tr>
                     <td className="py-3">
-                      <div className="font-medium text-neutral-900">Room-based pricing</div>
-                      <div className="text-sm text-neutral-600">
-                        {data.propertyType} • {data.bedrooms} bed • {data.bathrooms} bath {data.rooms && data.rooms.length > 0 && `• ${data.rooms.length} additional rooms`}
-                      </div>
+                      <div className="font-medium text-neutral-900">Bedrooms</div>
+                      <div className="text-sm text-neutral-600">Standard cleaning</div>
                     </td>
-                    <td className="text-right text-neutral-900">{roomCount}</td>
-                    <td className="text-right text-neutral-900">${ROOM_PRICE.toFixed(2)}</td>
-                    <td className="text-right font-medium text-neutral-900">${roomPrice.toFixed(2)}</td>
+                    <td className="text-right text-neutral-900">{data.bedrooms}</td>
+                    <td className="text-right text-neutral-900">${bedroomPrice.toFixed(2)}</td>
+                    <td className="text-right font-medium text-neutral-900">${((data.bedrooms || 0) * bedroomPrice).toFixed(2)}</td>
                   </tr>
                 )}
+
+                {/* Bathrooms */}
+                {(data.bathrooms || 0) > 0 && (
+                  <tr>
+                    <td className="py-3">
+                      <div className="font-medium text-neutral-900">Bathrooms</div>
+                      <div className="text-sm text-neutral-600">Standard cleaning</div>
+                    </td>
+                    <td className="text-right text-neutral-900">{data.bathrooms}</td>
+                    <td className="text-right text-neutral-900">${bathroomPrice.toFixed(2)}</td>
+                    <td className="text-right font-medium text-neutral-900">${((data.bathrooms || 0) * bathroomPrice).toFixed(2)}</td>
+                  </tr>
+                )}
+
+                {/* Toilets */}
+                {(data.toilets || 0) > 0 && (
+                  <tr>
+                    <td className="py-3">
+                      <div className="font-medium text-neutral-900">Toilets</div>
+                      <div className="text-sm text-neutral-600">Standard cleaning</div>
+                    </td>
+                    <td className="text-right text-neutral-900">{data.toilets}</td>
+                    <td className="text-right text-neutral-900">${toiletPrice.toFixed(2)}</td>
+                    <td className="text-right font-medium text-neutral-900">${((data.toilets || 0) * toiletPrice).toFixed(2)}</td>
+                  </tr>
+                )}
+
+                {/* Additional Rooms */}
+                {data.rooms && data.rooms.map(roomId => {
+                  const quantity = data.roomQuantities?.[roomId] || 1;
+                  const settingsKey = roomId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                  const price = roomPrices[settingsKey] ?? 15;
+                  return (
+                    <tr key={roomId}>
+                      <td className="py-3">
+                        <div className="font-medium text-neutral-900">{settingsKey}</div>
+                        <div className="text-sm text-neutral-600">Additional room</div>
+                      </td>
+                      <td className="text-right text-neutral-900">{quantity}</td>
+                      <td className="text-right text-neutral-900">${price.toFixed(2)}</td>
+                      <td className="text-right font-medium text-neutral-900">${(price * quantity).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+
+                {/* Kitchen Add-ons */}
+                {data.kitchenAddOns && Object.entries(data.kitchenAddOns).map(([kitchenIndex, addons]: [string, any]) => (
+                  addons.map((addonId: string) => {
+                    const settingsKey = addonId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    const price = settings?.addonPrices?.[settingsKey] ?? 20;
+                    return (
+                      <tr key={`${kitchenIndex}-${addonId}`}>
+                        <td className="py-3">
+                          <div className="font-medium text-neutral-900">{settingsKey}</div>
+                          <div className="text-sm text-neutral-600">Kitchen #{parseInt(kitchenIndex) + 1} Add-on</div>
+                        </td>
+                        <td className="text-right text-neutral-900">1</td>
+                        <td className="text-right text-neutral-900">${price.toFixed(2)}</td>
+                        <td className="text-right font-medium text-neutral-900">${price.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })
+                ))}
+
+                {/* Laundry Details */}
+                {data.laundryRoomDetails && Object.entries(data.laundryRoomDetails).map(([laundryIndex, details]: [string, any]) => {
+                  const price = settings?.addonPrices?.['Laundry Service'] ?? 30;
+                  return (
+                    <tr key={`laundry-${laundryIndex}`}>
+                      <td className="py-3">
+                        <div className="font-medium text-neutral-900">Laundry Service</div>
+                        <div className="text-sm text-neutral-600">Laundry Room #{parseInt(laundryIndex) + 1} ({details.rounds} rounds)</div>
+                      </td>
+                      <td className="text-right text-neutral-900">{details.baskets}</td>
+                      <td className="text-right text-neutral-900">${price.toFixed(2)}</td>
+                      <td className="text-right font-medium text-neutral-900">${(price * details.baskets).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+
+                {/* Standard Add-ons */}
                 {data.addOns && data.addOns.length > 0 && data.addOns.map((addon) => (
                   <tr key={addon.id}>
                     <td className="py-3">
@@ -390,9 +537,9 @@ function InvoiceStep({
                       <div className="text-sm text-neutral-600">Add-on Service</div>
                     </td>
                     <td className="text-right text-neutral-900">{addon.quantity || 1}</td>
-                    <td className="text-right text-neutral-900">${addon.price.toFixed(2)}</td>
+                    <td className="text-right text-neutral-900">${(settings?.addonPrices?.[addon.name] ?? addon.price).toFixed(2)}</td>
                     <td className="text-right font-medium text-neutral-900">
-                      ${(addon.price * (addon.quantity || 1)).toFixed(2)}
+                      ${((settings?.addonPrices?.[addon.name] ?? addon.price) * (addon.quantity || 1)).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -511,13 +658,117 @@ function InvoiceStep({
 export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [bookingData, setBookingData] = useState<AdminBookingData>({});
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const updateBookingData = (data: Partial<AdminBookingData>) => {
     setBookingData(prev => ({ ...prev, ...data }));
   };
 
-  const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
+  const nextStep = async () => {
+    if (currentStep === STEPS.indexOf('Payment')) {
+      // Save to database before showing invoice
+      setIsSaving(true);
+      try {
+        // Calculate total amount based on settings
+        const getServicePrice = (serviceType?: string) => {
+          if (settings?.servicePrices && serviceType) {
+            return settings.servicePrices[serviceType] || 0;
+          }
+          return 0;
+        };
+        
+        const roomPrices = settings?.roomPrices || {};
+        const bedroomPrice = roomPrices['Bedroom'] ?? 15;
+        const bathroomPrice = roomPrices['Bathroom'] ?? 15;
+        const toiletPrice = roomPrices['Toilet'] ?? 10;
+
+        let roomPrice = (bookingData.bedrooms || 0) * bedroomPrice;
+        roomPrice += (bookingData.bathrooms || 0) * bathroomPrice;
+        roomPrice += (bookingData.toilets || 0) * toiletPrice;
+
+        if (bookingData.rooms) {
+          bookingData.rooms.forEach(roomId => {
+            const quantity = bookingData.roomQuantities?.[roomId] || 1;
+            const settingsKey = roomId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            const price = roomPrices[settingsKey] ?? 15;
+            roomPrice += price * quantity;
+          });
+        }
+
+        const servicePrice = getServicePrice(bookingData.serviceType);
+        const addOnsTotal = bookingData.addOns?.reduce((sum, addon) => {
+          const price = settings?.addonPrices?.[addon.name] ?? addon.price;
+          return sum + (price * (addon.quantity || 1));
+        }, 0) || 0;
+
+        let kitchenAddOnsTotal = 0;
+        if (bookingData.kitchenAddOns) {
+          Object.values(bookingData.kitchenAddOns).forEach((addons: any) => {
+            addons.forEach((addonId: string) => {
+              const settingsKey = addonId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+              const price = settings?.addonPrices?.[settingsKey] ?? 20;
+              kitchenAddOnsTotal += price;
+            });
+          });
+        }
+
+        let laundryTotal = 0;
+        if (bookingData.laundryRoomDetails) {
+          Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
+            const price = settings?.addonPrices?.['Laundry Service'] ?? 30;
+            laundryTotal += price * (details.baskets || 1);
+          });
+        }
+
+        const subtotal = servicePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
+        const discountRate = bookingData.frequency === 'Weekly' ? (settings?.pricing?.weeklyDiscount || 10) / 100 :
+                             bookingData.frequency === 'Bi-weekly' ? (settings?.pricing?.biWeeklyDiscount || 5) / 100 :
+                             bookingData.frequency === 'Monthly' ? (settings?.pricing?.monthlyDiscount || 15) / 100 : 0;
+        const total = subtotal * (1 - discountRate);
+
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...bookingData,
+            guestName: bookingData.customerName,
+            guestEmail: bookingData.customerEmail,
+            guestPhone: bookingData.customerPhone,
+            totalAmount: total,
+            status: 'BOOKED'
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          updateBookingData({ id: result.booking.id, totalAmount: total });
+          setCurrentStep(currentStep + 1);
+        } else {
+          toast.error('Failed to save booking');
+        }
+      } catch (error) {
+        console.error('Error saving booking:', error);
+        toast.error('Error saving booking');
+      } finally {
+        setIsSaving(false);
+      }
+    } else if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -535,17 +786,17 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
       case 'Customer Info':
         return <CustomerInfoStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} />;
       case 'Service':
-        return <ServiceStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
+        return <ServiceStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
       case 'Details':
         return <PropertyDetailsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Add-ons':
-        return <AddOnsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
+        return <AddOnsStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
       case 'Schedule':
         return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Payment':
         return <AdminPaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Confirmation':
-        return <InvoiceStep data={bookingData} onComplete={onComplete} onBack={prevStep} />;
+        return <InvoiceStep data={bookingData} onComplete={onComplete} onBack={prevStep} settings={settings} />;
       default:
         return null;
     }
@@ -591,7 +842,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
           {/* Pricing Sidebar - Show after first step and before confirmation */}
           {currentStep > 0 && currentStep < STEPS.length - 1 && (
             <div className="lg:col-span-1">
-              <PricingSidebar bookingData={bookingData} />
+              <PricingSidebar bookingData={bookingData} settings={settings} />
             </div>
           )}
         </div>

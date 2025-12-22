@@ -48,7 +48,10 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     fetchBookings();
   }, [user?.id]);
 
-  const upcomingBookings = bookings.filter(b => new Date(b.date) >= new Date());
+  const upcomingBookings = bookings.filter(b => 
+    new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
+    b.status !== 'CANCELLED'
+  );
 
   const stats = [
     {

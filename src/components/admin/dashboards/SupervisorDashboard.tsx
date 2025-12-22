@@ -1,99 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Clock, User, CheckCircle2, XCircle, AlertCircle, Phone, Navigation } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-
-// Mock data
-const activeJobs = [
-  {
-    id: 1,
-    cleaner: 'Maria Garcia',
-    customer: 'Sarah Johnson',
-    address: '123 Main St, Apt 4B',
-    serviceType: 'Deep Cleaning',
-    status: 'In Progress',
-    startTime: '10:00 AM',
-    estimatedEnd: '1:00 PM',
-    progress: 65,
-    location: { lat: 40.7128, lng: -74.0060 },
-  },
-  {
-    id: 2,
-    cleaner: 'John Smith',
-    customer: 'Michael Chen',
-    address: '456 Oak Ave, Suite 12',
-    serviceType: 'Standard Cleaning',
-    status: 'In Progress',
-    startTime: '11:00 AM',
-    estimatedEnd: '1:00 PM',
-    progress: 40,
-    location: { lat: 40.7580, lng: -73.9855 },
-  },
-  {
-    id: 3,
-    cleaner: 'Emily Chen',
-    customer: 'Robert Williams',
-    address: '789 Elm Street',
-    serviceType: 'Move In/Out',
-    status: 'Pending Review',
-    startTime: '9:00 AM',
-    estimatedEnd: '12:00 PM',
-    progress: 100,
-    location: { lat: 40.7489, lng: -73.9680 },
-  },
-];
-
-const unassignedJobs = [
-  {
-    id: 4,
-    customer: 'Lisa Anderson',
-    address: '321 Pine Rd',
-    serviceType: 'Deep Cleaning',
-    scheduledTime: '2:00 PM',
-    priority: 'high',
-  },
-  {
-    id: 5,
-    customer: 'David Martinez',
-    address: '654 Maple Dr',
-    serviceType: 'Standard Cleaning',
-    scheduledTime: '3:00 PM',
-    priority: 'normal',
-  },
-];
-
-const availableCleaners = [
-  { id: 1, name: 'Carlos Rodriguez', rating: 4.8, jobsToday: 2, available: true },
-  { id: 2, name: 'Sarah Johnson', rating: 4.9, jobsToday: 1, available: true },
-  { id: 3, name: 'Mike Wilson', rating: 4.7, jobsToday: 0, available: true },
-];
-
-const pendingInspections = [
-  {
-    id: 1,
-    cleaner: 'Emily Chen',
-    customer: 'Robert Williams',
-    jobType: 'Move In/Out',
-    completedAt: '12:00 PM',
-    address: '789 Elm Street',
-    photos: 12,
-    checklist: { completed: 24, total: 24 },
-  },
-  {
-    id: 2,
-    cleaner: 'Maria Garcia',
-    customer: 'Jennifer Lee',
-    jobType: 'Deep Cleaning',
-    completedAt: '11:45 AM',
-    address: '234 Oak Lane',
-    photos: 8,
-    checklist: { completed: 18, total: 18 },
-  },
-];
+import { toast } from 'sonner';
 
 export function SupervisorDashboard() {
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/dashboard/supervisor/stats');
+      const data = await response.json();
+      if (response.ok) {
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error('Fetch supervisor dashboard data error:', error);
+      toast.error('Failed to load supervisor dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary-500"></div>
+      </div>
+    );
+  }
+
+  const activeJobs = (dashboardData?.activeJobs || []).map((job: any) => {
+    const startTime = new Date(job.date);
+    if (job.time) {
+      const [time, period] = job.time.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let hour24 = hours;
+      if (period === 'PM' && hours !== 12) hour24 += 12;
+      if (period === 'AM' && hours === 12) hour24 = 0;
+      startTime.setHours(hour24, minutes, 0, 0);
+    }
+
+    const estimatedEnd = job.estimatedDuration 
+      ? new Date(startTime.getTime() + job.estimatedDuration * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : 'TBD';
+
+    return {
+      id: job.id,
+      cleaner: 'Unassigned', // Placeholder
+      customer: job.guestName || 'Unknown',
+      address: job.address || 'No address',
+      serviceType: job.serviceType,
+      status: job.status,
+      startTime: job.time || 'TBD',
+      estimatedEnd,
+      progress: job.status === 'COMPLETED' ? 100 : 50,
+      location: { lat: 40.7128, lng: -74.0060 },
+    };
+  });
+
+  const unassignedJobs = (dashboardData?.unassignedJobs || []).map((job: any) => ({
+    id: job.id,
+    customer: job.guestName || 'Unknown',
+    address: job.address || 'No address',
+    serviceType: job.serviceType,
+    scheduledTime: new Date(job.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    priority: 'normal',
+  }));
+
+  const availableCleaners = (dashboardData?.availableCleaners || []).map((cleaner: any) => ({
+    id: cleaner.id,
+    name: cleaner.name,
+    rating: cleaner.rating,
+    jobsToday: cleaner.jobsToday,
+    available: true,
+  }));
+
+  const pendingInspections = dashboardData?.pendingInspections || [];
 
   return (
     <div className="space-y-6">

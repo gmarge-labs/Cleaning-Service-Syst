@@ -4,6 +4,8 @@ import { Sparkles, Menu, X, ChevronDown, User, Shield, Smartphone } from 'lucide
 import { Button } from '../ui/button';
 import { LoginModal } from './LoginModal';
 import { motion } from 'motion/react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 interface HeaderProps {
   onStartBooking: () => void;
@@ -29,6 +31,7 @@ export function Header({
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { general } = useSelector((state: RootState) => state.settings);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -104,7 +107,7 @@ export function Header({
               <Sparkles className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
             </div>
             <div>
-              <div className="font-bold text-xl text-neutral-900">SparkleVille</div>
+              <div className="font-bold text-xl text-neutral-900">{general.companyName}</div>
               <div className="text-xs text-neutral-500">Professional Cleaning</div>
             </div>
           </Link>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Star, 
   Eye,
@@ -8,33 +8,35 @@ import {
   ChevronRight,
   X,
   MessageSquare,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Textarea } from '../../ui/textarea';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface Review {
   id: string;
-  customerId: string;
-  customerName: string;
-  customerPhoto: string;
-  customerCity: string;
-  cleanerId: string;
-  cleanerName: string;
-  cleanerPhoto: string;
-  jobId: string;
-  service: string;
   rating: number;
-  reviewText: string;
-  date: string;
-  isPublished: boolean;
+  comment: string;
+  status: 'PENDING' | 'PUBLISHED' | 'REJECTED';
   adminReply?: string;
-  adminReplyDate?: string;
-  adminName?: string;
+  repliedAt?: string;
+  createdAt: string;
+  bookingId: string | null;
+  booking?: {
+    id: string;
+    serviceType: string;
+    guestName?: string;
+    guestEmail?: string;
+    user: {
+      name: string;
+      email: string;
+    } | null;
+  } | null;
 }
 
 export function ReviewsPage() {
@@ -43,260 +45,118 @@ export function ReviewsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [publishedCurrentPage, setPublishedCurrentPage] = useState(1);
   const [replyText, setReplyText] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const itemsPerPage = 10;
 
-  // Mock data - replace with API call
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: 'REV-001',
-      customerId: 'CUST-001',
-      customerName: 'Sarah Williams',
-      customerPhoto: 'https://i.pravatar.cc/150?img=1',
-      customerCity: 'New York',
-      cleanerId: 'CLN-001',
-      cleanerName: 'Maria Garcia',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=5',
-      jobId: 'JOB-2024-156',
-      service: 'Deep Cleaning',
-      rating: 5,
-      reviewText: 'Absolutely fantastic service! Maria was professional, thorough, and left my home sparkling clean. She paid attention to every detail and even cleaned areas I didn\'t expect. Highly recommend!',
-      date: '2024-11-28',
-      isPublished: false
-    },
-    {
-      id: 'REV-002',
-      customerId: 'CUST-002',
-      customerName: 'John Smith',
-      customerPhoto: 'https://i.pravatar.cc/150?img=12',
-      customerCity: 'Brooklyn',
-      cleanerId: 'CLN-002',
-      cleanerName: 'Jennifer Lee',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=9',
-      jobId: 'JOB-2024-157',
-      service: 'Standard Cleaning',
-      rating: 4,
-      reviewText: 'Great job overall. The cleaning was thorough and professional. Only minor issue was they arrived 15 minutes late, but the quality of work made up for it.',
-      date: '2024-11-27',
-      isPublished: true,
-      adminReply: 'Thank you for your feedback, John! We apologize for the slight delay and appreciate your understanding. We\'re glad Jennifer provided excellent service and we\'ll continue working on our punctuality. Looking forward to serving you again!',
-      adminReplyDate: '2024-11-27T14:30:00',
-      adminName: 'John Doe'
-    },
-    {
-      id: 'REV-003',
-      customerId: 'CUST-003',
-      customerName: 'Emily Chen',
-      customerPhoto: 'https://i.pravatar.cc/150?img=20',
-      customerCity: 'Manhattan',
-      cleanerId: 'CLN-003',
-      cleanerName: 'Sarah Johnson',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=47',
-      jobId: 'JOB-2024-158',
-      service: 'Move-Out Cleaning',
-      rating: 5,
-      reviewText: 'Best cleaning service I\'ve ever used! Sarah was amazing - very friendly, efficient, and the results were outstanding. My landlord was impressed and I got my full deposit back!',
-      date: '2024-11-26',
-      isPublished: true
-    },
-    {
-      id: 'REV-004',
-      customerId: 'CUST-004',
-      customerName: 'Michael Brown',
-      customerPhoto: 'https://i.pravatar.cc/150?img=14',
-      customerCity: 'Queens',
-      cleanerId: 'CLN-001',
-      cleanerName: 'Maria Garcia',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=5',
-      jobId: 'JOB-2024-159',
-      service: 'Office Cleaning',
-      rating: 3,
-      reviewText: 'Service was okay. The cleaner did a decent job but missed some spots in the bathroom and didn\'t vacuum under the desks. Would have expected more attention to detail.',
-      date: '2024-11-25',
-      isPublished: false
-    },
-    {
-      id: 'REV-005',
-      customerId: 'CUST-005',
-      customerName: 'Lisa Anderson',
-      customerPhoto: 'https://i.pravatar.cc/150?img=25',
-      customerCity: 'Bronx',
-      cleanerId: 'CLN-004',
-      cleanerName: 'Amanda White',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=32',
-      jobId: 'JOB-2024-160',
-      service: 'Deep Cleaning',
-      rating: 5,
-      reviewText: 'Outstanding work! Amanda exceeded all expectations. She was punctual, professional, and my home has never looked better. Will definitely book again!',
-      date: '2024-11-24',
-      isPublished: true
-    },
-    {
-      id: 'REV-006',
-      customerId: 'CUST-006',
-      customerName: 'David Martinez',
-      customerPhoto: 'https://i.pravatar.cc/150?img=33',
-      customerCity: 'Staten Island',
-      cleanerId: 'CLN-002',
-      cleanerName: 'Jennifer Lee',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=9',
-      jobId: 'JOB-2024-161',
-      service: 'Standard Cleaning',
-      rating: 2,
-      reviewText: 'Not satisfied with this service. Several areas were not cleaned properly and I had to redo some of the work myself. Expected much better quality for the price.',
-      date: '2024-11-23',
-      isPublished: false
-    },
-    {
-      id: 'REV-007',
-      customerId: 'CUST-007',
-      customerName: 'Rachel Green',
-      customerPhoto: 'https://i.pravatar.cc/150?img=45',
-      customerCity: 'Jersey City',
-      cleanerId: 'CLN-005',
-      cleanerName: 'Patricia Davis',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=38',
-      jobId: 'JOB-2024-162',
-      service: 'Deep Cleaning',
-      rating: 5,
-      reviewText: 'Excellent service from start to finish! Patricia was incredibly thorough and professional. She even gave me some helpful tips for maintaining cleanliness between visits.',
-      date: '2024-11-22',
-      isPublished: false
-    },
-    {
-      id: 'REV-008',
-      customerId: 'CUST-008',
-      customerName: 'Thomas Wilson',
-      customerPhoto: 'https://i.pravatar.cc/150?img=52',
-      customerCity: 'Hoboken',
-      cleanerId: 'CLN-003',
-      cleanerName: 'Sarah Johnson',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=47',
-      jobId: 'JOB-2024-163',
-      service: 'Office Cleaning',
-      rating: 4,
-      reviewText: 'Very pleased with the service. The office looks great and the team was respectful of our equipment and workspace. Will use again for sure.',
-      date: '2024-11-21',
-      isPublished: false
-    },
-    {
-      id: 'REV-009',
-      customerId: 'CUST-009',
-      customerName: 'Jennifer Taylor',
-      customerPhoto: 'https://i.pravatar.cc/150?img=28',
-      customerCity: 'New York',
-      cleanerId: 'CLN-001',
-      cleanerName: 'Maria Garcia',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=5',
-      jobId: 'JOB-2024-164',
-      service: 'Standard Cleaning',
-      rating: 5,
-      reviewText: 'Maria is absolutely wonderful! She has been cleaning my apartment for months now and I couldn\'t be happier. Always on time, always thorough, and always friendly.',
-      date: '2024-11-20',
-      isPublished: true
-    },
-    {
-      id: 'REV-010',
-      customerId: 'CUST-010',
-      customerName: 'Robert Johnson',
-      customerPhoto: 'https://i.pravatar.cc/150?img=15',
-      customerCity: 'Brooklyn',
-      cleanerId: 'CLN-004',
-      cleanerName: 'Amanda White',
-      cleanerPhoto: 'https://i.pravatar.cc/150?img=32',
-      jobId: 'JOB-2024-165',
-      service: 'Deep Cleaning',
-      rating: 4,
-      reviewText: 'Good service overall. The deep cleaning was comprehensive and Amanda was professional throughout. Would recommend to others.',
-      date: '2024-11-19',
-      isPublished: true
-    }
-  ]);
+  useEffect(() => {
+    fetchReviews();
+  }, []);
 
-  const handlePublish = (reviewId: string) => {
-    setReviews(reviews.map(review => 
-      review.id === reviewId 
-        ? { ...review, isPublished: true } 
-        : review
-    ));
-    setSelectedReview(null);
-    setReplyText('');
-    toast.success('Review published successfully!');
+  const fetchReviews = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/reviews');
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data);
+      } else {
+        toast.error('Failed to fetch reviews');
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      toast.error('An error occurred while fetching reviews');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUnpublish = (reviewId: string) => {
-    setReviews(reviews.map(review => 
-      review.id === reviewId 
-        ? { ...review, isPublished: false } 
-        : review
-    ));
-    toast.success('Review unpublished successfully!');
+  const handlePublish = async (id: string) => {
+    try {
+      const response = await fetch(`/api/reviews/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PUBLISHED' })
+      });
+
+      if (response.ok) {
+        setReviews(reviews.map(review => 
+          review.id === id ? { ...review, status: 'PUBLISHED' } : review
+        ));
+        toast.success('Review published successfully!');
+      } else {
+        toast.error('Failed to publish review');
+      }
+    } catch (error) {
+      console.error('Error publishing review:', error);
+      toast.error('An error occurred');
+    }
   };
 
-  const handleReply = (reviewId: string) => {
-    if (!replyText.trim()) {
-      toast.error('Please enter a reply message');
-      return;
-    }
+  const handleUnpublish = async (id: string) => {
+    try {
+      const response = await fetch(`/api/reviews/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PENDING' })
+      });
 
-    setReviews(reviews.map(review => 
-      review.id === reviewId 
-        ? { 
+      if (response.ok) {
+        setReviews(reviews.map(review => 
+          review.id === id ? { ...review, status: 'PENDING' } : review
+        ));
+        toast.success('Review unpublished successfully!');
+      } else {
+        toast.error('Failed to unpublish review');
+      }
+    } catch (error) {
+      console.error('Error unpublishing review:', error);
+      toast.error('An error occurred');
+    }
+  };
+
+  const handleReply = async (id: string) => {
+    if (!replyText.trim()) return;
+    
+    try {
+      const response = await fetch(`/api/reviews/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminReply: replyText })
+      });
+
+      if (response.ok) {
+        setReviews(reviews.map(review => 
+          review.id === id ? { 
             ...review, 
             adminReply: replyText,
-            adminReplyDate: new Date().toISOString(),
-            adminName: 'John Doe' // This would come from auth context
-          } 
-        : review
-    ));
-    
-    // Update selectedReview to show the new reply immediately
-    if (selectedReview) {
-      setSelectedReview({
-        ...selectedReview,
-        adminReply: replyText,
-        adminReplyDate: new Date().toISOString(),
-        adminName: 'John Doe'
-      });
+            repliedAt: new Date().toISOString(),
+          } : review
+        ));
+        
+        if (selectedReview?.id === id) {
+          setSelectedReview({
+            ...selectedReview,
+            adminReply: replyText,
+            repliedAt: new Date().toISOString(),
+          });
+        }
+        
+        setReplyText('');
+        toast.success('Reply sent successfully!');
+      } else {
+        toast.error('Failed to send reply');
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast.error('An error occurred');
     }
-    
-    setReplyText('');
-    toast.success('Reply sent successfully!');
   };
 
   const handleViewReview = (review: Review) => {
     setSelectedReview(review);
     setReplyText('');
   };
-
-  // Filter reviews
-  const pendingReviews = reviews.filter(review => !review.isPublished);
-  const publishedReviews = reviews.filter(review => review.isPublished);
-
-  const filteredPendingReviews = pendingReviews.filter(review => 
-    review.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    review.cleanerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    review.service.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredPublishedReviews = publishedReviews.filter(review => 
-    review.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    review.cleanerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    review.service.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Pagination
-  const totalPendingPages = Math.ceil(filteredPendingReviews.length / itemsPerPage);
-  const totalPublishedPages = Math.ceil(filteredPublishedReviews.length / itemsPerPage);
-
-  const paginatedPendingReviews = filteredPendingReviews.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const paginatedPublishedReviews = filteredPublishedReviews.slice(
-    (publishedCurrentPage - 1) * itemsPerPage,
-    publishedCurrentPage * itemsPerPage
-  );
 
   const renderStars = (rating: number) => {
     return (
@@ -315,498 +175,377 @@ export function ReviewsPage() {
     );
   };
 
+  const filteredReviews = reviews.filter(review => 
+    (review.booking?.user?.name || review.booking?.guestName || 'Guest').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (review.booking?.serviceType || 'General Service').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const pendingReviews = filteredReviews.filter(r => r.status === 'PENDING');
+  const publishedReviews = filteredReviews.filter(r => r.status === 'PUBLISHED');
+
+  const totalPages = Math.ceil(pendingReviews.length / itemsPerPage);
+  const publishedTotalPages = Math.ceil(publishedReviews.length / itemsPerPage);
+
+  const currentReviews = pendingReviews.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const currentPublishedReviews = publishedReviews.slice(
+    (publishedCurrentPage - 1) * itemsPerPage,
+    publishedCurrentPage * itemsPerPage
+  );
+
   const ReviewModal = () => {
     if (!selectedReview) return null;
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          {/* Header */}
           <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-neutral-900">Review Details</h2>
             <button
-              onClick={() => {
-                setSelectedReview(null);
-                setReplyText('');
-              }}
+              onClick={() => setSelectedReview(null)}
               className="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center transition-colors"
             >
               <X className="w-5 h-5 text-neutral-600" />
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Customer & Cleaner Info */}
             <div className="flex items-start gap-6">
-              {/* Customer */}
               <div className="flex-1">
                 <div className="text-sm text-neutral-600 mb-2">Customer</div>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={selectedReview.customerPhoto}
-                    alt={selectedReview.customerName}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-700 font-bold text-lg">
+                    {(selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'G')[0]}
+                  </div>
                   <div>
-                    <div className="font-semibold text-neutral-900">{selectedReview.customerName}</div>
-                    <div className="text-sm text-neutral-600">{selectedReview.customerCity}</div>
+                    <div className="font-semibold text-neutral-900">{selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'Guest'}</div>
+                    <div className="text-sm text-neutral-600">{selectedReview.booking?.user?.email || selectedReview.booking?.guestEmail || 'No email'}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Cleaner */}
               <div className="flex-1">
-                <div className="text-sm text-neutral-600 mb-2">Cleaner</div>
+                <div className="text-sm text-neutral-600 mb-2">Service</div>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={selectedReview.cleanerPhoto}
-                    alt={selectedReview.cleanerName}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-neutral-400" />
+                  </div>
                   <div>
-                    <div className="font-semibold text-neutral-900">{selectedReview.cleanerName}</div>
-                    <div className="text-sm text-neutral-600">Cleaner</div>
+                    <div className="font-semibold text-neutral-900">{selectedReview.booking?.serviceType || 'General Service'}</div>
+                    <div className="text-sm text-neutral-600">Job ID: {(selectedReview.booking?.id || selectedReview.bookingId || 'N/A').slice(-8)}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Metadata */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-neutral-600 mb-1">Job ID</div>
-                <div className="font-medium text-neutral-900">{selectedReview.jobId}</div>
-              </div>
-              <div>
-                <div className="text-sm text-neutral-600 mb-1">Service Type</div>
-                <div className="font-medium text-neutral-900">{selectedReview.service}</div>
-              </div>
-              <div>
-                <div className="text-sm text-neutral-600 mb-1">Date</div>
-                <div className="font-medium text-neutral-900">
-                  {new Date(selectedReview.date).toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                  })}
+            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                {renderStars(selectedReview.rating)}
+                <div className="text-sm text-neutral-500">
+                  {new Date(selectedReview.createdAt).toLocaleDateString()}
                 </div>
               </div>
-              <div>
-                <div className="text-sm text-neutral-600 mb-1">Rating</div>
-                <div className="flex items-center gap-2">
-                  {renderStars(selectedReview.rating)}
-                  <span className="font-medium text-neutral-900">({selectedReview.rating}/5)</span>
-                </div>
-              </div>
+              <p className="text-neutral-700 leading-relaxed italic">
+                "{selectedReview.comment}"
+              </p>
             </div>
 
-            {/* Review Text */}
-            <div>
-              <div className="text-sm text-neutral-600 mb-2">Feedback</div>
-              <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                <p className="text-neutral-900 leading-relaxed">{selectedReview.reviewText}</p>
-              </div>
-            </div>
-
-            {/* Admin Reply Section */}
-            <div className="border-t border-neutral-200 pt-6">
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="w-5 h-5 text-secondary-500" />
-                <h3 className="font-semibold text-neutral-900">Admin Reply</h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-neutral-900 font-semibold">
+                <MessageSquare className="w-5 h-5" />
+                <h3>Admin Reply</h3>
               </div>
 
               {selectedReview.adminReply ? (
-                <div className="space-y-4">
-                  {/* Existing Reply */}
-                  <div className="bg-secondary-50 rounded-lg p-4 border border-secondary-200">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                          <span className="text-white text-sm font-semibold">
-                            {selectedReview.adminName?.split(' ').map(n => n[0]).join('') || 'AD'}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-neutral-900">{selectedReview.adminName || 'Admin'}</div>
-                          <div className="text-xs text-neutral-600">
-                            {selectedReview.adminReplyDate && new Date(selectedReview.adminReplyDate).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className="bg-secondary-200 text-secondary-700 border-0">
-                        Replied
-                      </Badge>
+                <div className="bg-secondary-50 border border-secondary-100 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-secondary-900">Admin</div>
+                    <div className="text-xs text-secondary-600">
+                      {new Date(selectedReview.repliedAt!).toLocaleDateString()}
                     </div>
-                    <p className="text-neutral-900 leading-relaxed">{selectedReview.adminReply}</p>
                   </div>
-                  
-                  {/* Option to edit/add new reply */}
-                  <div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setReplyText(selectedReview.adminReply || '')}
-                      className="gap-2"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      Edit Reply
-                    </Button>
-                  </div>
+                  <p className="text-secondary-800 text-sm leading-relaxed">
+                    {selectedReview.adminReply}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-neutral-600">Send a reply to {selectedReview.customerName}</p>
                   <Textarea
+                    placeholder="Type your reply to the customer..."
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply here..."
-                    rows={4}
-                    className="resize-none"
+                    className="min-h-[120px] resize-none"
                   />
                   <div className="flex justify-end">
                     <Button
                       onClick={() => handleReply(selectedReview.id)}
-                      className="bg-secondary-500 hover:bg-secondary-600 gap-2"
                       disabled={!replyText.trim()}
+                      className="bg-secondary-600 hover:bg-secondary-700 text-white"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-4 h-4 mr-2" />
                       Send Reply
                     </Button>
                   </div>
                 </div>
               )}
-
-              {/* Show reply form when editing */}
-              {replyText && selectedReview.adminReply && (
-                <div className="mt-4 space-y-3">
-                  <div className="text-sm text-neutral-600">Update your reply</div>
-                  <Textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply here..."
-                    rows={4}
-                    className="resize-none"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setReplyText('')}
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => handleReply(selectedReview.id)}
-                      className="bg-secondary-500 hover:bg-secondary-600 gap-2"
-                      size="sm"
-                      disabled={!replyText.trim()}
-                    >
-                      <Send className="w-4 h-4" />
-                      Update Reply
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* Actions */}
-            {!selectedReview.isPublished && (
-              <div className="flex justify-end pt-4 border-t border-neutral-200">
-                <Button
-                  onClick={() => handlePublish(selectedReview.id)}
-                  className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Publish Review
-                </Button>
-              </div>
-            )}
           </div>
+
+          {selectedReview.status !== 'PUBLISHED' && (
+            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-6 py-4 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedReview(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handlePublish(selectedReview.id)}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve & Publish
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
-  const PaginationControls = ({ 
-    currentPage, 
-    totalPages, 
-    onPageChange 
-  }: { 
-    currentPage: number; 
-    totalPages: number; 
-    onPageChange: (page: number) => void;
-  }) => {
-    if (totalPages <= 1) return null;
-
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-200">
-        <div className="text-sm text-neutral-600">
-          Page {currentPage} of {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="gap-2"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <Loader2 className="w-10 h-10 text-secondary-500 animate-spin mb-4" />
+        <p className="text-neutral-600">Loading reviews...</p>
       </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Reviews Management</h1>
-          <p className="text-neutral-600 mt-1">Moderate and publish customer reviews</p>
+          <h1 className="text-2xl font-bold text-neutral-900">Customer Reviews</h1>
+          <p className="text-neutral-600">Manage and respond to customer feedback</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Input
+              placeholder="Search reviews..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full md:w-[300px]"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <div className="text-sm text-neutral-600 mb-1">Total Reviews</div>
-          <div className="text-2xl font-bold text-neutral-900">{reviews.length}</div>
-        </div>
-        <div className="bg-orange-50 rounded-xl border border-orange-200 p-4">
-          <div className="text-sm text-orange-700 mb-1">Pending</div>
-          <div className="text-2xl font-bold text-orange-900">{pendingReviews.length}</div>
-        </div>
-        <div className="bg-green-50 rounded-xl border border-green-200 p-4">
-          <div className="text-sm text-green-700 mb-1">Published</div>
-          <div className="text-2xl font-bold text-green-900">{publishedReviews.length}</div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-          <Input
-            placeholder="Search reviews, customers, cleaners..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="pending" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending">
-            Pending Reviews ({filteredPendingReviews.length})
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="bg-neutral-100 p-1">
+          <TabsTrigger value="pending" className="px-6">
+            Pending Approval
+            <Badge className="ml-2 bg-secondary-100 text-secondary-700 border-none">
+              {pendingReviews.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="published">
-            Published Reviews ({filteredPublishedReviews.length})
+          <TabsTrigger value="published" className="px-6">
+            Published
+            <Badge className="ml-2 bg-green-100 text-green-700 border-none">
+              {publishedReviews.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
-        {/* Pending Reviews Table */}
-        <TabsContent value="pending">
+        <TabsContent value="pending" className="mt-6">
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-neutral-50 border-b border-neutral-200">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Customer</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Cleaner</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Service</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Rating</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Date</th>
-                    <th className="text-right px-6 py-4 text-sm font-semibold text-neutral-900">Actions</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Customer</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Service</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Rating</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Review</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Date</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {paginatedPendingReviews.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center">
-                        <Star className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                        <h3 className="font-semibold text-neutral-900 mb-2">No pending reviews</h3>
-                        <p className="text-sm text-neutral-600">All reviews have been processed</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedPendingReviews.map((review) => (
-                      <tr key={review.id} className="border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
+                <tbody className="divide-y divide-neutral-200">
+                  {currentReviews.length > 0 ? (
+                    currentReviews.map((review) => (
+                      <tr key={review.id} className="hover:bg-neutral-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <img
-                              src={review.customerPhoto}
-                              alt={review.customerName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
+                            <div className="w-10 h-10 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-700 font-bold">
+                              {(review.booking?.user?.name || review.booking?.guestName || 'G')[0]}
+                            </div>
                             <div>
-                              <div className="font-medium text-neutral-900">{review.customerName}</div>
-                              <div className="text-sm text-neutral-600">{review.customerCity}</div>
+                              <div className="font-medium text-neutral-900">{review.booking?.user?.name || review.booking?.guestName || 'Guest'}</div>
+                              <div className="text-xs text-neutral-500">{review.booking?.user?.email || review.booking?.guestEmail || 'No email'}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={review.cleanerPhoto}
-                              alt={review.cleanerName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-medium text-neutral-900">{review.cleanerName}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-neutral-900">{review.service}</div>
+                          <div className="text-sm text-neutral-900">{review.booking?.serviceType || 'General Service'}</div>
+                          <div className="text-xs text-neutral-500">ID: {(review.booking?.id || review.bookingId || 'N/A').slice(-8)}</div>
                         </td>
                         <td className="px-6 py-4">
                           {renderStars(review.rating)}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-neutral-900">
-                            {new Date(review.date).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              year: 'numeric' 
-                            })}
-                          </div>
+                          <p className="text-sm text-neutral-600 line-clamp-2 max-w-[300px]">
+                            {review.comment}
+                          </p>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <Button
-                            onClick={() => handleViewReview(review)}
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPendingPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </TabsContent>
-
-        {/* Published Reviews Table */}
-        <TabsContent value="published">
-          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Customer</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Cleaner</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Service</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Rating</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Date</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-neutral-900">Status</th>
-                    <th className="text-right px-6 py-4 text-sm font-semibold text-neutral-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedPublishedReviews.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
-                        <Star className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                        <h3 className="font-semibold text-neutral-900 mb-2">No published reviews</h3>
-                        <p className="text-sm text-neutral-600">Start publishing reviews to see them here</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedPublishedReviews.map((review) => (
-                      <tr key={review.id} className="border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={review.customerPhoto}
-                              alt={review.customerName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-medium text-neutral-900">{review.customerName}</div>
-                              <div className="text-sm text-neutral-600">{review.customerCity}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={review.cleanerPhoto}
-                              alt={review.cleanerName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-medium text-neutral-900">{review.cleanerName}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-neutral-900">{review.service}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {renderStars(review.rating)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-neutral-900">
-                            {new Date(review.date).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              year: 'numeric' 
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge className="bg-green-100 text-green-700 border-green-200">
-                            Published
-                          </Badge>
+                        <td className="px-6 py-4 text-sm text-neutral-600">
+                          {new Date(review.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
-                              onClick={() => handleViewReview(review)}
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="gap-2"
+                              onClick={() => handleViewReview(review)}
+                              className="text-secondary-600 hover:text-secondary-700 hover:bg-secondary-50"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-4 h-4 mr-1" />
                               View
                             </Button>
                             <Button
-                              onClick={() => handleUnpublish(review.id)}
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                              onClick={() => handlePublish(review.id)}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
+                        No pending reviews found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-neutral-200 flex items-center justify-between">
+                <div className="text-sm text-neutral-600">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, pendingReviews.length)} of {pendingReviews.length} reviews
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={currentPage === page ? 'bg-secondary-600 text-white' : ''}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="published" className="mt-6">
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Customer</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Service</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Rating</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Review</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700">Status</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-neutral-700 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {currentPublishedReviews.length > 0 ? (
+                    currentPublishedReviews.map((review) => (
+                      <tr key={review.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-700 font-bold">
+                              {(review.booking?.user?.name || review.booking?.guestName || 'G')[0]}
+                            </div>
+                            <div>
+                              <div className="font-medium text-neutral-900">{review.booking?.user?.name || review.booking?.guestName || 'Guest'}</div>
+                              <div className="text-xs text-neutral-500">{review.booking?.user?.email || review.booking?.guestEmail || 'No email'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-neutral-900">{review.booking?.serviceType || 'General Service'}</div>
+                          <div className="text-xs text-neutral-500">ID: {(review.booking?.id || review.bookingId || 'N/A').slice(-8)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {renderStars(review.rating)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-neutral-600 line-clamp-2 max-w-[300px]">
+                            {review.comment}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          {review.adminReply ? (
+                            <Badge className="bg-blue-100 text-blue-700 border-none">Replied</Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700 border-none">Published</Badge>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewReview(review)}
+                              className="text-secondary-600 hover:text-secondary-700 hover:bg-secondary-50"
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUnpublish(review.id)}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                             >
                               Unpublish
                             </Button>
@@ -814,20 +553,59 @@ export function ReviewsPage() {
                         </td>
                       </tr>
                     ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
+                        No published reviews found
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <PaginationControls
-              currentPage={publishedCurrentPage}
-              totalPages={totalPublishedPages}
-              onPageChange={setPublishedCurrentPage}
-            />
+
+            {publishedTotalPages > 1 && (
+              <div className="px-6 py-4 border-t border-neutral-200 flex items-center justify-between">
+                <div className="text-sm text-neutral-600">
+                  Showing {(publishedCurrentPage - 1) * itemsPerPage + 1} to {Math.min(publishedCurrentPage * itemsPerPage, publishedReviews.length)} of {publishedReviews.length} reviews
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPublishedCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={publishedCurrentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: publishedTotalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={publishedCurrentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPublishedCurrentPage(page)}
+                        className={publishedCurrentPage === page ? 'bg-secondary-600 text-white' : ''}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPublishedCurrentPage(prev => Math.min(publishedTotalPages, prev + 1))}
+                    disabled={publishedCurrentPage === publishedTotalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Modal */}
       <ReviewModal />
     </div>
   );

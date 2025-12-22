@@ -1,43 +1,9 @@
 import { DollarSign, Calendar, Users, Star, TrendingUp, TrendingDown, Activity, FileText, UserPlus, CheckSquare, Wallet, Download, X, Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Button } from '../../ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
-
-// Mock data
-const revenueData = [
-  { day: 'Mon', revenue: 2400, bookings: 12 },
-  { day: 'Tue', revenue: 1398, bookings: 8 },
-  { day: 'Wed', revenue: 9800, bookings: 24 },
-  { day: 'Thu', revenue: 3908, bookings: 15 },
-  { day: 'Fri', revenue: 4800, bookings: 18 },
-  { day: 'Sat', revenue: 3800, bookings: 16 },
-  { day: 'Sun', revenue: 4300, bookings: 14 },
-];
-
-const serviceTypeData = [
-  { name: 'Standard Cleaning', value: 45, color: '#FF1493' },
-  { name: 'Deep Cleaning', value: 30, color: '#8b5cf6' },
-  { name: 'Move In/Out', value: 15, color: '#FF69B4' },
-  { name: 'Post-Construction', value: 10, color: '#f59e0b' },
-];
-
-const cleanerPerformance = [
-  { name: 'Maria Garcia', jobs: 24, rating: 4.9 },
-  { name: 'John Smith', jobs: 21, rating: 4.8 },
-  { name: 'Emily Chen', jobs: 19, rating: 4.9 },
-  { name: 'Carlos Rodriguez', jobs: 18, rating: 4.7 },
-  { name: 'Sarah Johnson', jobs: 16, rating: 4.8 },
-];
-
-const recentActivity = [
-  { id: 1, type: 'booking', message: 'New booking from Sarah Johnson', time: '2 min ago', icon: Calendar },
-  { id: 2, type: 'cleaner', message: 'Maria Garcia completed a job', time: '15 min ago', icon: Users },
-  { id: 3, type: 'payment', message: 'Payment received: $189.00', time: '23 min ago', icon: DollarSign },
-  { id: 4, type: 'review', message: 'New 5-star review from Michael Chen', time: '1 hour ago', icon: Star },
-  { id: 5, type: 'booking', message: 'Booking cancelled by customer', time: '2 hours ago', icon: Calendar },
-];
 
 export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'bookings' | 'cleaners' | 'analytics' | 'reviews') => void }) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -47,6 +13,28 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
   const [selectedReportType, setSelectedReportType] = useState('weekly');
   const [reviewDetailsOpen, setReviewDetailsOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/dashboard/admin/stats');
+      const data = await response.json();
+      if (response.ok) {
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error('Fetch dashboard data error:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Mock cleaner applications data
   const cleanerApplications = [
@@ -137,42 +125,50 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
 
   const stats = [
     {
-      label: 'Bookings Today',
-      value: '24',
-      change: '+12%',
-      trend: 'up',
+      label: 'Total Bookings',
+      value: dashboardData?.stats?.totalBookings?.toString() || '0',
+      change: '+0%',
+      trend: 'neutral',
       icon: Calendar,
       color: 'from-secondary-500 to-secondary-600',
       navigateTo: 'bookings' as const,
     },
     {
       label: 'Active Cleaners',
-      value: '18',
-      change: '75% capacity',
+      value: dashboardData?.stats?.activeCleaners?.toString() || '0',
+      change: '100% capacity',
       trend: 'neutral',
       icon: Users,
       color: 'from-accent-500 to-accent-600',
       navigateTo: 'cleaners' as const,
     },
     {
-      label: 'Revenue Today',
-      value: '$4,320',
-      change: '+8%',
-      trend: 'up',
+      label: 'Total Revenue',
+      value: `$${dashboardData?.stats?.totalRevenue?.toLocaleString() || '0'}`,
+      change: '+0%',
+      trend: 'neutral',
       icon: DollarSign,
       color: 'from-purple-500 to-purple-600',
       navigateTo: 'analytics' as const,
     },
     {
       label: 'Avg Rating',
-      value: '4.8',
-      change: '+0.1',
-      trend: 'up',
+      value: dashboardData?.stats?.avgRating?.toString() || '4.8',
+      change: '+0.0',
+      trend: 'neutral',
       icon: Star,
       color: 'from-orange-500 to-orange-600',
       navigateTo: 'reviews' as const,
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -230,7 +226,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
             <Button variant="ghost" size="sm">View All</Button>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={revenueData}>
+            <AreaChart data={dashboardData?.revenueData || []}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#FF1493" stopOpacity={0.8}/>
@@ -257,7 +253,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={serviceTypeData}
+                data={dashboardData?.serviceTypeData || []}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -266,7 +262,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                 fill="#8884d8"
                 dataKey="value"
               >
-                {serviceTypeData.map((entry, index) => (
+                {(dashboardData?.serviceTypeData || []).map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -288,23 +284,27 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
             <Button variant="ghost" size="sm">View All</Button>
           </div>
           <div className="space-y-4">
-            {cleanerPerformance.map((cleaner, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-semibold text-sm">
-                    {index + 1}
+            {(dashboardData?.cleanerPerformance || []).length > 0 ? (
+              dashboardData.cleanerPerformance.map((cleaner: any, index: number) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-semibold text-sm">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium text-neutral-900">{cleaner.name}</div>
+                      <div className="text-sm text-neutral-600">{cleaner.jobs} jobs completed</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-neutral-900">{cleaner.name}</div>
-                    <div className="text-sm text-neutral-600">{cleaner.jobs} jobs completed</div>
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="text-center py-8 text-neutral-500">No performance data available</div>
+            )}
           </div>
         </div>
 
@@ -318,8 +318,10 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
             <Activity className="w-5 h-5 text-neutral-400" />
           </div>
           <div className="space-y-4">
-            {recentActivity.map((activity) => {
-              const Icon = activity.icon;
+            {(dashboardData?.recentActivity || []).map((activity: any) => {
+              const Icon = activity.type === 'booking' ? Calendar : 
+                           activity.type === 'cleaner' ? Users :
+                           activity.type === 'payment' ? DollarSign : Star;
               return (
                 <div key={activity.id} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-secondary-50 flex items-center justify-center flex-shrink-0">

@@ -1,12 +1,26 @@
 import { Star, Quote } from 'lucide-react';
 import { ScrollReveal } from '../ui/scroll-reveal';
+import { useState, useEffect } from 'react';
 
-const testimonials = [
+interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  booking: {
+    guestName?: string;
+    user: {
+      name: string;
+      city?: string;
+    } | null;
+  }
+}
+
+const fallbackTestimonials = [
   {
     name: 'Sarah Johnson',
     city: 'New York',
     date: '2024-11-28',
-    image: 'https://images.unsplash.com/photo-1753161023962-665967602405?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGN1c3RvbWVyJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzYzODEwMzAyfDA&ixlib=rb-4.1.0&q=80&w=1080',
     rating: 5,
     text: 'SparkleVille has been a game-changer for me. The booking process is incredibly easy, and the cleaners are always professional and thorough. My home has never looked better!',
   },
@@ -14,7 +28,6 @@ const testimonials = [
     name: 'Michael Chen',
     city: 'Brooklyn',
     date: '2024-11-26',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
     rating: 5,
     text: 'I use SparkleVille for both my home and office. The consistency and quality of service is outstanding. Their eco-friendly products are a huge plus for our team.',
   },
@@ -22,15 +35,50 @@ const testimonials = [
     name: 'Emily Rodriguez',
     city: 'Manhattan',
     date: '2024-11-25',
-    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
     rating: 5,
     text: 'As a new parent, I barely have time to breathe, let alone clean. SparkleVille gives me peace of mind knowing my home is spotless and safe for my baby. Worth every penny!',
   },
 ];
 
 export function TestimonialsSection() {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const response = await fetch('/api/reviews/published');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            const formattedReviews = data.map((r: Review) => ({
+              name: r.booking.user?.name || r.booking.guestName || 'Guest',
+              city: r.booking.user?.city || 'Customer',
+              date: r.createdAt,
+              rating: r.rating,
+              text: r.comment
+            }));
+            setReviews(formattedReviews);
+          } else {
+            setReviews(fallbackTestimonials);
+          }
+        } else {
+          setReviews(fallbackTestimonials);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        setReviews(fallbackTestimonials);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
   // Duplicate testimonials for seamless infinite scroll
-  const duplicatedTestimonials = [...testimonials, ...testimonials];
+  const displayTestimonials = reviews.length > 0 ? reviews : fallbackTestimonials;
+  const duplicatedTestimonials = [...displayTestimonials, ...displayTestimonials];
 
   return (
     <section className="py-12 px-2 sm:px-4 lg:px-6 bg-gradient-to-b from-white to-neutral-50 overflow-hidden">
@@ -69,7 +117,7 @@ export function TestimonialsSection() {
                     <div className="flex items-center gap-3 mb-4">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary-500 to-primary-600 flex items-center justify-center text-white font-semibold ring-2 ring-secondary-100 group-hover:ring-secondary-300 transition-all duration-300">
-                          {testimonial.name.split(' ').map(n => n[0]).join('')}
+                          {testimonial.name.split(' ').map((n: string) => n[0]).join('')}
                         </div>
                         <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                       </div>
