@@ -33,7 +33,7 @@ export function CleanerProfile({ currentView, onNavigate }: CleanerProfileProps)
   const [profile, setProfile] = useState<ProfileData>({
     name: 'Maria Garcia',
     cleanerId: 'CLN-12845',
-    email: 'maria.garcia@sparkleville.com',
+    email: 'maria.garcia@Sparkleville.com',
     phone: '+1 (555) 123-4567',
     address: '456 Maple Avenue, Apt 3B, New York, NY 10001',
     preferredWorkingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],

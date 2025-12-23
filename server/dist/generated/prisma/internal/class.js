@@ -54,7 +54,7 @@ const config = {
             "value": "prisma-client"
         },
         "output": {
-            "value": "/home/aisha/Documents/projects/Gmerge/sparkleville/server/src/generated/prisma",
+            "value": "/home/aisha/Documents/projects/Gmerge/Sparkleville/server/src/generated/prisma",
             "fromEnvVar": null
         },
         "config": {
@@ -68,7 +68,7 @@ const config = {
             }
         ],
         "previewFeatures": [],
-        "sourceFilePath": "/home/aisha/Documents/projects/Gmerge/sparkleville/server/prisma/schema.prisma",
+        "sourceFilePath": "/home/aisha/Documents/projects/Gmerge/Sparkleville/server/prisma/schema.prisma",
         "isCustomOutput": true
     },
     "relativePath": "../../../prisma",

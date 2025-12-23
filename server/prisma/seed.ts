@@ -30,7 +30,7 @@ async function main() {
     },
     {
       id: 'seed_cleaner',
-      email: 'cleaner@sparkleville.com',
+      email: 'cleaner@Sparkleville.com',
       name: 'Cleaner User',
       role: Role.CLEANER,
       password,

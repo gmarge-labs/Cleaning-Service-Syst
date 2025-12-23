@@ -17,8 +17,8 @@ interface SettingsState {
 
 const initialState: SettingsState = {
   general: {
-    companyName: 'SparkleVille',
-    email: 'hello@sparkleville.com',
+    companyName: 'Sparkleville',
+    email: 'hello@Sparkleville.com',
     phone: '(555) 123-4567',
     address: '123 Clean Street, Suite 100',
     businessHours: '8:00 AM - 8:00 PM',

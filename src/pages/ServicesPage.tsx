@@ -251,7 +251,7 @@ export function ServicesPage({ onGetQuote }: ServicesPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade-up" className="text-center mb-12">
             <h2 className="text-3xl font-bold text-neutral-900 mb-4">
-              Why Choose SparkleVille?
+              Why Choose Sparkleville?
             </h2>
             <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
               We're committed to delivering exceptional cleaning services with professionalism, reliability, and care.
@@ -306,7 +306,7 @@ export function ServicesPage({ onGetQuote }: ServicesPageProps) {
               Ready to Experience Sparkling Clean?
             </h2>
             <p className="text-xl text-secondary-100 mb-8">
-              Get your free quote today and see why thousands of customers trust SparkleVille.
+              Get your free quote today and see why thousands of customers trust Sparkleville.
             </p>
             <Button 
               onClick={() => navigate('/contact')}

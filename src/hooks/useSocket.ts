@@ -60,7 +60,7 @@ export const useSocket = () => {
         senderId: user.id,
         target,
         text,
-        subject: subject || 'Important Announcement from SparkleVille',
+        subject: subject || 'Important Announcement from Sparkleville',
         timestamp: new Date().toISOString(),
       });
     }

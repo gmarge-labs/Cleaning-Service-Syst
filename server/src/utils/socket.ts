@@ -61,7 +61,7 @@ export const initSocket = (server: HttpServer) => {
       if (data.target === 'customers' || data.target === 'all') {
         await sendBroadcastEmail(
           data.target, 
-          data.subject || 'Important Announcement from SparkleVille', 
+          data.subject || 'Important Announcement from Sparkleville', 
           data.text
         );
       }

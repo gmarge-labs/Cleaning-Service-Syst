@@ -223,7 +223,7 @@ export function HowItWorksPage({ onGetStarted }: HowItWorksPageProps) {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              How SparkleVille Works
+              How Sparkleville Works
             </h1>
             <p className="text-xl text-secondary-100 mb-8">
               From booking to sparkling clean, we've made the entire process simple, transparent, and stress-free. Here's your step-by-step guide.
@@ -324,7 +324,7 @@ export function HowItWorksPage({ onGetStarted }: HowItWorksPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade-up" className="text-center mb-12">
             <h2 className="text-3xl font-bold text-neutral-900 mb-4">
-              Why Choose SparkleVille?
+              Why Choose Sparkleville?
             </h2>
             <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
               We've built our service around convenience, trust, and exceptional quality
@@ -499,7 +499,7 @@ export function HowItWorksPage({ onGetStarted }: HowItWorksPageProps) {
             Ready to Experience the Difference?
           </h2>
           <p className="text-xl text-neutral-600 mb-8">
-            Join thousands of satisfied customers who trust SparkleVille for their cleaning needs. Book your first service today!
+            Join thousands of satisfied customers who trust Sparkleville for their cleaning needs. Book your first service today!
           </p>
           <Button
             onClick={onGetStarted}

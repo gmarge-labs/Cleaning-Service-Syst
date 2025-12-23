@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Menu, X, ChevronDown, User, Shield, Smartphone } from 'lucide-react';
+import { Sparkles, Menu, X, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { LoginModal } from './LoginModal';
 import { motion } from 'motion/react';
@@ -54,13 +54,13 @@ export function Header({
     }
   }, [location]);
 
-  const navLinks = [
-    { label: 'Home', to: '/', type: 'route' as const },
-    { label: 'Services', to: '/services', type: 'route' as const },
-    { label: 'Pricing', to: '/pricing', type: 'route' as const },
-    { label: 'How It Works', to: '/how-it-works', type: 'route' as const },
-    { label: 'Careers', to: '/careers', type: 'route' as const },
-    { label: 'Contact', to: '/contact', type: 'route' as const },
+  const navLinks: { label: string; to: string; type: 'route' | 'scroll'; href?: string }[] = [
+    { label: 'Home', to: '/', type: 'route' },
+    { label: 'Services', to: '/services', type: 'route' },
+    { label: 'Pricing', to: '/pricing', type: 'route' },
+    { label: 'How It Works', to: '/how-it-works', type: 'route' },
+    { label: 'Careers', to: '/careers', type: 'route' },
+    { label: 'Contact', to: '/contact', type: 'route' },
   ];
 
   const handleScrollLink = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -100,7 +100,7 @@ export function Header({
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-20">
+        <div className={`flex items-center transition-all duration-500 ${isScrolled ? 'h-16' : 'h-20'}`}>
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 cursor-pointer flex-shrink-0 group" onClick={handleHomeClick}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md">
@@ -132,9 +132,9 @@ export function Header({
               ) : (
                 <a
                   key={link.label}
-                  href={link.href}
+                  href={link.href || '#'}
                   className="text-neutral-700 hover:text-secondary-500 transition-colors"
-                  onClick={(e) => handleScrollLink(e, link.href)}
+                  onClick={(e) => handleScrollLink(e, link.href || '#')}
                 >
                   {link.label}
                 </a>
@@ -204,10 +204,10 @@ export function Header({
               ) : (
                 <a
                   key={link.label}
-                  href={link.href}
+                  href={link.href || '#'}
                   className="block px-4 py-2 text-neutral-700 hover:bg-neutral-50 rounded-lg"
                   onClick={(e) => {
-                    handleScrollLink(e, link.href);
+                    handleScrollLink(e, link.href || '#');
                     setIsMobileMenuOpen(false);
                   }}
                 >

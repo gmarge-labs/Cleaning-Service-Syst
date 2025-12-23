@@ -913,7 +913,7 @@ export function EllaChat({ isMinimized = false, onMinimize, onClose, onBookingCo
         ellaMessage = {
           id: Date.now().toString(),
           type: 'ella',
-          content: "🎊 Booking confirmed! Your payment has been processed. You'll receive a confirmation email shortly with all the details.\n\nThank you for choosing SparkleVille! ✨",
+          content: "🎊 Booking confirmed! Your payment has been processed. You'll receive a confirmation email shortly with all the details.\n\nThank you for choosing Sparkleville! ✨",
           timestamp: new Date(),
           quickReplies: [
             { label: '📱 View Dashboard', value: 'dashboard' },

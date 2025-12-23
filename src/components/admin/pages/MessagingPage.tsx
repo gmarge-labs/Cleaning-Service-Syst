@@ -66,7 +66,7 @@ export function MessagingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [broadcastText, setBroadcastText] = useState('');
-  const [broadcastSubject, setBroadcastSubject] = useState('Important Announcement from SparkleVille');
+  const [broadcastSubject, setBroadcastSubject] = useState('Important Announcement from Sparkleville');
   const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'cleaners' | 'customers' | 'staff'>('all');
   const { socket, sendMessage, broadcastMessage } = useSocket();
 

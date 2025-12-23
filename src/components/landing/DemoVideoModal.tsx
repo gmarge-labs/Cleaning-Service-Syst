@@ -12,7 +12,7 @@ export function DemoVideoModal({ isOpen, onClose }: DemoVideoModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black" aria-describedby={undefined}>
         <VisuallyHidden.Root>
-          <DialogTitle>SparkleVille Demo Video</DialogTitle>
+          <DialogTitle>Sparkleville Demo Video</DialogTitle>
         </VisuallyHidden.Root>
 
         {/* Close Button */}
@@ -40,7 +40,7 @@ export function DemoVideoModal({ isOpen, onClose }: DemoVideoModalProps) {
           /> */}
           <iframe
             src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1"
-            title="SparkleVille Demo Video"
+            title="Sparkleville Demo Video"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="absolute top-0 left-0 w-full h-full"

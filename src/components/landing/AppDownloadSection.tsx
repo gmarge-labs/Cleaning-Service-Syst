@@ -21,7 +21,7 @@ export function AppDownloadSection({ onDownload }: AppDownloadSectionProps) {
             </h2>
             <p className="text-lg text-white/90 mb-6 max-w-xl">
               Are you a professional cleaner? Download our mobile app to start accepting jobs, 
-              manage your schedule, and grow your business with SparkleVille.
+              manage your schedule, and grow your business with Sparkleville.
             </p>
             <ul className="space-y-3 text-white/90 mb-8">
               <li className="flex items-center gap-3 justify-center lg:justify-start animate-slide-in-left stagger-1">

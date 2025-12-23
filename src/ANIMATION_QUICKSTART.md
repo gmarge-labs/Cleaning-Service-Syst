@@ -1,4 +1,4 @@
-# 🚀 Animation Quick Start - SparkleVille
+# 🚀 Animation Quick Start - Sparkleville
 
 ## 30-Second Guide
 

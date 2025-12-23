@@ -11,7 +11,7 @@ interface CleanerLoginProps {
 
 export function CleanerLogin({ onLogin }: CleanerLoginProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('maria.garcia@sparkleville.com');
+  const [email, setEmail] = useState('maria.garcia@Sparkleville.com');
   const [password, setPassword] = useState('');
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
@@ -28,7 +28,7 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
           <Sparkles className="w-9 h-9 text-white" />
         </div>
         <div className="text-white">
-          <div className="text-2xl font-bold">SparkleVille</div>
+          <div className="text-2xl font-bold">Sparkleville</div>
           <div className="text-sm text-white/80">Cleaner App</div>
         </div>
       </div>
@@ -119,7 +119,7 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
       {/* Footer */}
       <div className="text-center mt-6 text-white/80 text-sm">
         <p>Need help? Contact support</p>
-        <p className="text-white/60 mt-2">© 2025 SparkleVille</p>
+        <p className="text-white/60 mt-2">© 2025 Sparkleville</p>
       </div>
 
       {/* Forgot Password Modal */}

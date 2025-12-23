@@ -97,8 +97,8 @@ function sendEmail(options) {
             const emailContent = processTemplate(template, options.variables);
             // Get company info for "from" address
             const general = settings.general;
-            const fromEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@sparkleville.com';
-            const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'SparkleVille';
+            const fromEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@Sparkleville.com';
+            const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'Sparkleville';
             // Send email
             const msg = {
                 to: options.to,
@@ -214,8 +214,8 @@ function sendWelcomeEmail(user, temporaryPassword) {
             where: { id: 'default' }
         });
         const general = settings === null || settings === void 0 ? void 0 : settings.general;
-        const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'SparkleVille';
-        const supportEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@sparkleville.com';
+        const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'Sparkleville';
+        const supportEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@Sparkleville.com';
         let welcomeMessage = `Dear ${user.name},
 
 Welcome to ${companyName}! Your account has been successfully created.

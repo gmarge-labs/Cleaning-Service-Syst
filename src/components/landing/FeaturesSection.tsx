@@ -4,29 +4,36 @@ import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollReveal } from '../ui/scroll-reveal';
 
+// Import local images
+import instantBookingImg from '../../images/why-choose-us/instant-booking.jpg';
+import professionalCleanersImg from '../../images/why-choose-us/professional-cleaners.jpg';
+import satisfactionGuaranteedImg from '../../images/why-choose-us/satisfaction-guaranteed.jpg';
+import ecoFriendlyProductsImg from '../../images/why-choose-us/eco-friendly.jpg';
+import supportImg from '../../images/why-choose-us/support.jpg';
+
 const features = [
   {
-    image: 'https://images.unsplash.com/photo-1586523903177-854b166f4514?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjbGVhbmVyJTIwdGFibGV0JTIwc2NoZWR1bGluZ3xlbnwxfHx8fDE3NjQ0MDgyMTZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    image: instantBookingImg,
     title: 'Instant Booking',
     description: 'No phone calls required. Real-time availability.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1579141132886-e86d831034ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjbGVhbmluZyUyMHNlcnZpY2UlMjB0ZWFtfGVufDF8fHx8MTc2NDQwODIxNnww&ixlib=rb-4.1.0&q=80&w=1080',
+    image: professionalCleanersImg,
     title: 'Professional Cleaners',
     description: 'Background-checked, trained, and insured professionals you can trust.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1648475235027-21cd0ed83671?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMG1vZGVybiUyMGhvbWUlMjBpbnRlcmlvcnxlbnwxfHx8fDE3NjQzMzk4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    image: satisfactionGuaranteedImg,
     title: 'Satisfaction Guarantee',
     description: 'Not happy? We\'ll re-clean for free or give you a full refund.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1746558780335-3321e34d88b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlY28lMjBjbGVhbmluZyUyMHByb2R1Y3RzJTIwc3ByYXl8ZW58MXx8fHwxNzY0NDA4MjE3fDA&ixlib=rb-4.1.0&q=80&w=1080',
+    image: ecoFriendlyProductsImg,
     title: 'Eco-Friendly Products',
     description: 'Safe, non-toxic cleaning supplies that are gentle on your family and pets.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1761641428582-b85a085340d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbGVhbmluZyUyMHNlcnZpY2UlMjBwcm9mZXNzaW9uYWwlMjB3b3JrfGVufDF8fHx8MTc2NDQwODIxOHww&ixlib=rb-4.1.0&q=80&w=1080',
+    image: supportImg,
     title: '24/7 Support',
     description: 'Questions? Our friendly support team is always here to help you.',
   },
@@ -105,7 +112,7 @@ export function FeaturesSection() {
         {/* Section Header */}
         <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-neutral-900 mb-4">
-            Why Choose SparkleVille?
+            Why Choose Sparkleville?
           </h2>
           <p className="text-xl text-neutral-600">
             We've reimagined cleaning services to be simple, reliable, and stress-free.

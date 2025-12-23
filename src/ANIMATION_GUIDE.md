@@ -1,7 +1,7 @@
-# SparkleVille Animation System Guide
+# Sparkleville Animation System Guide
 
 ## 🎨 Overview
-SparkleVille uses a comprehensive animation system combining **CSS keyframe animations**, **Tailwind utility classes**, and **Motion (React)** for scroll-triggered effects.
+Sparkleville uses a comprehensive animation system combining **CSS keyframe animations**, **Tailwind utility classes**, and **Motion (React)** for scroll-triggered effects.
 
 ---
 
@@ -207,7 +207,7 @@ import { motion } from 'motion/react';
   animate={{ opacity: 1, y: 0 }}
   transition={{ duration: 0.8 }}
 >
-  <h1>Welcome to SparkleVille</h1>
+  <h1>Welcome to Sparkleville</h1>
   <button className="animate-pulse-soft">Book Now</button>
 </motion.div>
 ```
@@ -401,4 +401,4 @@ For animated gradients and effects:
 
 **Last Updated**: December 2024
 **Version**: 2.0
-**Author**: SparkleVille Dev Team
+**Author**: Sparkleville Dev Team

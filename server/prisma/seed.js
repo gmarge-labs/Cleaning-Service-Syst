@@ -42,7 +42,7 @@ function main() {
             },
             {
                 id: 'seed_cleaner',
-                email: 'cleaner@sparkleville.com',
+                email: 'cleaner@Sparkleville.com',
                 name: 'Cleaner User',
                 role: client_1.Role.CLEANER,
                 password,

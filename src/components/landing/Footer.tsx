@@ -170,7 +170,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
         <div className="pt-8 border-t border-neutral-700">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-neutral-300 text-sm font-medium">
-              © 2025 SparkleVille. All rights reserved.
+              © 2025 Sparkleville. All rights reserved.
             </p>
             
             {/* Social Links */}

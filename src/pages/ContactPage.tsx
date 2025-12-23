@@ -38,7 +38,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! Welcome to SparkleVille! 👋 I\'m your Assistant Manager. How can I help you today? Feel free to ask about our services, pricing, booking, or anything else!',
+      content: 'Hello! Welcome to Sparkleville! 👋 I\'m your Assistant Manager. How can I help you today? Feel free to ask about our services, pricing, booking, or anything else!',
       timestamp: new Date(),
     },
   ]);
@@ -524,8 +524,8 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                       <h3 className="text-lg font-bold text-neutral-900 mb-2">
                         Email Us
                       </h3>
-                      <a href="mailto:hello@sparkleville.com" className="text-secondary-600 hover:text-secondary-700 hover:underline">
-                        hello@sparkleville.com
+                      <a href="mailto:hello@Sparkleville.com" className="text-secondary-600 hover:text-secondary-700 hover:underline">
+                        hello@Sparkleville.com
                       </a>
                     </div>
                   </div>

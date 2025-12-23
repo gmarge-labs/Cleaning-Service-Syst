@@ -22,21 +22,21 @@ const fallbackTestimonials = [
     city: 'New York',
     date: '2024-11-28',
     rating: 5,
-    text: 'SparkleVille has been a game-changer for me. The booking process is incredibly easy, and the cleaners are always professional and thorough. My home has never looked better!',
+    text: 'Sparkleville has been a game-changer for me. The booking process is incredibly easy, and the cleaners are always professional and thorough. My home has never looked better!',
   },
   {
     name: 'Michael Chen',
     city: 'Brooklyn',
     date: '2024-11-26',
     rating: 5,
-    text: 'I use SparkleVille for both my home and office. The consistency and quality of service is outstanding. Their eco-friendly products are a huge plus for our team.',
+    text: 'I use Sparkleville for both my home and office. The consistency and quality of service is outstanding. Their eco-friendly products are a huge plus for our team.',
   },
   {
     name: 'Emily Rodriguez',
     city: 'Manhattan',
     date: '2024-11-25',
     rating: 5,
-    text: 'As a new parent, I barely have time to breathe, let alone clean. SparkleVille gives me peace of mind knowing my home is spotless and safe for my baby. Worth every penny!',
+    text: 'As a new parent, I barely have time to breathe, let alone clean. Sparkleville gives me peace of mind knowing my home is spotless and safe for my baby. Worth every penny!',
   },
 ];
 

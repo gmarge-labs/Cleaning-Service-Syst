@@ -372,7 +372,7 @@ function InvoiceStep({
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-4xl font-bold mb-2">INVOICE</h1>
-              <p className="text-white/90">SparkleVille Services</p>
+              <p className="text-white/90">Sparkleville Services</p>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{invoiceNumber}</div>
@@ -610,7 +610,7 @@ function InvoiceStep({
               <p>• Payment is due upon completion of service unless otherwise arranged</p>
               <p>• Free cancellation up to 24 hours before scheduled service</p>
               <p>• 100% satisfaction guaranteed or we'll make it right</p>
-              <p>• For questions about this invoice, please contact us at billing@sparkleville.com</p>
+              <p>• For questions about this invoice, please contact us at billing@Sparkleville.com</p>
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="font-bold text-xl text-neutral-900">SparkleVille</div>
+                <div className="font-bold text-xl text-neutral-900">Sparkleville</div>
                 <div className="text-xs text-neutral-500">Customer Dashboard</div>
               </div>
             </button>

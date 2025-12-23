@@ -1,34 +1,27 @@
 import { Button } from '../ui/button';
-import { ScrollReveal } from '../ui/scroll-reveal';
 import { motion } from 'motion/react';
+import { ImageSlider } from '../ui/image-slider';
+import image1 from '../../images/heroimages/image1.jpg';
+import image2 from '../../images/heroimages/image2.JPG';
+import image3 from '../../images/heroimages/image3.jpg';
 
 interface HeroSectionProps {
   onStartBooking: () => void;
 }
 
 export function HeroSection({ onStartBooking }: HeroSectionProps) {
+  const heroImages = [image1, image2, image3];
+
   return (
     <section id="home" className="relative min-h-screen pt-20 pb-12 px-4 overflow-hidden">
-      {/* Background Video */}
+      {/* Background Image Slider */}
       <div className="absolute top-20 left-0 right-0 bottom-0 w-full">
-        {/* 
-            TODO: To use an image instead of the video:
-            1. Place your image in public/images/ (e.g., public/images/hero-bg.jpg)
-            2. Comment out or remove the <video> tag below
-            3. Uncomment the <img> tag below and update the src
-        */}
-        {/* <img 
-            src="/images/hero-bg.jpg" 
-            alt="Hero Background" 
-            className="absolute top-0 left-0 w-full h-full object-cover"
-        /> */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          src="https://res.cloudinary.com/dwwa5bzo4/video/upload/v1764487819/Sparkle_Cleaning_Vid_nelqai.mp4"
-          className="absolute top-0 left-0 w-full h-full object-cover"
+        <ImageSlider 
+          images={heroImages}
+          autoPlayInterval={6000}
+          showControls={true}
+          showIndicators={true}
+          className="w-full h-full"
         />
         {/* Gradient overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>

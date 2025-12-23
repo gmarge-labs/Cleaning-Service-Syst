@@ -400,7 +400,7 @@ export function PricingPage({ onGetQuote }: PricingPageProps) {
               What's Included in Every Clean
             </h2>
             <p className="text-lg text-neutral-600">
-              Every SparkleVille service comes with these premium benefits at no extra cost
+              Every Sparkleville service comes with these premium benefits at no extra cost
             </p>
           </div>
 
@@ -520,7 +520,7 @@ export function PricingPage({ onGetQuote }: PricingPageProps) {
               </div>
             </div>
             <p className="text-neutral-700 leading-relaxed">
-              At SparkleVille, we're committed to delivering exceptional cleaning services. If you're not completely satisfied with your cleaning, we'll work with you to resolve the issue.
+              At Sparkleville, we're committed to delivering exceptional cleaning services. If you're not completely satisfied with your cleaning, we'll work with you to resolve the issue.
             </p>
           </div>
 
@@ -635,7 +635,7 @@ export function PricingPage({ onGetQuote }: PricingPageProps) {
                 </div>
                 <h4 className="font-bold text-neutral-900 mb-2">Contact Us</h4>
                 <p className="text-sm text-neutral-600">
-                  Reach out via phone (555) 123-4567, email hello@sparkleville.com, or through your customer dashboard within 24 hours of service.
+                  Reach out via phone (555) 123-4567, email hello@Sparkleville.com, or through your customer dashboard within 24 hours of service.
                 </p>
               </div>
 

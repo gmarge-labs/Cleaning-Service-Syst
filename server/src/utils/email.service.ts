@@ -102,7 +102,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     if (!template) {
       if (options.templateType === 'broadcast') {
-        template = "Hello {name},\n\n{message}\n\nBest regards,\nThe SparkleVille Team";
+        template = "Hello {name},\n\n{message}\n\nBest regards,\nThe Sparkleville Team";
       } else {
         console.error(`Template ${options.templateType} not found`);
         return false;
@@ -114,8 +114,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     // Get company info for "from" address
     const general = settings.general as any;
-    const fromEmail = general?.email || 'hello@sparkleville.com';
-    const companyName = general?.companyName || 'SparkleVille';
+    const fromEmail = general?.email || 'hello@Sparkleville.com';
+    const companyName = general?.companyName || 'Sparkleville';
     const companyAddress = general?.address || '';
     const companyPhone = general?.phone || '';
 
@@ -153,7 +153,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
               <div style="white-space: pre-wrap;">${emailContent.replace(/\n/g, '<br>')}</div>
               
               <div style="margin-top: 30px; text-align: center;">
-                <a href="https://sparkleville.com/login" class="button">View Your Dashboard</a>
+                <a href="https://Sparkleville.com/login" class="button">View Your Dashboard</a>
               </div>
             </div>
             <div class="footer">
@@ -258,7 +258,7 @@ export async function sendInvoiceEmail(booking: any, email: string, total: numbe
   });
 
   const general = settings?.general as any;
-  const companyName = general?.companyName || 'SparkleVille';
+  const companyName = general?.companyName || 'Sparkleville';
 
   return sendEmail({
     to: email,
@@ -290,8 +290,8 @@ export async function sendWelcomeEmail(user: any, temporaryPassword?: string) {
   });
 
   const general = settings?.general as any;
-  const companyName = general?.companyName || 'SparkleVille';
-  const supportEmail = general?.email || 'hello@sparkleville.com';
+  const companyName = general?.companyName || 'Sparkleville';
+  const supportEmail = general?.email || 'hello@Sparkleville.com';
 
   let welcomeMessage = `Dear ${user.name},
 

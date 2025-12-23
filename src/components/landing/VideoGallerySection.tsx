@@ -155,7 +155,7 @@ export function VideoGallerySection() {
               See Our Team in Action
             </h2>
             <p className="text-xl text-neutral-600">
-              Watch our professionally trained cleaners deliver exceptional results in custom SparkleVille uniforms
+              Watch our professionally trained cleaners deliver exceptional results in custom Sparkleville uniforms
             </p>
           </motion.div>
         </div>
@@ -269,7 +269,7 @@ export function VideoGallerySection() {
 
                       {/* Brand Badge */}
                       <div className="absolute top-4 left-4 px-4 py-2 rounded-full bg-gradient-to-r from-secondary-500 to-accent-500 text-white font-semibold shadow-lg">
-                        SparkleVille
+                        Sparkleville
                       </div>
 
                       {/* Playing Indicator */}

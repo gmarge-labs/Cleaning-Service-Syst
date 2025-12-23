@@ -111,7 +111,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="font-bold text-lg">SparkleVille</div>
+                <div className="font-bold text-lg">Sparkleville</div>
                 <div className="text-xs text-neutral-400">Admin Portal</div>
               </div>
             </div>
@@ -205,7 +205,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
       <div className="p-4 border-t border-neutral-800">
         {isOpen && (
           <div className="text-xs text-neutral-500">
-            © 2025 SparkleVille
+            © 2025 Sparkleville
             <br />
             v2.0.1
           </div>

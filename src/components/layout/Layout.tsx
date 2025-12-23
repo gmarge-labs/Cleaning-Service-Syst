@@ -39,7 +39,7 @@ export function Layout({
         onSupervisorLogin={onSupervisorLogin}
         onSupportLogin={onSupportLogin}
       />
-      <div className="pt-10">
+      <div className="pt-0">
         {children}
       </div>
       <Footer onAdminLogin={onAdminLogin} onCleanerLogin={onCleanerLogin} />

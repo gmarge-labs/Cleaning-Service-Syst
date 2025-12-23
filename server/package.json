@@ -1,7 +1,7 @@
 {
-    "name": "sparkleville-server",
+    "name": "Sparkleville-server",
     "version": "1.0.0",
-    "description": "Backend for SparkleVille",
+    "description": "Backend for Sparkleville",
     "main": "dist/index.js",
     "scripts": {
         "start": "node dist/index.js",

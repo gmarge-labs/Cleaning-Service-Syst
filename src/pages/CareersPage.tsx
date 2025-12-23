@@ -169,7 +169,7 @@ export function CareersPage() {
               <span className="text-sm">Join Our Team</span>
             </div>
             <h1 className="text-4xl md:text-6xl mb-6">
-              Start Your Career with <span className="text-accent-300">SparkleVille</span>
+              Start Your Career with <span className="text-accent-300">Sparkleville</span>
             </h1>
             <p className="text-xl md:text-2xl text-secondary-100 mb-8">
               Join a growing team of professional cleaners and build a rewarding career
@@ -196,7 +196,7 @@ export function CareersPage() {
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade-up" className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl mb-4">Why Join SparkleVille?</h2>
+            <h2 className="text-3xl md:text-4xl mb-4">Why Join Sparkleville?</h2>
             <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
               We believe in supporting our team members with competitive benefits and a positive work environment
             </p>
@@ -451,7 +451,7 @@ export function CareersPage() {
                 <div>
                   <h3 className="text-xl mb-2">Welcome Aboard!</h3>
                   <p className="text-neutral-600">
-                    Start your first assignment and begin your journey with SparkleVille
+                    Start your first assignment and begin your journey with Sparkleville
                   </p>
                 </div>
               </ScrollRevealItem>
