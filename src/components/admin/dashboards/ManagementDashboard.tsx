@@ -15,9 +15,11 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [applications, setApplications] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchApplications();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -35,66 +37,39 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
       setIsLoading(false);
     }
   };
+
+  const fetchApplications = async () => {
+    try {
+      const response = await fetch('/api/cleaners/applications');
+      const data = await response.json();
+      if (response.ok) {
+        setApplications(data.filter((app: any) => app.status === 'PENDING'));
+      }
+    } catch (error) {
+      console.error('Fetch applications error:', error);
+    }
+  };
   
-  // Mock cleaner applications data
-  const cleanerApplications = [
-    {
-      id: 1,
-      firstName: 'Sarah',
-      lastName: 'Martinez',
-      email: 'sarah.martinez@email.com',
-      phone: '(555) 234-5678',
-      dateOfBirth: '1990-05-15',
-      gender: 'Female',
-      address: '123 Oak Street',
-      city: 'Los Angeles',
-      state: 'CA',
-      zipCode: '90001',
-      ssn: '***-**-1234',
-      reference1Name: 'John Williams',
-      reference1Phone: '(555) 111-2222',
-      reference1Relationship: 'Former Supervisor',
-      reference1Address: '456 Elm St',
-      reference1City: 'Los Angeles',
-      reference1State: 'CA',
-      reference2Name: 'Emily Davis',
-      reference2Phone: '(555) 333-4444',
-      reference2Relationship: 'Manager',
-      reference2Address: '789 Pine Ave',
-      reference2City: 'Los Angeles',
-      reference2State: 'CA',
-      submittedDate: 'December 8, 2025',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      firstName: 'David',
-      lastName: 'Johnson',
-      email: 'david.johnson@email.com',
-      phone: '(555) 876-5432',
-      dateOfBirth: '1988-08-22',
-      gender: 'Male',
-      address: '789 Maple Avenue',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94102',
-      ssn: '***-**-5678',
-      reference1Name: 'Lisa Brown',
-      reference1Phone: '(555) 555-6666',
-      reference1Relationship: 'Former Colleague',
-      reference1Address: '321 Cedar Ln',
-      reference1City: 'San Francisco',
-      reference1State: 'CA',
-      reference2Name: 'Michael Smith',
-      reference2Phone: '(555) 777-8888',
-      reference2Relationship: 'Friend',
-      reference2Address: '654 Birch Dr',
-      reference2City: 'San Francisco',
-      reference2State: 'CA',
-      submittedDate: 'December 7, 2025',
-      status: 'pending'
-    },
-  ];
+  const handleUpdateApplicationStatus = async (id: string, status: string) => {
+    try {
+      const response = await fetch(`/api/cleaners/applications/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      if (response.ok) {
+        toast.success(`Application ${status.toLowerCase()} successfully`);
+        fetchApplications();
+        setReviewDetailsOpen(false);
+      } else {
+        toast.error('Failed to update application status');
+      }
+    } catch (error) {
+      console.error('Update application status error:', error);
+      toast.error('An error occurred while updating status');
+    }
+  };
   
   const handleGenerateReport = () => {
     toast.success('📊 Report generated successfully!', {
@@ -358,11 +333,16 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
         </button>
         <button 
           onClick={() => setApprovalsModalOpen(true)}
-          className="bg-white rounded-xl border border-neutral-200 p-4 hover:border-secondary-300 hover:shadow-md transition-all text-left"
+          className="bg-white rounded-xl border border-neutral-200 p-4 hover:border-secondary-300 hover:shadow-md transition-all text-left relative"
         >
+          {applications.length > 0 && (
+            <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+              {applications.length}
+            </span>
+          )}
           <div className="text-2xl mb-2">✅</div>
           <div className="font-semibold text-neutral-900">Pending Approvals</div>
-          <div className="text-sm text-neutral-600">3 items waiting</div>
+          <div className="text-sm text-neutral-600">{applications.length} items waiting</div>
         </button>
         <button 
           onClick={() => setPayrollModalOpen(true)}
@@ -525,67 +505,42 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
             </div>
 
             <div className="space-y-3">
-              {/* Pending Item 1 */}
-              <div className="border border-neutral-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-neutral-900">Cleaner Application - Sarah Martinez</h3>
-                    <p className="text-sm text-neutral-600 mt-1">New cleaner application submitted</p>
+              {applications.length > 0 ? (
+                applications.map((app) => (
+                  <div key={app.id} className="border border-neutral-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-neutral-900">Cleaner Application - {app.firstName} {app.lastName}</h3>
+                        <p className="text-sm text-neutral-600 mt-1">New cleaner application submitted</p>
+                      </div>
+                      <Badge className="bg-orange-100 text-orange-700">Pending</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleUpdateApplicationStatus(app.id, 'ACCEPTED')}
+                      >
+                        Approve
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedApplication(app);
+                          setReviewDetailsOpen(true);
+                        }}
+                      >
+                        Review
+                      </Button>
+                    </div>
                   </div>
-                  <Badge className="bg-orange-100 text-orange-700">Pending</Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => handleApproveItem('Sarah Martinez application')}
-                  >
-                    Approve
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedApplication(cleanerApplications[0]);
-                      setReviewDetailsOpen(true);
-                    }}
-                  >
-                    Review
-                  </Button>
-                </div>
-              </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-neutral-500">No pending applications</div>
+              )}
 
-              {/* Pending Item 2 - David Johnson */}
-              <div className="border border-neutral-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-neutral-900">Cleaner Application - David Johnson</h3>
-                    <p className="text-sm text-neutral-600 mt-1">New cleaner application submitted</p>
-                  </div>
-                  <Badge className="bg-orange-100 text-orange-700">Pending</Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => handleApproveItem('David Johnson application')}
-                  >
-                    Approve
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedApplication(cleanerApplications[1]);
-                      setReviewDetailsOpen(true);
-                    }}
-                  >
-                    Review
-                  </Button>
-                </div>
-              </div>
-
-              {/* Pending Item 3 */}
+              {/* Other Pending Items (Mock) */}
               <div className="border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -606,7 +561,6 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                 </div>
               </div>
 
-              {/* Pending Item 4 */}
               <div className="border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -902,21 +856,13 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
               <Button 
                 variant="outline"
                 className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                onClick={() => {
-                  toast.error('Application Rejected', {
-                    description: `${selectedApplication.firstName} ${selectedApplication.lastName}'s application has been rejected.`
-                  });
-                  setReviewDetailsOpen(false);
-                }}
+                onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'REJECTED')}
               >
                 Reject Application
               </Button>
               <Button 
                 className="flex-1 bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  handleApproveItem(`${selectedApplication.firstName} ${selectedApplication.lastName} application`);
-                  setReviewDetailsOpen(false);
-                }}
+                onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'ACCEPTED')}
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
                 Approve & Proceed to Onboarding

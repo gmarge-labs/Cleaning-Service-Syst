@@ -21,6 +21,14 @@ export function ImageSlider({
   const [direction, setDirection] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
+  // Preload images to prevent flicker
+  useEffect(() => {
+    images.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, [images]);
+
   // Auto-advance slides
   useEffect(() => {
     if (isHovered) return;
@@ -68,12 +76,12 @@ export function ImageSlider({
 
   return (
     <div
-      className={`relative w-full h-full overflow-hidden ${className}`}
+      className={`relative w-full h-full overflow-hidden bg-neutral-900 ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Slider */}
-      <AnimatePresence initial={false} custom={direction} mode="popLayout">
+      <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={currentIndex}
           custom={direction}
@@ -92,7 +100,6 @@ export function ImageSlider({
             src={images[currentIndex]}
             alt={`Slide ${currentIndex + 1}`}
             className="w-full h-full object-cover"
-            loading={currentIndex === 0 ? 'eager' : 'lazy'}
           />
         </motion.div>
       </AnimatePresence>

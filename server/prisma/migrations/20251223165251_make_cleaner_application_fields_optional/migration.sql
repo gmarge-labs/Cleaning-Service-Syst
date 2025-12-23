@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "CleanerApplication" ALTER COLUMN "zipCode" DROP NOT NULL,
+ALTER COLUMN "ssn" DROP NOT NULL,
+ALTER COLUMN "reference1Name" DROP NOT NULL,
+ALTER COLUMN "reference1Phone" DROP NOT NULL,
+ALTER COLUMN "reference1Relationship" DROP NOT NULL,
+ALTER COLUMN "reference1Address" DROP NOT NULL,
+ALTER COLUMN "reference1City" DROP NOT NULL,
+ALTER COLUMN "reference1State" DROP NOT NULL,
+ALTER COLUMN "reference2Name" DROP NOT NULL,
+ALTER COLUMN "reference2Phone" DROP NOT NULL,
+ALTER COLUMN "reference2Relationship" DROP NOT NULL,
+ALTER COLUMN "reference2Address" DROP NOT NULL,
+ALTER COLUMN "reference2City" DROP NOT NULL,
+ALTER COLUMN "reference2State" DROP NOT NULL;

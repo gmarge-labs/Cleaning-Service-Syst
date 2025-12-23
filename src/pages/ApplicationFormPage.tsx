@@ -130,9 +130,19 @@ export function ApplicationFormPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch('/api/cleaners/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit application');
+      }
+
       toast.success('Application submitted successfully!', {
         description: 'We\'ll review your application and get back to you within 2-3 business days.',
       });
@@ -141,7 +151,12 @@ export function ApplicationFormPage() {
       setTimeout(() => {
         navigate('/careers');
       }, 2000);
-    }, 2000);
+    } catch (error) {
+      console.error('Submit application error:', error);
+      toast.error('Failed to submit application. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepContent = () => {

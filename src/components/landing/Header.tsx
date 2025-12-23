@@ -6,6 +6,8 @@ import { LoginModal } from './LoginModal';
 import { motion } from 'motion/react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import logoDark from '../../images/logo/Sparkleville1(1).png';
+import logoLight from '../../images/logo/Sparkleville1(1).png';
 
 interface HeaderProps {
   onStartBooking: () => void;
@@ -103,13 +105,15 @@ export function Header({
         <div className={`flex items-center transition-all duration-500 ${isScrolled ? 'h-16' : 'h-20'}`}>
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 cursor-pointer flex-shrink-0 group" onClick={handleHomeClick}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md">
-              <Sparkles className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
-            </div>
-            <div>
+            <img 
+              src={showWhiteBg ? logoDark : logoLight} 
+              alt="Sparkleville Logo" 
+              className="h-12 w-auto group-hover:scale-110 transition-transform duration-300" 
+            />
+            {/* hiding the company name<div>
               <div className="font-bold text-xl text-neutral-900">{general.companyName}</div>
               <div className="text-xs text-neutral-500">Professional Cleaning</div>
-            </div>
+            </div> */}
           </Link>
 
           {/* Desktop Navigation - Centered */}

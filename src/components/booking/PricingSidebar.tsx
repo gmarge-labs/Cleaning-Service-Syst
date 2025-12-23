@@ -195,18 +195,6 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
                 <div className="font-semibold text-neutral-900">${(basePrice + roomPrice).toFixed(2)}</div>
               </div>
             </div>
-
-            {/* Estimated Time & Cleaners */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-sm text-neutral-600">
-                <Clock className="w-4 h-4" />
-                <span>Estimated: {estimatedHours} hours</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-secondary-600 font-medium">
-                <Tag className="w-4 h-4" />
-                <span>{cleanerCount} Professional Cleaner{cleanerCount > 1 ? 's' : ''} Required</span>
-              </div>
-            </div>
           </div>
         )}
 

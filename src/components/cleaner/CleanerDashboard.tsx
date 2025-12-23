@@ -372,7 +372,7 @@ function AvailableJobCard({ job, onViewDetails, onClaim }: AvailableJobCardProps
     onClaim(job.id);
     toast.success('🎉 Congratulations! You have successfully claimed this job!', {
       description: `${job.serviceType} at ${job.address}`,
-      duration: 3000,
+      duration: 2000,
     });
   };
   

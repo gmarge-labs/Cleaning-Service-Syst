@@ -21,7 +21,7 @@ export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new'
     if (mode === 'reschedule') {
       toast.success('Booking Rescheduled Successfully!', {
         description: 'A confirmation email has been sent with your new appointment details.',
-        duration: 5000,
+        duration: 2000,
       });
     }
   }, [mode]);

@@ -11,6 +11,7 @@ import { SchedulingStep } from '../booking/steps/SchedulingStep';
 import { PricingSidebar } from '../booking/PricingSidebar';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface AdminBookingData extends BookingData {
   // Additional admin-specific fields
@@ -370,9 +371,12 @@ function InvoiceStep({
         {/* Invoice Header */}
         <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white p-8">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">INVOICE</h1>
-              <p className="text-white/90">Sparkleville Services</p>
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Sparkleville Logo" className="h-16 w-auto" />
+              <div>
+                <h1 className="text-4xl font-bold mb-1">INVOICE</h1>
+                <p className="text-white/90">Sparkleville Services</p>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{invoiceNumber}</div>

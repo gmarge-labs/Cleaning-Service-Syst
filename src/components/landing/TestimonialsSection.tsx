@@ -9,36 +9,14 @@ interface Review {
   createdAt: string;
   booking: {
     guestName?: string;
+    serviceType?: string;
+    address?: string;
     user: {
       name: string;
       city?: string;
     } | null;
-  }
+  } | null;
 }
-
-const fallbackTestimonials = [
-  {
-    name: 'Sarah Johnson',
-    city: 'New York',
-    date: '2024-11-28',
-    rating: 5,
-    text: 'Sparkleville has been a game-changer for me. The booking process is incredibly easy, and the cleaners are always professional and thorough. My home has never looked better!',
-  },
-  {
-    name: 'Michael Chen',
-    city: 'Brooklyn',
-    date: '2024-11-26',
-    rating: 5,
-    text: 'I use Sparkleville for both my home and office. The consistency and quality of service is outstanding. Their eco-friendly products are a huge plus for our team.',
-  },
-  {
-    name: 'Emily Rodriguez',
-    city: 'Manhattan',
-    date: '2024-11-25',
-    rating: 5,
-    text: 'As a new parent, I barely have time to breathe, let alone clean. Sparkleville gives me peace of mind knowing my home is spotless and safe for my baby. Worth every penny!',
-  },
-];
 
 export function TestimonialsSection() {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -52,22 +30,17 @@ export function TestimonialsSection() {
           const data = await response.json();
           if (data && data.length > 0) {
             const formattedReviews = data.map((r: Review) => ({
-              name: r.booking.user?.name || r.booking.guestName || 'Guest',
-              city: r.booking.user?.city || 'Customer',
+              name: r.booking?.serviceType || 'Cleaning Service',
+              city: r.booking?.address || 'Verified Customer',
               date: r.createdAt,
               rating: r.rating,
               text: r.comment
             }));
             setReviews(formattedReviews);
-          } else {
-            setReviews(fallbackTestimonials);
           }
-        } else {
-          setReviews(fallbackTestimonials);
         }
       } catch (error) {
         console.error('Error fetching reviews:', error);
-        setReviews(fallbackTestimonials);
       } finally {
         setLoading(false);
       }
@@ -76,17 +49,24 @@ export function TestimonialsSection() {
     fetchReviews();
   }, []);
 
+  // If no reviews, don't show the section
+  if (!loading && reviews.length === 0) {
+    return null;
+  }
+
   // Duplicate testimonials for seamless infinite scroll
-  const displayTestimonials = reviews.length > 0 ? reviews : fallbackTestimonials;
-  const duplicatedTestimonials = [...displayTestimonials, ...displayTestimonials];
+  const duplicatedTestimonials = [...reviews, ...reviews];
 
   return (
-    <section className="py-12 px-2 sm:px-4 lg:px-6 bg-gradient-to-b from-white to-neutral-50 overflow-hidden">
+    <section 
+      className="py-12 px-2 sm:px-4 lg:px-6 bg-gradient-to-b from-white to-neutral-50 overflow-hidden"
+      style={{ '--review-count': reviews.length } as React.CSSProperties}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-neutral-900 mb-4">
-            Loved by Thousands
+            Loved by Many People
           </h2>
           <p className="text-xl text-neutral-600">
             Don't just take our word for it. Here's what our customers have to say.
@@ -149,7 +129,7 @@ export function TestimonialsSection() {
                     </p>
 
                     {/* Decorative gradient border on hover */}
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-secondary-200 via-accent-200 to-secondary-200 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none"></div>
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-secondary-400 via-primary-400 to-secondary-400 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none"></div>
                   </div>
                 ))}
               </div>
@@ -181,7 +161,7 @@ export function TestimonialsSection() {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(calc(-320px * 3 - 72px));
+            transform: translateX(calc(-320px * var(--review-count) - (var(--review-count) * 24px)));
           }
         }
 
@@ -233,15 +213,14 @@ export function TestimonialsSection() {
           left: 0;
           right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #FF1493, #FF69B4, #FF1493);
+          background: linear-gradient(90deg, #20C997, #009688, #20C997);
           background-size: 200% 100%;
           border-radius: 12px 12px 0 0;
-          opacity: 0;
+          opacity: 1;
           transition: opacity 0.3s ease;
         }
 
         .testimonial-card:hover::before {
-          opacity: 1;
           animation: shimmer 2s linear infinite;
         }
 
