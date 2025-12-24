@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Star, MapPin, Calendar, DollarSign, Phone, Mail, Search, Filter, Eye, Edit, X, Send, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, MapPin, Calendar, DollarSign, Phone, Mail, Search, Filter, Eye, Edit, X, Send, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -8,6 +8,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { CleanerOnboardingFlow } from '../CleanerOnboardingFlow';
 import { Pagination } from '../../ui/pagination';
 import { toast } from 'sonner@2.0.3';
+
+interface Application {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  gender: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  ssn?: string;
+  idUrl?: string;
+  status: 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: string;
+}
 
 // Mock data
 const cleaners = [
@@ -93,7 +111,52 @@ export function CleanersPage() {
   const [showSchedule, setShowSchedule] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [activeTab, setActiveTab] = useState('active');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    if (activeTab === 'applications') {
+      fetchApplications();
+    }
+  }, [activeTab]);
+
+  const fetchApplications = async () => {
+    setIsLoadingApplications(true);
+    try {
+      const response = await fetch('/api/cleaners/applications');
+      if (response.ok) {
+        const data = await response.json();
+        setApplications(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch applications:', error);
+      toast.error('Failed to load applications');
+    } finally {
+      setIsLoadingApplications(false);
+    }
+  };
+
+  const handleUpdateApplicationStatus = async (id: string, status: string) => {
+    try {
+      const response = await fetch(`/api/cleaners/applications/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (response.ok) {
+        toast.success(`Application ${status.toLowerCase()} successfully`);
+        fetchApplications();
+        setSelectedApplication(null);
+      }
+    } catch (error) {
+      console.error('Failed to update application status:', error);
+      toast.error('Failed to update status');
+    }
+  };
 
   const filteredCleaners = cleaners.filter((cleaner) => {
     const matchesSearch = cleaner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -549,173 +612,383 @@ export function CleanersPage() {
         </Button>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-neutral-900">{cleaners.length}</div>
-          <div className="text-sm text-neutral-600">Total Cleaners</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-green-600">
-            {cleaners.filter(c => c.status === 'Active').length}
-          </div>
-          <div className="text-sm text-neutral-600">Active</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-secondary-500">
-            {cleaners.filter(c => c.status === 'On Job').length}
-          </div>
-          <div className="text-sm text-neutral-600">On Job</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-yellow-600">4.8</div>
-          <div className="text-sm text-neutral-600">Avg Rating</div>
-        </div>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-white border border-neutral-200 p-1 h-12">
+          <TabsTrigger value="active" className="px-8 h-full data-[state=active]:bg-neutral-100">
+            Active Cleaners
+          </TabsTrigger>
+          <TabsTrigger value="applications" className="px-8 h-full data-[state=active]:bg-neutral-100 relative">
+            Applications
+            {applications.filter(a => a.status === 'PENDING').length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
+                {applications.filter(a => a.status === 'PENDING').length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-4">
-        <div className="grid md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-            <Input
-              placeholder="Search cleaners..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+        <TabsContent value="active" className="space-y-6 mt-6">
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="text-2xl font-bold text-neutral-900">{cleaners.length}</div>
+              <div className="text-sm text-neutral-600">Total Cleaners</div>
+            </div>
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="text-2xl font-bold text-green-600">
+                {cleaners.filter(c => c.status === 'Active').length}
+              </div>
+              <div className="text-sm text-neutral-600">Active</div>
+            </div>
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="text-2xl font-bold text-secondary-500">
+                {cleaners.filter(c => c.status === 'On Job').length}
+              </div>
+              <div className="text-sm text-neutral-600">On Job</div>
+            </div>
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="text-2xl font-bold text-yellow-600">4.8</div>
+              <div className="text-sm text-neutral-600">Avg Rating</div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-white rounded-xl border border-neutral-200 p-4">
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <Input
+                  placeholder="Search cleaners..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="On Job">On Job</SelectItem>
+                  <SelectItem value="Off Duty">Off Duty</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Ratings</SelectItem>
+                  <SelectItem value="5">5 Stars</SelectItem>
+                  <SelectItem value="4">4+ Stars</SelectItem>
+                  <SelectItem value="3">3+ Stars</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" className="w-full">
+                <Filter className="w-4 h-4 mr-2" />
+                More Filters
+              </Button>
+            </div>
+          </div>
+
+          {/* Cleaners Table */}
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Contact</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Rating</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Jobs</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Earnings</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Status</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {paginatedCleaners.map((cleaner) => (
+                    <tr key={cleaner.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={cleaner.photo}
+                            alt={cleaner.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                          <div>
+                            <div className="font-medium text-neutral-900">{cleaner.name}</div>
+                            <div className="text-xs text-neutral-500">
+                              Joined {cleaner.joinDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="text-sm">
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <Phone className="w-3 h-3" />
+                            {cleaner.phone}
+                          </div>
+                          <div className="flex items-center gap-1 text-neutral-600 mt-1">
+                            <Mail className="w-3 h-3" />
+                            {cleaner.email}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-semibold text-neutral-900">{cleaner.jobsCompleted}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-1 text-neutral-900 font-semibold">
+                          <DollarSign className="w-4 h-4" />
+                          {cleaner.earnings.toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <Badge className={statusColors[cleaner.status as keyof typeof statusColors]}>
+                          {cleaner.status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-6">
+                        <button
+                          className="inline-flex items-center gap-1 px-3 py-2 text-sm hover:bg-neutral-100 rounded-lg transition-colors"
+                          onClick={() => {
+                            console.log('View button clicked for:', cleaner.name);
+                            setSelectedCleaner(cleaner);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredCleaners.length}
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="On Job">On Job</SelectItem>
-              <SelectItem value="Off Duty">Off Duty</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+          {filteredCleaners.length === 0 && (
+            <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-neutral-900 mb-2">No Cleaners Found</h3>
+              <p className="text-neutral-600">Try adjusting your search or filters</p>
+            </div>
+          )}
+        </TabsContent>
 
-          <Select>
-            <SelectTrigger>
-              <SelectValue placeholder="Rating" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Ratings</SelectItem>
-              <SelectItem value="5">5 Stars</SelectItem>
-              <SelectItem value="4">4+ Stars</SelectItem>
-              <SelectItem value="3">3+ Stars</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" className="w-full">
-            <Filter className="w-4 h-4 mr-2" />
-            More Filters
-          </Button>
-        </div>
-      </div>
-
-      {/* Cleaners Table */}
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
-              <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Contact</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Rating</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Jobs</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Earnings</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Status</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200">
-              {paginatedCleaners.map((cleaner) => (
-                <tr key={cleaner.id} className="hover:bg-neutral-50 transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={cleaner.photo}
-                        alt={cleaner.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="font-medium text-neutral-900">{cleaner.name}</div>
-                        <div className="text-xs text-neutral-500">
-                          Joined {cleaner.joinDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+        <TabsContent value="applications" className="mt-6">
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Applicant</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Contact</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Applied Date</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Status</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {isLoadingApplications ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-8 h-8 border-4 border-secondary-500 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-neutral-500">Loading applications...</p>
                         </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="text-sm">
-                      <div className="flex items-center gap-1 text-neutral-900">
-                        <Phone className="w-3 h-3" />
-                        {cleaner.phone}
-                      </div>
-                      <div className="flex items-center gap-1 text-neutral-600 mt-1">
-                        <Mail className="w-3 h-3" />
-                        {cleaner.email}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-neutral-900">{cleaner.jobsCompleted}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                      <DollarSign className="w-4 h-4" />
-                      {cleaner.earnings.toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <Badge className={statusColors[cleaner.status as keyof typeof statusColors]}>
-                      {cleaner.status}
-                    </Badge>
-                  </td>
-                  <td className="py-4 px-6">
-                    <button
-                      className="inline-flex items-center gap-1 px-3 py-2 text-sm hover:bg-neutral-100 rounded-lg transition-colors"
-                      onClick={() => {
-                        console.log('View button clicked for:', cleaner.name);
-                        setSelectedCleaner(cleaner);
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                    </tr>
+                  ) : applications.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center">
+                        <p className="text-neutral-500">No applications found</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    applications.map((app) => (
+                      <tr key={app.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="font-medium text-neutral-900">{app.firstName} {app.lastName}</div>
+                          <div className="text-xs text-neutral-500">{app.city}, {app.state}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1 text-neutral-900">
+                              <Phone className="w-3 h-3" />
+                              {app.phone}
+                            </div>
+                            <div className="flex items-center gap-1 text-neutral-600 mt-1">
+                              <Mail className="w-3 h-3" />
+                              {app.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="text-sm text-neutral-900">
+                            {new Date(app.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <Badge className={
+                            app.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                            app.status === 'REVIEWING' ? 'bg-blue-100 text-blue-700' :
+                            app.status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+                            'bg-red-100 text-red-700'
+                          }>
+                            {app.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600"
+                              onClick={() => setSelectedApplication(app)}
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            {app.status === 'PENDING' && (
+                              <>
+                                <button
+                                  className="p-2 hover:bg-green-50 rounded-lg transition-colors text-green-600"
+                                  onClick={() => handleUpdateApplicationStatus(app.id, 'ACCEPTED')}
+                                  title="Accept"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
+                                  onClick={() => handleUpdateApplicationStatus(app.id, 'REJECTED')}
+                                  title="Reject"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredCleaners.length}
-        />
-      </div>
+      {/* Application Detail Modal */}
+      {selectedApplication && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Application Details</h2>
+              <button onClick={() => setSelectedApplication(null)}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Full Name</label>
+                  <p className="font-medium">{selectedApplication.firstName} {selectedApplication.lastName}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Email</label>
+                  <p className="font-medium">{selectedApplication.email}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Phone</label>
+                  <p className="font-medium">{selectedApplication.phone}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Date of Birth</label>
+                  <p className="font-medium">{new Date(selectedApplication.dateOfBirth).toLocaleDateString()}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Address</label>
+                  <p className="font-medium">{selectedApplication.address}, {selectedApplication.city}, {selectedApplication.state} {selectedApplication.zipCode}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">SSN</label>
+                  <p className="font-medium">{selectedApplication.ssn || 'Not provided'}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Identification Document</label>
+                  {selectedApplication.idUrl ? (
+                    <div className="mt-2">
+                      {selectedApplication.idUrl.startsWith('data:image') ? (
+                        <img 
+                          src={selectedApplication.idUrl} 
+                          alt="ID" 
+                          className="max-w-full h-auto rounded-lg border border-neutral-200 shadow-sm"
+                          style={{ maxHeight: '300px' }}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <FileText className="w-8 h-8 text-secondary-500" />
+                          <div>
+                            <p className="text-sm font-medium">Document Uploaded</p>
+                            <a 
+                              href={selectedApplication.idUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-secondary-600 hover:underline"
+                            >
+                              View Document
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-neutral-500 italic mt-1">No document uploaded</p>
+                  )}
+                </div>
+              </div>
 
-      {filteredCleaners.length === 0 && (
-        <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center">
-          <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-neutral-900 mb-2">No Cleaners Found</h3>
-          <p className="text-neutral-600">Try adjusting your search or filters</p>
+              <div className="flex gap-3 pt-6 border-t">
+                <Button 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'ACCEPTED')}
+                >
+                  Accept Application
+                </Button>
+                <Button 
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'REJECTED')}
+                >
+                  Reject Application
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

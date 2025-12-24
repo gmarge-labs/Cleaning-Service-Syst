@@ -39,12 +39,30 @@ interface Review {
   } | null;
 }
 
+const renderStars = (rating: number) => {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`w-4 h-4 ${
+            star <= rating
+              ? 'fill-yellow-400 text-yellow-400'
+              : 'text-neutral-300'
+          }`}
+        />
+      ))}
+    </div>
+  );
+};
+
 export function ReviewsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [publishedCurrentPage, setPublishedCurrentPage] = useState(1);
   const [replyText, setReplyText] = useState('');
+  const [isEditingReply, setIsEditingReply] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [reviews, setReviews] = useState<Review[]>([]);
   const itemsPerPage = 10;
@@ -116,7 +134,10 @@ export function ReviewsPage() {
   };
 
   const handleReply = async (id: string) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) {
+      toast.error('Please enter a reply message');
+      return;
+    }
     
     try {
       const response = await fetch(`/api/reviews/${id}/status`, {
@@ -143,6 +164,7 @@ export function ReviewsPage() {
         }
         
         setReplyText('');
+        setIsEditingReply(false);
         toast.success('Reply sent successfully!');
       } else {
         toast.error('Failed to send reply');
@@ -156,23 +178,7 @@ export function ReviewsPage() {
   const handleViewReview = (review: Review) => {
     setSelectedReview(review);
     setReplyText('');
-  };
-
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${
-              star <= rating
-                ? 'fill-yellow-400 text-yellow-400'
-                : 'text-neutral-300'
-            }`}
-          />
-        ))}
-      </div>
-    );
+    setIsEditingReply(false);
   };
 
   const filteredReviews = reviews.filter(review => 
@@ -196,126 +202,6 @@ export function ReviewsPage() {
     (publishedCurrentPage - 1) * itemsPerPage,
     publishedCurrentPage * itemsPerPage
   );
-
-  const ReviewModal = () => {
-    if (!selectedReview) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-neutral-900">Review Details</h2>
-            <button
-              onClick={() => setSelectedReview(null)}
-              className="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center transition-colors"
-            >
-              <X className="w-5 h-5 text-neutral-600" />
-            </button>
-          </div>
-
-          <div className="p-6 space-y-6">
-            <div className="flex items-start gap-6">
-              <div className="flex-1">
-                <div className="text-sm text-neutral-600 mb-2">Customer</div>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-700 font-bold text-lg">
-                    {(selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'G')[0]}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-neutral-900">{selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'Guest'}</div>
-                    <div className="text-sm text-neutral-600">{selectedReview.booking?.user?.email || selectedReview.booking?.guestEmail || 'No email'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <div className="text-sm text-neutral-600 mb-2">Service</div>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-neutral-400" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-neutral-900">{selectedReview.booking?.serviceType || 'General Service'}</div>
-                    <div className="text-sm text-neutral-600">Job ID: {(selectedReview.booking?.id || selectedReview.bookingId || 'N/A').slice(-8)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                {renderStars(selectedReview.rating)}
-                <div className="text-sm text-neutral-500">
-                  {new Date(selectedReview.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-              <p className="text-neutral-700 leading-relaxed italic">
-                "{selectedReview.comment}"
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-neutral-900 font-semibold">
-                <MessageSquare className="w-5 h-5" />
-                <h3>Admin Reply</h3>
-              </div>
-
-              {selectedReview.adminReply ? (
-                <div className="bg-secondary-50 border border-secondary-100 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-secondary-900">Admin</div>
-                    <div className="text-xs text-secondary-600">
-                      {new Date(selectedReview.repliedAt!).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <p className="text-secondary-800 text-sm leading-relaxed">
-                    {selectedReview.adminReply}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Textarea
-                    placeholder="Type your reply to the customer..."
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    className="min-h-[120px] resize-none"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => handleReply(selectedReview.id)}
-                      disabled={!replyText.trim()}
-                      className="bg-secondary-600 hover:bg-secondary-700 text-white"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Reply
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {selectedReview.status !== 'PUBLISHED' && (
-            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-6 py-4 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedReview(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handlePublish(selectedReview.id)}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approve & Publish
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -356,7 +242,7 @@ export function ReviewsPage() {
           </TabsTrigger>
           <TabsTrigger value="published" className="px-6">
             Published
-            <Badge className="ml-2 bg-green-100 text-green-700 border-none">
+            <Badge className="ml-2 bg-secondary-100 text-secondary-700 border-none">
               {publishedReviews.length}
             </Badge>
           </TabsTrigger>
@@ -412,7 +298,7 @@ export function ReviewsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewReview(review)}
-                              className="text-secondary-600 hover:text-secondary-700 hover:bg-secondary-50"
+                              className="text-secondary-500 hover:text-secondary-600 hover:bg-secondary-50"
                             >
                               <Eye className="w-4 h-4 mr-1" />
                               View
@@ -421,7 +307,7 @@ export function ReviewsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handlePublish(review.id)}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              className="text-secondary-500 hover:text-secondary-600 hover:bg-secondary-50"
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Approve
@@ -462,7 +348,7 @@ export function ReviewsPage() {
                         variant={currentPage === page ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setCurrentPage(page)}
-                        className={currentPage === page ? 'bg-secondary-600 text-white' : ''}
+                        className={currentPage === page ? 'bg-secondary-500 text-white' : ''}
                       >
                         {page}
                       </Button>
@@ -525,9 +411,9 @@ export function ReviewsPage() {
                         </td>
                         <td className="px-6 py-4">
                           {review.adminReply ? (
-                            <Badge className="bg-blue-100 text-blue-700 border-none">Replied</Badge>
+                            <Badge className="bg-secondary-100 text-secondary-700 border-none">Replied</Badge>
                           ) : (
-                            <Badge className="bg-green-100 text-green-700 border-none">Published</Badge>
+                            <Badge className="bg-secondary-100 text-secondary-700 border-none">Published</Badge>
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -536,7 +422,7 @@ export function ReviewsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewReview(review)}
-                              className="text-secondary-600 hover:text-secondary-700 hover:bg-secondary-50"
+                              className="text-secondary-500 hover:text-secondary-600 hover:bg-secondary-50"
                             >
                               <Eye className="w-4 h-4 mr-1" />
                               View
@@ -585,7 +471,7 @@ export function ReviewsPage() {
                         variant={publishedCurrentPage === page ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setPublishedCurrentPage(page)}
-                        className={publishedCurrentPage === page ? 'bg-secondary-600 text-white' : ''}
+                        className={publishedCurrentPage === page ? 'bg-secondary-500 text-white' : ''}
                       >
                         {page}
                       </Button>
@@ -606,7 +492,133 @@ export function ReviewsPage() {
         </TabsContent>
       </Tabs>
 
-      <ReviewModal />
+      {selectedReview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-neutral-900">Review Details</h2>
+              <button
+                onClick={() => setSelectedReview(null)}
+                className="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5 text-neutral-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex items-start gap-6">
+                <div className="flex-1">
+                  <div className="text-sm text-neutral-600 mb-2">Customer</div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center text-secondary-700 font-bold text-lg">
+                      {(selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'G')[0]}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neutral-900">{selectedReview.booking?.user?.name || selectedReview.booking?.guestName || 'Guest'}</div>
+                      <div className="text-sm text-neutral-600">{selectedReview.booking?.user?.email || selectedReview.booking?.guestEmail || 'No email'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-sm text-neutral-600 mb-2">Service</div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-neutral-400" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neutral-900">{selectedReview.booking?.serviceType || 'General Service'}</div>
+                      <div className="text-sm text-neutral-600">Job ID: {(selectedReview.booking?.id || selectedReview.bookingId || 'N/A').slice(-8)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  {renderStars(selectedReview.rating)}
+                  <div className="text-sm text-neutral-500">
+                    {new Date(selectedReview.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <p className="text-neutral-700 leading-relaxed italic">
+                  "{selectedReview.comment}"
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-neutral-900 font-semibold">
+                  <MessageSquare className="w-5 h-5" />
+                  <h3>Admin Reply</h3>
+                </div>
+
+                {selectedReview.adminReply && !isEditingReply ? (
+                  <div className="bg-secondary-50 border border-secondary-100 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-secondary-900">Admin</div>
+                      <div className="text-xs text-secondary-500">
+                        {new Date(selectedReview.repliedAt!).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <p className="text-secondary-800 text-sm leading-relaxed">
+                      {selectedReview.adminReply}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Type your reply to the customer..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="min-h-[120px] resize-none"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-6 py-4 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedReview(null)}
+                className="min-w-[100px]"
+              >
+                Close
+              </Button>
+              
+              {isEditingReply && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditingReply(false)}
+                >
+                  Cancel
+                </Button>
+              )}
+
+              {selectedReview.adminReply && !isEditingReply ? (
+                <Button
+                  onClick={() => {
+                    setReplyText(selectedReview.adminReply || '');
+                    setIsEditingReply(true);
+                  }}
+                  className="bg-secondary-500 hover:bg-secondary-600 text-white min-w-[120px]"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Edit Reply
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => handleReply(selectedReview.id)}
+                  className="bg-secondary-500 hover:bg-secondary-600 text-white min-w-[120px]"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {selectedReview.adminReply ? 'Update Reply' : 'Send Reply'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

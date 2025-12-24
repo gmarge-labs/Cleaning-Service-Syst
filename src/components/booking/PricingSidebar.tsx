@@ -26,12 +26,7 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
   // Use settings or defaults
   const servicePrices = settings?.servicePrices ?? DEFAULT_SERVICE_PRICES;
   const roomPrices = settings?.roomPrices ?? {};
-  const frequencyDiscounts = settings?.pricing ? {
-    'Weekly': settings.pricing.weeklyDiscount / 100,
-    'Bi-weekly': settings.pricing.biWeeklyDiscount / 100,
-    'Monthly': settings.pricing.monthlyDiscount / 100,
-  } : DEFAULT_FREQUENCY_DISCOUNTS;
-
+  
   // Calculate base price
   const basePrice = bookingData.serviceType ? servicePrices[bookingData.serviceType] || 0 : 0;
   
@@ -89,8 +84,17 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
   // Calculate subtotal
   const subtotal = basePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
   
-  // Calculate discount
-  const discountRate = bookingData.frequency ? frequencyDiscounts[bookingData.frequency] || 0 : 0;
+  // Calculate discount (Top Booker Discount)
+  let discountRate = 0;
+  if (settings?.pricing?.topBookerDiscount) {
+    // If category is 'all', apply to everyone
+    if (settings.pricing.topBookerCategory === 'all') {
+      discountRate = settings.pricing.topBookerDiscount / 100;
+    }
+    // Note: Other categories (10-15, etc.) would require user booking history
+    // which is handled on the backend or via user profile data
+  }
+  
   const discount = subtotal * discountRate;
   
   // Calculate total
@@ -195,18 +199,6 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
                 <div className="font-semibold text-neutral-900">${(basePrice + roomPrice).toFixed(2)}</div>
               </div>
             </div>
-
-            {/* Estimated Time & Cleaners */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-sm text-neutral-600">
-                <Clock className="w-4 h-4" />
-                <span>Estimated: {estimatedHours} hours</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-secondary-600 font-medium">
-                <Tag className="w-4 h-4" />
-                <span>{cleanerCount} Professional Cleaner{cleanerCount > 1 ? 's' : ''} Required</span>
-              </div>
-            </div>
           </div>
         )}
 
@@ -248,12 +240,12 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
           </div>
         )}
 
-        {/* Frequency */}
-        {bookingData.frequency && bookingData.frequency !== 'One-time' && (
+        {/* Discount Badge */}
+        {discount > 0 && (
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-green-100 text-green-700">
               <Tag className="w-3 h-3 mr-1" />
-              {bookingData.frequency} ({(discountRate * 100).toFixed(0)}% discount)
+              Top Booker Discount ({(discountRate * 100).toFixed(0)}% off)
             </Badge>
           </div>
         )}
@@ -267,7 +259,7 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
           
           {discount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-green-600">Discount</span>
+              <span className="text-green-600">Top Booker Discount</span>
               <span className="text-green-600 font-medium">-${discount.toFixed(2)}</span>
             </div>
           )}

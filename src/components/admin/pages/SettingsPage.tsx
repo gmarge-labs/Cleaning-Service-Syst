@@ -25,14 +25,15 @@ export function SettingsPage() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [currentIntegration, setCurrentIntegration] = useState<string>('');
   const [tempApiKey, setTempApiKey] = useState('');
+  const [qualifiedUsersCount, setQualifiedUsersCount] = useState<number | null>(null);
+  const [isLoadingCount, setIsLoadingCount] = useState(false);
 
   const [generalSettings, setGeneralSettings] = useState(reduxGeneral);
 
   const [pricingSettings, setPricingSettings] = useState({
     depositPercentage: 20,
-    weeklyDiscount: 10,
-    biWeeklyDiscount: 5,
-    monthlyDiscount: 15,
+    topBookerDiscount: 15,
+    topBookerCategory: 'all',
     cancellationFee: 50,
   });
 
@@ -67,7 +68,6 @@ export function SettingsPage() {
     'Inside Fridge': 35,
     'Inside Oven': 40,
     'Laundry Service': 30,
-    'Carpet Cleaning': 50,
     'Pet Hair Removal': 25,
     'Organization': 45,
     'Dish Washing': 20,
@@ -124,6 +124,27 @@ export function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    const fetchQualifiedCount = async () => {
+      if (!pricingSettings.topBookerCategory) return;
+      
+      try {
+        setIsLoadingCount(true);
+        const response = await fetch(`${API_URL}/settings/qualified-count?category=${pricingSettings.topBookerCategory}`);
+        if (response.ok) {
+          const data = await response.json();
+          setQualifiedUsersCount(data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching qualified count:', error);
+      } finally {
+        setIsLoadingCount(false);
+      }
+    };
+
+    fetchQualifiedCount();
+  }, [pricingSettings.topBookerCategory]);
 
   const fetchSettings = async () => {
     try {
@@ -183,7 +204,7 @@ export function SettingsPage() {
     saveSettings({ addonPrices });
   };
 
-  const handleSaveGeneralPricing = () => {
+  const handleSavePaySettings = () => {
     saveSettings({ pricing: pricingSettings });
   };
 
@@ -263,9 +284,9 @@ export function SettingsPage() {
             <Plus className="w-4 h-4 mr-2" />
             Add-ons
           </TabsTrigger>
-          <TabsTrigger value="pricing" className="py-2.5">
+          <TabsTrigger value="pay" className="py-2.5">
             <DollarSign className="w-4 h-4 mr-2" />
-            Pricing
+            Pay
           </TabsTrigger>
           <TabsTrigger value="duration" className="py-2.5">
             <Clock className="w-4 h-4 mr-2" />
@@ -496,8 +517,8 @@ export function SettingsPage() {
           </div>
         </TabsContent>
 
-        {/* Pricing Settings */}
-        <TabsContent value="pricing" className="space-y-6">
+        {/* Pay Settings */}
+        <TabsContent value="pay" className="space-y-6">
           {/* Cleaner Pay */}
           <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
             <div className="flex items-center gap-4 mb-6">
@@ -565,14 +586,14 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* General Pricing Settings */}
+          {/* Pay Settings */}
           <div className="bg-white rounded-xl border border-neutral-200 p-8 space-y-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <Tag className="w-6 h-6 text-secondary-500" />
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900">Frequency Discount Manager</h2>
-                  <p className="text-sm text-neutral-600 mt-1">Configure discounts for recurring cleaning services</p>
+                  <h2 className="text-xl font-semibold text-neutral-900">Top Booker Discount Manager</h2>
+                  <p className="text-sm text-neutral-600 mt-1">Configure discounts for your most loyal customers</p>
                 </div>
               </div>
               <Badge className="bg-green-100 text-green-700 border-green-300">
@@ -585,112 +606,78 @@ export function SettingsPage() {
             <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">How frequency discounts work</p>
-                <p>These discounts are automatically applied when customers select recurring cleaning services during booking. Higher discounts encourage customer loyalty and recurring revenue.</p>
+                <p className="font-semibold mb-1">How top booker discounts work</p>
+                <p>This discount is applied to customers based on their total number of completed bookings. You can select which category of users qualifies for this discount.</p>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-neutral-900">Recurring Service Discounts</h3>
-                  <p className="text-sm text-neutral-600">Applied to total booking amount</p>
-                </div>
-                
-                <div className="grid md:grid-cols-3 gap-6">
-                  {/* Weekly Discount */}
-                  <div className="border-2 border-neutral-200 rounded-xl p-5 hover:border-secondary-300 transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <Label htmlFor="weekly-discount" className="text-base font-semibold">Weekly Service</Label>
-                      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">Most Popular</Badge>
-                    </div>
-                    <p className="text-xs text-neutral-600 mb-3">Cleanings every week (52/year)</p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="weekly-discount"
-                        type="number"
-                        value={pricingSettings.weeklyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, weeklyDiscount: parseInt(e.target.value) || 0 })}
-                        min="0"
-                        max="100"
-                        className="text-lg font-semibold"
-                      />
-                      <span className="text-neutral-600 font-semibold">%</span>
-                    </div>
-                    <p className="text-xs text-neutral-600 mt-2">
-                      On $200: Save ${((200 * pricingSettings.weeklyDiscount) / 100).toFixed(2)} = ${(200 - (200 * pricingSettings.weeklyDiscount) / 100).toFixed(2)}
-                    </p>
-                  </div>
-
-                  {/* Bi-weekly Discount */}
-                  <div className="border-2 border-neutral-200 rounded-xl p-5 hover:border-secondary-300 transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <Label htmlFor="biweekly-discount" className="text-base font-semibold">Bi-weekly Service</Label>
-                    </div>
-                    <p className="text-xs text-neutral-600 mb-3">Cleanings every 2 weeks (26/year)</p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="biweekly-discount"
-                        type="number"
-                        value={pricingSettings.biWeeklyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, biWeeklyDiscount: parseInt(e.target.value) || 0 })}
-                        min="0"
-                        max="100"
-                        className="text-lg font-semibold"
-                      />
-                      <span className="text-neutral-600 font-semibold">%</span>
-                    </div>
-                    <p className="text-xs text-neutral-600 mt-2">
-                      On $200: Save ${((200 * pricingSettings.biWeeklyDiscount) / 100).toFixed(2)} = ${(200 - (200 * pricingSettings.biWeeklyDiscount) / 100).toFixed(2)}
-                    </p>
-                  </div>
-
-                  {/* Monthly Discount */}
-                  <div className="border-2 border-neutral-200 rounded-xl p-5 hover:border-secondary-300 transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <Label htmlFor="monthly-discount" className="text-base font-semibold">Monthly Service</Label>
-                    </div>
-                    <p className="text-xs text-neutral-600 mb-3">Cleanings once a month (12/year)</p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="monthly-discount"
-                        type="number"
-                        value={pricingSettings.monthlyDiscount}
-                        onChange={(e) => setPricingSettings({ ...pricingSettings, monthlyDiscount: parseInt(e.target.value) || 0 })}
-                        min="0"
-                        max="100"
-                        className="text-lg font-semibold"
-                      />
-                      <span className="text-neutral-600 font-semibold">%</span>
-                    </div>
-                    <p className="text-xs text-neutral-600 mt-2">
-                      On $200: Save ${((200 * pricingSettings.monthlyDiscount) / 100).toFixed(2)} = ${(200 - (200 * pricingSettings.monthlyDiscount) / 100).toFixed(2)}
-                    </p>
-                  </div>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
+                  <p className="text-sm text-neutral-600 mb-3">Select which users qualify for the discount</p>
+                  <select
+                    id="top-booker-category"
+                    value={pricingSettings.topBookerCategory}
+                    onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerCategory: e.target.value })}
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                  >
+                    <option value="all">All Users</option>
+                    <option value="5-9">Users with 5 to 9 bookings</option>
+                    <option value="10-15">Users with 10 to 15 bookings</option>
+                    <option value="16-20">Users with 16 to 20 bookings</option>
+                    <option value="21+">Users with 21+ bookings</option>
+                  </select>
                 </div>
 
-                {/* Preview Section */}
-                <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
-                  <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-                    <Tag className="w-4 h-4" />
-                    Current Discount Structure
-                  </h4>
-                  <div className="grid grid-cols-4 gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="text-neutral-600 mb-1">One-time</p>
-                      <p className="font-semibold text-neutral-900">0% off</p>
+                <div>
+                  <Label htmlFor="top-booker-discount" className="text-base font-semibold">Discount Percentage</Label>
+                  <p className="text-sm text-neutral-600 mb-3">Percentage to deduct from total</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="top-booker-discount"
+                      type="number"
+                      value={pricingSettings.topBookerDiscount}
+                      onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerDiscount: parseInt(e.target.value) || 0 })}
+                      min="0"
+                      max="100"
+                      className="text-lg font-semibold"
+                    />
+                    <span className="text-neutral-600 font-semibold">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
+                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <Tag className="w-4 h-4" />
+                  Current Discount Structure
+                </h4>
+                <div className="flex items-center justify-between text-sm">
+                  <div>
+                    <p className="text-neutral-600 mb-1">Qualifying Category</p>
+                    <p className="font-semibold text-neutral-900">
+                      {pricingSettings.topBookerCategory === 'all' ? 'All Users' : 
+                       pricingSettings.topBookerCategory === '5-9' ? '5-9 Bookings' :
+                       pricingSettings.topBookerCategory === '10-15' ? '10-15 Bookings' :
+                       pricingSettings.topBookerCategory === '16-20' ? '16-20 Bookings' : '21+ Bookings'}
+                    </p>
+                  </div>
+                  <div className="flex gap-12 text-right">
+                    <div>
+                      <p className="text-neutral-600 mb-1">Qualified Users</p>
+                      <p className="font-semibold text-secondary-600">
+                        {isLoadingCount ? (
+                          <Loader2 className="w-3 h-3 animate-spin inline" />
+                        ) : (
+                          `${qualifiedUsersCount ?? 0} users`
+                        )}
+                      </p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-neutral-600 mb-1">Weekly</p>
-                      <p className="font-semibold text-green-600">{pricingSettings.weeklyDiscount}% off</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-neutral-600 mb-1">Bi-weekly</p>
-                      <p className="font-semibold text-green-600">{pricingSettings.biWeeklyDiscount}% off</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-neutral-600 mb-1">Monthly</p>
-                      <p className="font-semibold text-green-600">{pricingSettings.monthlyDiscount}% off</p>
+                    <div>
+                      <p className="text-neutral-600 mb-1">Discount Applied</p>
+                      <p className="font-semibold text-green-600">{pricingSettings.topBookerDiscount}% off</p>
                     </div>
                   </div>
                 </div>
@@ -717,7 +704,7 @@ export function SettingsPage() {
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
               <Button 
-                onClick={handleSaveGeneralPricing} 
+                onClick={handleSavePaySettings} 
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >

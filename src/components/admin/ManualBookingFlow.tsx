@@ -11,6 +11,7 @@ import { SchedulingStep } from '../booking/steps/SchedulingStep';
 import { PricingSidebar } from '../booking/PricingSidebar';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface AdminBookingData extends BookingData {
   // Additional admin-specific fields
@@ -302,10 +303,15 @@ function InvoiceStep({
 
   const subtotal = servicePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
   
-  // Calculate discount
-  const discountRate = data.frequency === 'Weekly' ? (settings?.pricing?.weeklyDiscount || 10) / 100 :
-                       data.frequency === 'Bi-weekly' ? (settings?.pricing?.biWeeklyDiscount || 5) / 100 :
-                       data.frequency === 'Monthly' ? (settings?.pricing?.monthlyDiscount || 15) / 100 : 0;
+  // Calculate discount (Top Booker Discount)
+  let discountRate = 0;
+  if (settings?.pricing?.topBookerDiscount) {
+    if (settings.pricing.topBookerCategory === 'all') {
+      discountRate = settings.pricing.topBookerDiscount / 100;
+    }
+    // Note: For manual bookings, admin can decide if they are a top booker
+    // or we could fetch their history if we have their email
+  }
   
   const discount = subtotal * discountRate;
   
@@ -370,9 +376,12 @@ function InvoiceStep({
         {/* Invoice Header */}
         <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white p-8">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">INVOICE</h1>
-              <p className="text-white/90">Sparkleville Services</p>
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Sparkleville Logo" className="h-16 w-auto" />
+              <div>
+                <h1 className="text-4xl font-bold mb-1">INVOICE</h1>
+                <p className="text-white/90">Sparkleville Services</p>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{invoiceNumber}</div>
@@ -556,7 +565,7 @@ function InvoiceStep({
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount ({data.frequency})</span>
+                  <span>Top Booker Discount</span>
                   <span>-${discount.toFixed(2)}</span>
                 </div>
               )}
@@ -737,9 +746,12 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
         }
 
         const subtotal = servicePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
-        const discountRate = bookingData.frequency === 'Weekly' ? (settings?.pricing?.weeklyDiscount || 10) / 100 :
-                             bookingData.frequency === 'Bi-weekly' ? (settings?.pricing?.biWeeklyDiscount || 5) / 100 :
-                             bookingData.frequency === 'Monthly' ? (settings?.pricing?.monthlyDiscount || 15) / 100 : 0;
+        let discountRate = 0;
+        if (settings?.pricing?.topBookerDiscount) {
+          if (settings.pricing.topBookerCategory === 'all') {
+            discountRate = settings.pricing.topBookerDiscount / 100;
+          }
+        }
         const total = subtotal * (1 - discountRate);
 
         const response = await fetch('/api/bookings', {

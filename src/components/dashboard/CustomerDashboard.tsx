@@ -6,6 +6,7 @@ import { ProfileSettings } from './ProfileSettings';
 import { ActiveJob } from './ActiveJob';
 import { Sparkles, LayoutDashboard, Calendar, History, User, LogOut, Briefcase } from 'lucide-react';
 import { Button } from '../ui/button';
+import logo from '../../images/logo/Sparkleville1(1).png';
 
 interface CustomerDashboardProps {
   onNavigateHome: () => void;
@@ -34,9 +35,7 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-16">
             <button onClick={onNavigateHome} className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary-500 to-accent-500 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
+              <img src={logo} alt="Sparkleville Logo" className="h-10 w-auto" />
               <div>
                 <div className="font-bold text-xl text-neutral-900">Sparkleville</div>
                 <div className="text-xs text-neutral-500">Customer Dashboard</div>

@@ -118,7 +118,7 @@ export function JobDetails({ job, isClockIn, onBack, onCompleteJob, onClaimJob }
     onClaimJob(job.id);
     toast.success('🎉 Congratulations! You have successfully claimed this job!', {
       description: `${job.serviceType} at ${job.address}`,
-      duration: 3000,
+      duration: 2000,
     });
     setTimeout(() => {
       onBack();
@@ -145,7 +145,7 @@ export function JobDetails({ job, isClockIn, onBack, onCompleteJob, onClaimJob }
     // Success - send to customer and start job
     toast.success('✅ Verification Sent to Customer!', {
       description: 'Job started. Timer is now running.',
-      duration: 3000,
+      duration: 2000,
     });
     
     setShowVerificationModal(false);

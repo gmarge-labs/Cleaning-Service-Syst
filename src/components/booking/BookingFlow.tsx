@@ -59,9 +59,8 @@ export interface SystemSettings {
   general: any;
   pricing: {
     depositPercentage: number;
-    weeklyDiscount: number;
-    biWeeklyDiscount: number;
-    monthlyDiscount: number;
+    topBookerDiscount: number;
+    topBookerCategory: string;
     cancellationFee: number;
   };
   servicePrices: Record<string, number>;

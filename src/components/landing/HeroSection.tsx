@@ -39,7 +39,7 @@ export function HeroSection({ onStartBooking }: HeroSectionProps) {
               <Button
                 onClick={onStartBooking}
                 size="lg"
-                className="bg-secondary-500 hover:bg-secondary-600 px-8 py-6 h-auto shadow-2xl hover:shadow-secondary-500/50 transition-all duration-300 hover:scale-105 active:scale-98 animate-pulse-soft"
+                className="bg-secondary-500 hover:bg-secondary-600 px-8 py-6 h-auto shadow-2xl hover:shadow-secondary-500/50  "
               >
                 Book a Cleaning
               </Button>

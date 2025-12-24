@@ -175,7 +175,7 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
       await response.json(); // Consume the response
       
       toast.success('Customer added successfully! Welcome to the family!', {
-        duration: 4000,
+        duration: 2000,
       });
       
       setTimeout(() => {
