@@ -29,13 +29,27 @@ export function TestimonialsSection() {
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0) {
-            const formattedReviews = data.map((r: Review) => ({
-              name: r.booking?.serviceType || 'Cleaning Service',
-              city: r.booking?.address || 'Verified Customer',
-              date: r.createdAt,
-              rating: r.rating,
-              text: r.comment
-            }));
+            const formattedReviews = data.map((r: Review) => {
+              // Get the customer name
+              const rawName = r.booking?.guestName || r.booking?.user?.name || 'Verified Customer';
+              
+              // Format name: "John Doe" -> "John D."
+              const nameParts = rawName.trim().split(/\s+/);
+              let formattedName = rawName;
+              if (nameParts.length > 1) {
+                const firstName = nameParts[0];
+                const lastInitial = nameParts[nameParts.length - 1][0].toUpperCase();
+                formattedName = `${firstName} ${lastInitial}.`;
+              }
+
+              return {
+                name: formattedName,
+                city: 'Verified Customer',
+                date: r.createdAt,
+                rating: r.rating,
+                text: r.comment
+              };
+            });
             setReviews(formattedReviews);
           }
         }
@@ -66,7 +80,7 @@ export function TestimonialsSection() {
         {/* Section Header */}
         <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-neutral-900 mb-4">
-            Loved by Many People
+            Customer Reviews
           </h2>
           <p className="text-xl text-neutral-600">
             Don't just take our word for it. Here's what our customers have to say.

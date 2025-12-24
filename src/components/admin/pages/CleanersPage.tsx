@@ -21,6 +21,8 @@ interface Application {
   city: string;
   state: string;
   zipCode: string;
+  ssn?: string;
+  idUrl?: string;
   status: 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
   createdAt: string;
 }
@@ -932,6 +934,42 @@ export function CleanersPage() {
                 <div className="col-span-2">
                   <label className="text-xs text-neutral-500 uppercase font-bold">Address</label>
                   <p className="font-medium">{selectedApplication.address}, {selectedApplication.city}, {selectedApplication.state} {selectedApplication.zipCode}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-500 uppercase font-bold">SSN</label>
+                  <p className="font-medium">{selectedApplication.ssn || 'Not provided'}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-neutral-500 uppercase font-bold">Identification Document</label>
+                  {selectedApplication.idUrl ? (
+                    <div className="mt-2">
+                      {selectedApplication.idUrl.startsWith('data:image') ? (
+                        <img 
+                          src={selectedApplication.idUrl} 
+                          alt="ID" 
+                          className="max-w-full h-auto rounded-lg border border-neutral-200 shadow-sm"
+                          style={{ maxHeight: '300px' }}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <FileText className="w-8 h-8 text-secondary-500" />
+                          <div>
+                            <p className="text-sm font-medium">Document Uploaded</p>
+                            <a 
+                              href={selectedApplication.idUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-secondary-600 hover:underline"
+                            >
+                              View Document
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-neutral-500 italic mt-1">No document uploaded</p>
+                  )}
                 </div>
               </div>
 

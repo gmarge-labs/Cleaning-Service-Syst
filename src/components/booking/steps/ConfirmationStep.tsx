@@ -1,8 +1,8 @@
 import { Button } from '../../ui/button';
 import { BookingData } from '../BookingFlow';
-import { CheckCircle2, Calendar, Clock, MapPin, CreditCard, Download, Mail } from 'lucide-react';
+import { CheckCircle2, Calendar, Clock, Download, Mail } from 'lucide-react';
 import { Badge } from '../../ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { useEffect } from 'react';
 
 interface ConfirmationStepProps {

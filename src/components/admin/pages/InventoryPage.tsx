@@ -39,11 +39,13 @@ export function InventoryPage() {
   const [newItem, setNewItem] = useState({
     name: '',
     category: 'Cleaning Supplies',
-    quantity: '',
-    unit: 'bottles',
+    purchaseUnit: '',
+    quantityPurchased: '',
+    itemsPerPurchaseUnit: '',
+    baseUnit: '',
+    pricePerPurchaseUnit: '',
     reorderThreshold: '',
-    vendor: '',
-    cost: ''
+    vendor: ''
   });
 
   useEffect(() => {
@@ -68,10 +70,20 @@ export function InventoryPage() {
 
   const handleAddItem = async () => {
     try {
+      const totalQuantity = Number(newItem.quantityPurchased) * Number(newItem.itemsPerPurchaseUnit);
+      
       const response = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem),
+        body: JSON.stringify({
+          name: newItem.name,
+          category: newItem.category,
+          quantity: totalQuantity,
+          unit: newItem.baseUnit,
+          reorderThreshold: newItem.reorderThreshold,
+          vendor: newItem.vendor,
+          cost: newItem.pricePerPurchaseUnit
+        }),
       });
 
       if (response.ok) {
@@ -80,11 +92,13 @@ export function InventoryPage() {
         setNewItem({
           name: '',
           category: 'Cleaning Supplies',
-          quantity: '',
-          unit: 'bottles',
+          purchaseUnit: '',
+          quantityPurchased: '',
+          itemsPerPurchaseUnit: '',
+          baseUnit: '',
+          pricePerPurchaseUnit: '',
           reorderThreshold: '',
-          vendor: '',
-          cost: ''
+          vendor: ''
         });
         fetchInventory();
       } else {
@@ -210,7 +224,7 @@ export function InventoryPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-neutral-900 mb-1">${totalValue.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-neutral-900 mb-1">₦{totalValue.toLocaleString()}</div>
           <div className="text-sm text-neutral-600">Total Value</div>
         </div>
 
@@ -338,7 +352,7 @@ export function InventoryPage() {
                       <span className="text-neutral-900">{item.vendor}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-neutral-900">${Number(item.cost).toFixed(2)}</span>
+                      <span className="font-semibold text-neutral-900">₦{Number(item.cost).toLocaleString()}</span>
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-neutral-600">
@@ -380,24 +394,23 @@ export function InventoryPage() {
 
       {/* Add Item Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Item</DialogTitle>
             <DialogDescription>
               Add a new cleaning supply or equipment to the inventory tracking system.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Item Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g. Glass Cleaner"
-                value={newItem.name}
-                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-              />
-            </div>
+          <div className="grid gap-6 py-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Item Name</Label>
+                <Input
+                  id="name"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select 
@@ -405,7 +418,7 @@ export function InventoryPage() {
                   onValueChange={(val: string) => setNewItem({ ...newItem, category: val })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Cleaning Supplies">Cleaning Supplies</SelectItem>
@@ -415,53 +428,75 @@ export function InventoryPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vendor">Vendor</Label>
+                <Label htmlFor="purchaseUnit">Purchase Unit</Label>
                 <Input
-                  id="vendor"
-                  placeholder="Supplier name"
-                  value={newItem.vendor}
-                  onChange={(e) => setNewItem({ ...newItem, vendor: e.target.value })}
+                  id="purchaseUnit"
+                  value={newItem.purchaseUnit}
+                  onChange={(e) => setNewItem({ ...newItem, purchaseUnit: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantityPurchased">Quantity Purchased</Label>
+                <Input
+                  id="quantityPurchased"
+                  type="number"
+                  value={newItem.quantityPurchased}
+                  onChange={(e) => setNewItem({ ...newItem, quantityPurchased: e.target.value })}
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="itemsPerPurchaseUnit">Items per Purchase Unit</Label>
                 <Input
-                  id="quantity"
+                  id="itemsPerPurchaseUnit"
                   type="number"
-                  value={newItem.quantity}
-                  onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                  value={newItem.itemsPerPurchaseUnit}
+                  onChange={(e) => setNewItem({ ...newItem, itemsPerPurchaseUnit: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="baseUnit">Base Unit</Label>
                 <Input
-                  id="unit"
-                  placeholder="bottles"
-                  value={newItem.unit}
-                  onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cost">Cost ($)</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  value={newItem.cost}
-                  onChange={(e) => setNewItem({ ...newItem, cost: e.target.value })}
+                  id="baseUnit"
+                  value={newItem.baseUnit}
+                  onChange={(e) => setNewItem({ ...newItem, baseUnit: e.target.value })}
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="pricePerPurchaseUnit">Price per Purchase Unit (₦)</Label>
+                <Input
+                  id="pricePerPurchaseUnit"
+                  type="number"
+                  value={newItem.pricePerPurchaseUnit}
+                  onChange={(e) => setNewItem({ ...newItem, pricePerPurchaseUnit: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="threshold">Reorder Threshold (Base Units)</Label>
+                <Input
+                  id="threshold"
+                  type="number"
+                  value={newItem.reorderThreshold}
+                  onChange={(e) => setNewItem({ ...newItem, reorderThreshold: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="threshold">Reorder Threshold (Alert at)</Label>
+              <Label htmlFor="vendor">Vendor</Label>
               <Input
-                id="threshold"
-                type="number"
-                value={newItem.reorderThreshold}
-                onChange={(e) => setNewItem({ ...newItem, reorderThreshold: e.target.value })}
+                id="vendor"
+                value={newItem.vendor}
+                onChange={(e) => setNewItem({ ...newItem, vendor: e.target.value })}
               />
             </div>
           </div>
@@ -470,7 +505,7 @@ export function InventoryPage() {
             <Button 
               className="bg-secondary-500 hover:bg-secondary-600"
               onClick={handleAddItem}
-              disabled={!newItem.name || !newItem.quantity || !newItem.cost}
+              disabled={!newItem.name || !newItem.quantityPurchased || !newItem.pricePerPurchaseUnit}
             >
               Add Item
             </Button>
@@ -543,7 +578,7 @@ export function InventoryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-cost">Cost ($)</Label>
+                  <Label htmlFor="edit-cost">Cost (₦)</Label>
                   <Input
                     id="edit-cost"
                     type="number"

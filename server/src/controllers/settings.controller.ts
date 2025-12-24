@@ -14,9 +14,8 @@ const DEFAULT_SETTINGS = {
   },
   pricing: {
     depositPercentage: 20,
-    weeklyDiscount: 10,
-    biWeeklyDiscount: 5,
-    monthlyDiscount: 15,
+    topBookerDiscount: 15,
+    topBookerCategory: 'all',
     cancellationFee: 50,
   },
   cleanerPay: {
@@ -47,7 +46,6 @@ const DEFAULT_SETTINGS = {
     'Inside Fridge': 35,
     'Inside Oven': 40,
     'Laundry Service': 30,
-    'Carpet Cleaning': 50,
     'Pet Hair Removal': 25,
     'Organization': 45,
     'Dish Washing': 20,
@@ -151,6 +149,44 @@ export const updateSettings = async (req: Request, res: Response) => {
       }
     }
     console.error('Update settings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getQualifiedUsersCount = async (req: Request, res: Response) => {
+  const { category } = req.query;
+  
+  try {
+    let count = 0;
+    
+    if (category === 'all') {
+      count = await prisma.user.count({
+        where: { role: 'CUSTOMER' }
+      });
+    } else {
+      let min = 0;
+      let max = 999999;
+      
+      if (category === '5-9') { min = 5; max = 9; }
+      else if (category === '10-15') { min = 10; max = 15; }
+      else if (category === '16-20') { min = 16; max = 20; }
+      else if (category === '21+') { min = 21; }
+      
+      const users = await prisma.user.findMany({
+        where: { role: 'CUSTOMER' },
+        select: {
+          _count: {
+            select: { bookings: true }
+          }
+        }
+      });
+      
+      count = users.filter(u => u._count.bookings >= min && u._count.bookings <= max).length;
+    }
+    
+    res.json({ count });
+  } catch (error) {
+    console.error('Get qualified users count error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

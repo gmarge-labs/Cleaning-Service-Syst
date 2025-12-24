@@ -160,6 +160,7 @@ model CleanerApplication {
   state                   String
   zipCode                 String?
   ssn                     String?
+  idUrl                   String?
   reference1Name          String?
   reference1Phone         String?
   reference1Relationship  String?
@@ -217,16 +218,20 @@ model SystemSettings {
 }
 
 model InventoryItem {
-  id               String   @id @default(cuid())
-  name             String
-  category         String
-  quantity         Int
-  unit             String
-  reorderThreshold Int
-  vendor           String?
-  cost             Decimal  @db.Decimal(10, 2)
-  lastRestocked    DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  name                  String
+  category              String
+  purchaseUnit          String?
+  quantityPurchased     Int?
+  itemsPerPurchaseUnit  Int?
+  baseUnit              String?
+  pricePerPurchaseUnit  Decimal? @db.Decimal(10, 2)
+  quantity              Int      // Total base units
+  reorderThreshold      Int
+  vendor                String?
+  cost                  Decimal  @db.Decimal(10, 2) // Legacy/Total cost
+  lastRestocked         DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 

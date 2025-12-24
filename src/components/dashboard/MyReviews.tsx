@@ -181,7 +181,6 @@ export function MyReviews() {
                 <option value="Move-In/Out Cleaning">Move-In/Out Cleaning</option>
                 <option value="Post-Construction">Post-Construction Cleaning</option>
                 <option value="Office Cleaning">Office Cleaning</option>
-                <option value="Carpet Cleaning">Carpet Cleaning</option>
               </select>
             </div>
 
