@@ -54,7 +54,7 @@ export const notifyAdmins = async (params: Omit<CreateNotificationParams, 'userI
     });
 
     const notifications = await Promise.all(
-      admins.map(admin => 
+      admins.map(admin =>
         createNotification({
           ...params,
           userId: admin.id
@@ -65,6 +65,31 @@ export const notifyAdmins = async (params: Omit<CreateNotificationParams, 'userI
     return notifications;
   } catch (error) {
     console.error('Error notifying admins:', error);
+    return [];
+  }
+};
+
+export const notifyCleaners = async (params: Omit<CreateNotificationParams, 'userId'>) => {
+  try {
+    const cleaners = await prisma.user.findMany({
+      where: {
+        role: 'CLEANER'
+      },
+      select: { id: true }
+    });
+
+    const notifications = await Promise.all(
+      cleaners.map(cleaner =>
+        createNotification({
+          ...params,
+          userId: cleaner.id
+        })
+      )
+    );
+
+    return notifications;
+  } catch (error) {
+    console.error('Error notifying cleaners:', error);
     return [];
   }
 };

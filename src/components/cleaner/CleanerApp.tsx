@@ -7,6 +7,7 @@ import { CleanerMessages } from './CleanerMessages';
 import { CleanerProfile } from './CleanerProfile';
 import { CleanerEarnings } from './CleanerEarnings';
 import { CleanerNotifications, Notification } from './CleanerNotifications';
+import { useSocket } from '../../hooks/useSocket';
 
 export type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completion' | 'messages' | 'profile' | 'earnings' | 'notifications';
 
@@ -41,25 +42,17 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isClockIn, setIsClockIn] = useState(false);
   const [claimedJobs, setClaimedJobs] = useState<string[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 'NOTIF-001',
-      type: 'new_booking',
-      title: 'New Booking Available!',
-      message: 'Deep Cleaning at 123 Main St, Apt 4B - $189.00 for 3 hours',
-      timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-      read: false,
-      bookingId: 'JOB-001'
-    },
-    {
-      id: 'NOTIF-002',
-      type: 'job_update',
-      title: 'Job Schedule Updated',
-      message: 'Your job at 789 Pine Rd has been rescheduled to tomorrow at 9:00 AM',
-      timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-      read: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const { socket } = useSocket();
+
+  useState(() => {
+    if (socket) {
+      socket.on('new_notification', (notification: Notification) => {
+        setNotifications(prev => [notification, ...prev]);
+      });
+    }
+  });
 
   const handleLogin = () => {
     setCurrentView('dashboard');
@@ -97,7 +90,7 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
   };
 
   const handleMarkAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
+    setNotifications(notifications.map(n =>
       n.id === id ? { ...n, read: true } : n
     ));
   };
@@ -120,7 +113,7 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
         {currentView === 'login' && (
           <CleanerLogin onLogin={handleLogin} />
         )}
-        
+
         {currentView === 'dashboard' && (
           <CleanerDashboard
             onSelectJob={handleSelectJob}
@@ -134,7 +127,7 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
             onNavigateToNotifications={() => setCurrentView('notifications')}
           />
         )}
-        
+
         {currentView === 'job-details' && selectedJob && (
           <JobDetails
             job={selectedJob}
@@ -144,7 +137,7 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
             onClaimJob={handleClaimJob}
           />
         )}
-        
+
         {currentView === 'job-completion' && selectedJob && (
           <JobCompletion
             job={selectedJob}
@@ -152,32 +145,32 @@ export function CleanerApp({ onBack }: CleanerAppProps) {
             onBack={handleBackToDashboard}
           />
         )}
-        
+
         {currentView === 'messages' && (
-          <CleanerMessages 
+          <CleanerMessages
             currentView={currentView}
-            onNavigate={(view) => setCurrentView(view)} 
+            onNavigate={(view) => setCurrentView(view)}
           />
         )}
-        
+
         {currentView === 'profile' && (
-          <CleanerProfile 
+          <CleanerProfile
             currentView={currentView}
-            onNavigate={(view) => setCurrentView(view)} 
+            onNavigate={(view) => setCurrentView(view)}
           />
         )}
-        
+
         {currentView === 'earnings' && (
-          <CleanerEarnings 
+          <CleanerEarnings
             currentView={currentView}
-            onNavigate={(view) => setCurrentView(view)} 
+            onNavigate={(view) => setCurrentView(view)}
           />
         )}
-        
+
         {currentView === 'notifications' && (
-          <CleanerNotifications 
+          <CleanerNotifications
             currentView={currentView}
-            onNavigate={(view) => setCurrentView(view)} 
+            onNavigate={(view) => setCurrentView(view)}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
             onMarkAllAsRead={handleMarkAllAsRead}

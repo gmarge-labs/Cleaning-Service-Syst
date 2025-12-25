@@ -25,7 +25,8 @@ model User {
   notificationSettings Json?           // Store notification preferences
   addresses           Address[]
   paymentMethods      PaymentMethod[]
-  bookings            Booking[]
+  bookings            Booking[]       @relation("CustomerBookings")
+  assignedBookings    Booking[]       @relation("CleanerBookings")
   notifications       Notification[]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
@@ -60,7 +61,9 @@ model PaymentMethod {
 model Booking {
   id                  String        @id
   userId              String?
-  user                User?         @relation(fields: [userId], references: [id])
+  user                User?         @relation("CustomerBookings", fields: [userId], references: [id])
+  cleanerId           String?
+  cleaner             User?         @relation("CleanerBookings", fields: [cleanerId], references: [id])
   
   // Guest Info (if not logged in)
   guestName           String?

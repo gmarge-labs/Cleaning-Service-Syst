@@ -102,7 +102,7 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
   const monthlyEarnings = earningsData
     .filter(record => record.date.getTime() > Date.now() - 30 * 86400000)
     .reduce((sum, record) => sum + record.amount, 0);
-  
+
   const totalJobs = earningsData.length;
   const totalHours = earningsData.reduce((sum, record) => {
     const hours = parseFloat(record.duration.split(' ')[0]);
@@ -153,7 +153,7 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
               <span className="text-4xl font-bold">{totalEarnings.toFixed(2)}</span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/20">
             <div className="text-center">
               <div className="text-2xl font-bold">${weeklyEarnings.toFixed(0)}</div>
@@ -177,7 +177,7 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
             <div className="text-xl font-bold text-neutral-900">{totalJobs}</div>
             <div className="text-xs text-neutral-600">Jobs Done</div>
           </div>
-          
+
           <div className="bg-white rounded-xl border border-neutral-200 p-3 text-center">
             <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-2">
               <Clock className="w-5 h-5 text-orange-600" />
@@ -185,7 +185,7 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
             <div className="text-xl font-bold text-neutral-900">{totalHours.toFixed(0)}</div>
             <div className="text-xs text-neutral-600">Hours</div>
           </div>
-          
+
           <div className="bg-white rounded-xl border border-neutral-200 p-3 text-center">
             <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
@@ -195,25 +195,26 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
           </div>
         </div>
 
-        {/* Performance Bonus Banner */}
+        {/* Professional Advancement Banner */}
         <div className="bg-gradient-to-r from-secondary-500 to-accent-500 rounded-xl p-4 text-white">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Award className="w-6 h-6" />
+              <TrendingUp className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold mb-1">Holiday Bonus Progress</h3>
-              <p className="text-xs text-white/90 mb-2">Complete 50 jobs with 4.8+ rating to earn $500</p>
+              <h3 className="font-semibold mb-1">Professional Advancement</h3>
+              <p className="text-xs text-white/90 mb-2">Level 1 (Entry) → Level 2 (Professional)</p>
               <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                <div 
+                <div
                   className="bg-white h-full rounded-full transition-all"
-                  style={{ width: `${(totalJobs / 50) * 100}%` }}
+                  style={{ width: '66%' }}
                 />
               </div>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-white/90">{totalJobs} / 50 jobs</span>
-                <span className="text-xs font-semibold">{Math.round((totalJobs / 50) * 100)}%</span>
+                <span className="text-xs text-white/90">4 / 6 months worked</span>
+                <span className="text-xs font-semibold">66%</span>
               </div>
+              <p className="text-xs font-bold mt-2">Next level: 15% hourly rate increase!</p>
             </div>
           </div>
         </div>
@@ -225,7 +226,7 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
           <h2 className="font-semibold text-neutral-900">Recent Earnings</h2>
           <p className="text-sm text-neutral-600">Your payment history</p>
         </div>
-        
+
         <div className="space-y-3 pb-4">
           {earningsData.map((record) => (
             <div
@@ -274,8 +275,8 @@ export function CleanerEarnings({ currentView, onNavigate }: CleanerEarningsProp
       </div>
 
       {/* Bottom Navigation */}
-      <BottomNavigation 
-        currentView={currentView} 
+      <BottomNavigation
+        currentView={currentView}
         onNavigate={onNavigate}
       />
     </div>

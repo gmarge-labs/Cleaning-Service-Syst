@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const password = await bcrypt.hash('password123', 10);
+  // const password = await bcrypt.hash('password123', 10);
+  const password = '$2b$10$YourHardcodedHashHereForSeeding'; // Sample hash for 'password123'
 
   const users = [
     {
@@ -82,24 +83,30 @@ async function main() {
       where: { id: `seed_${item.name.replace(/\s+/g, '_').toLowerCase()}` },
       update: {},
       create: {
-        id: `seed_${item.name.replace(/\s+/g, '_').toLowerCase()}` ,
+        id: `seed_${item.name.replace(/\s+/g, '_').toLowerCase()}`,
         ...item
       }
     });
   }
 
   for (const user of users) {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: user.email },
-    });
-
-    if (!existingUser) {
-      const createdUser = await prisma.user.create({
-        data: user,
+    console.log(`Seeding user: ${user.email}`);
+    try {
+      const result = await prisma.user.upsert({
+        where: { email: user.email },
+        update: {
+          name: user.name,
+          role: user.role,
+          password: user.password,
+        },
+        create: user,
       });
-      console.log(`Created user with id: ${createdUser.id}`);
-    } else {
-      console.log(`User with email ${user.email} already exists`);
+      console.log(`Successfully seeded user: ${result.email} (ID: ${result.id})`);
+    } catch (error: any) {
+      console.error(`Error seeding user ${user.email}:`);
+      console.log(`MESSAGE: ${error.message}`);
+      if (error.code) console.log(`CODE: ${error.code}`);
+      throw error;
     }
   }
 
@@ -108,6 +115,7 @@ async function main() {
 
 main()
   .catch((e) => {
+    console.error('Seeding error details:');
     console.error(e);
     process.exit(1);
   })

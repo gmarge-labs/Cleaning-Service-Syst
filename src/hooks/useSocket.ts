@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { toast } from 'sonner';
 
-const SOCKET_URL = 'http://localhost:4000'; // Match your server port
+const SOCKET_URL = 'http://localhost:5000'; // Match your server port
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
@@ -16,9 +16,9 @@ export const useSocket = () => {
       socketRef.current = io(SOCKET_URL);
 
       // Join user-specific room and role room
-      socketRef.current.emit('join', { 
-        userId: user.id, 
-        role: user.role?.toLowerCase() 
+      socketRef.current.emit('join', {
+        userId: user.id,
+        role: user.role?.toLowerCase()
       });
 
       // Listen for notifications

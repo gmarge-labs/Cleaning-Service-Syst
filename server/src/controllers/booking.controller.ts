@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { createNotification, notifyAdmins } from '../utils/notification';
+import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notification';
 import { sendBookingConfirmation, sendInvoiceEmail } from '../utils/email.service';
 
 const prisma = new PrismaClient();
@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export const sendInvoice = async (req: Request, res: Response) => {
   try {
     const { bookingId, email, total, balanceDue } = req.body;
-    
+
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId }
     });
@@ -29,13 +29,13 @@ export const sendInvoice = async (req: Request, res: Response) => {
 export const createBooking = async (req: Request, res: Response) => {
   try {
     const bookingData = req.body;
-    
+
     // Basic validation
     if (!bookingData.serviceType || !bookingData.date || bookingData.totalAmount === undefined) {
       return res.status(400).json({ message: 'Missing required booking fields: serviceType, date, or totalAmount' });
     }
 
-    let { 
+    let {
       userId, guestName, guestEmail, guestPhone, address,
       serviceType, propertyType, bedrooms, bathrooms, toilets,
       rooms, roomQuantities, addOns, kitchenAddOns, laundryRoomDetails, date, time, frequency, specialInstructions,
@@ -81,15 +81,15 @@ export const createBooking = async (req: Request, res: Response) => {
       const settings = await prisma.systemSettings.findUnique({ where: { id: 'default' } });
       if (settings && settings.durationSettings) {
         const ds = settings.durationSettings as any;
-        
+
         // Base time
         let totalMinutes = ds.baseMinutes || 60;
-        
+
         // Room times
         totalMinutes += (bedrooms || 0) * (ds.perBedroom || 30);
         totalMinutes += (bathrooms || 0) * (ds.perBathroom || 45);
         totalMinutes += (toilets || 0) * (ds.perToilet || 15);
-        
+
         // Other rooms
         if (rooms && Array.isArray(rooms)) {
           rooms.forEach((room: string) => {
@@ -107,7 +107,7 @@ export const createBooking = async (req: Request, res: Response) => {
         else multiplier = ds.standardCleaningMultiplier || 1.0;
 
         estimatedDuration = Math.round(totalMinutes * multiplier);
-        
+
         // Cleaner count: 1 cleaner per 4 hours (240 mins)
         cleanerCount = Math.ceil(estimatedDuration / 240);
         if (cleanerCount < 1) cleanerCount = 1;
@@ -166,6 +166,19 @@ export const createBooking = async (req: Request, res: Response) => {
       }
     });
 
+    // Notify cleaners about the new available job
+    await notifyCleaners({
+      type: 'BOOKING_CREATED',
+      title: 'New Job Alert! 🔔',
+      message: `${guestName || 'A customer'} just posted a new ${serviceType} job in ${address || 'your area'}. Claim it now!`,
+      data: {
+        bookingId: customId,
+        serviceType,
+        date,
+        totalAmount: totalAmount.toString()
+      }
+    });
+
     // Send confirmation email to customer
     if (guestEmail) {
       console.log(`📧 Calling sendBookingConfirmation for ${guestEmail}`);
@@ -186,20 +199,40 @@ export const createBooking = async (req: Request, res: Response) => {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
     }
-    res.status(500).json({ 
-      message: 'Internal server error', 
-      error: error instanceof Error ? error.message : String(error) 
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 };
 
 export const getBookings = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
-    
+    const { userId, cleanerId } = req.query;
+
     const bookings = await prisma.booking.findMany({
-      where: userId ? { userId: String(userId) } : {},
-      orderBy: { createdAt: 'desc' },
+      where: {
+        AND: [
+          userId ? { userId: String(userId) } : {},
+          cleanerId ? { cleanerId: String(cleanerId) } : {},
+        ]
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            phone: true,
+            email: true
+          }
+        },
+        cleaner: {
+          select: {
+            name: true,
+            phone: true
+          }
+        }
+      },
+      orderBy: { date: 'asc' },
     });
 
     res.json(bookings);
@@ -236,7 +269,7 @@ export const updateBooking = async (req: Request, res: Response) => {
     if (updateData.status === 'CANCELLED' && existingBooking.status !== 'CANCELLED') {
       const now = new Date();
       const serviceDateTime = new Date(existingBooking.date);
-      
+
       // Parse time (e.g., "10:00 AM")
       const timeStr = existingBooking.time;
       const [time, period] = timeStr.split(' ');
@@ -244,15 +277,15 @@ export const updateBooking = async (req: Request, res: Response) => {
       let hour24 = hours;
       if (period === 'PM' && hours !== 12) hour24 += 12;
       if (period === 'AM' && hours === 12) hour24 = 0;
-      
+
       serviceDateTime.setHours(hour24, minutes, 0, 0);
-      
+
       const hoursUntilService = (serviceDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-      
+
       let refundAmount = 0;
       let penaltyCharge = 0;
       const totalAmount = Number(existingBooking.totalAmount);
-      
+
       if (hoursUntilService >= 24) {
         refundAmount = totalAmount;
         penaltyCharge = 0;
@@ -292,7 +325,7 @@ export const updateBooking = async (req: Request, res: Response) => {
     if (updateData.date && existingBooking.date !== new Date(updateData.date)) {
       const oldDate = existingBooking.date.toLocaleDateString();
       const newDate = new Date(updateData.date).toLocaleDateString();
-      
+
       await notifyAdmins({
         type: 'BOOKING_UPDATED',
         title: 'Booking Rescheduled',
@@ -316,5 +349,59 @@ export const updateBooking = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Update booking error:', error);
     res.status(500).json({ message: 'Internal server error', error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+export const claimJob = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { cleanerId } = req.body;
+
+    if (!cleanerId) {
+      return res.status(400).json({ message: 'Cleaner ID is required' });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.cleanerId) {
+      return res.status(400).json({ message: 'Job already claimed by another cleaner' });
+    }
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id },
+      data: {
+        cleanerId,
+        status: 'CONFIRMED'
+      },
+      include: {
+        user: true,
+        cleaner: true
+      }
+    });
+
+    // Notify customer
+    if (updatedBooking.user?.id) {
+      await createNotification({
+        userId: updatedBooking.user.id,
+        type: 'BOOKING_CONFIRMED',
+        title: 'Cleaner Assigned!',
+        message: `${updatedBooking.cleaner?.name} has been assigned to your cleaning on ${new Date(updatedBooking.date).toLocaleDateString()}.`,
+        data: { bookingId: updatedBooking.id }
+      });
+    }
+
+    res.json({
+      message: 'Job claimed successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Claim job error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
