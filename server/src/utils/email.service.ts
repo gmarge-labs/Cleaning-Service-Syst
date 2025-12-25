@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 interface EmailOptions {
   to: string;
   subject: string;
-  templateType: 'confirmation' | 'reminder' | 'completion' | 'welcome' | 'broadcast';
+  templateType: 'confirmation' | 'reminder' | 'completion' | 'welcome' | 'broadcast' | 'application_accepted' | 'application_rejected';
   variables: Record<string, string>;
 }
 
@@ -203,6 +203,34 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
       address: booking.address || 'Your specified location',
       booking_id: booking.id,
       total_amount: `$${Number(booking.totalAmount).toFixed(2)}`
+    }
+  });
+}
+
+// Send application accepted email
+export async function sendApplicationAccepted(application: any) {
+  return sendEmail({
+    to: application.email,
+    subject: 'Congratulations! Your Cleaner Application has been Accepted',
+    templateType: 'application_accepted',
+    variables: {
+      name: `${application.firstName} ${application.lastName}`,
+      first_name: application.firstName,
+      last_name: application.lastName
+    }
+  });
+}
+
+// Send application rejected email
+export async function sendApplicationRejected(application: any) {
+  return sendEmail({
+    to: application.email,
+    subject: 'Update regarding your Cleaner Application',
+    templateType: 'application_rejected',
+    variables: {
+      name: `${application.firstName} ${application.lastName}`,
+      first_name: application.firstName,
+      last_name: application.lastName
     }
   });
 }

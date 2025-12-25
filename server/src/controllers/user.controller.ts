@@ -237,6 +237,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
             id: true,
             totalAmount: true,
             status: true,
+            reviews: true,
           }
         },
         addresses: {

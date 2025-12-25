@@ -175,6 +175,8 @@ model CleanerApplication {
   reference2Address       String?
   reference2City          String?
   reference2State         String?
+  agreedToBackgroundCheck Boolean  @default(false)
+  agreedToTerms           Boolean  @default(false)
   status                  ApplicationStatus @default(PENDING)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt

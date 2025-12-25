@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { sendApplicationAccepted, sendApplicationRejected } from '../utils/email.service';
 
 const prisma = new PrismaClient();
 
@@ -31,7 +32,9 @@ export const submitApplication = async (req: Request, res: Response) => {
       reference2RelationshipOther,
       reference2Address,
       reference2City,
-      reference2State
+      reference2State,
+      agreedToBackgroundCheck,
+      agreedToTerms
     } = req.body;
     
     // Using any cast for cleanerApplication as the editor's TS server might not have picked up the generated types yet
@@ -41,7 +44,7 @@ export const submitApplication = async (req: Request, res: Response) => {
         lastName,
         email,
         phone,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date(),
+        dateOfBirth: (dateOfBirth && !isNaN(Date.parse(dateOfBirth))) ? new Date(dateOfBirth) : new Date(),
         gender,
         address,
         city,
@@ -63,6 +66,8 @@ export const submitApplication = async (req: Request, res: Response) => {
         reference2Address,
         reference2City,
         reference2State,
+        agreedToBackgroundCheck: !!agreedToBackgroundCheck,
+        agreedToTerms: !!agreedToTerms,
         status: 'PENDING'
       },
     });
@@ -93,7 +98,10 @@ export const submitApplication = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Submit application error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -118,6 +126,13 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       where: { id },
       data: { status }
     });
+
+    // Send email notification based on status
+    if (status === 'ACCEPTED') {
+      await sendApplicationAccepted(application);
+    } else if (status === 'REJECTED') {
+      await sendApplicationRejected(application);
+    }
 
     res.json({
       message: 'Application status updated successfully',

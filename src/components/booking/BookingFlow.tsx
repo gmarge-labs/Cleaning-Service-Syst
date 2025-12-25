@@ -185,7 +185,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       case 'Payment':
         return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
       case 'Confirmation':
-        return <ConfirmationStep data={bookingData} onComplete={onComplete} mode={mode} onBookAnother={() => {
+        return <ConfirmationStep data={bookingData} onComplete={onComplete} mode={mode} settings={settings} onBookAnother={() => {
           setCurrentStep(0);
           setBookingData({});
         }} />;

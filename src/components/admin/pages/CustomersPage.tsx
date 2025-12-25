@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, DollarSign, Search, Filter, Eye, Edit, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, DollarSign, Search, Filter, Eye, Edit, X, MessageSquare, AlertCircle, Star } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { AddCustomerFlow } from '../AddCustomerFlow';
 import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 
 const statusColors = {
   'Active': 'bg-green-100 text-green-700',
@@ -24,6 +26,8 @@ interface Customer {
 }
 
 export function CustomersPage() {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isAdmin = user?.role === 'ADMIN';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -427,24 +431,79 @@ export function CustomersPage() {
               </div>
             </div>
 
-            {/* Bookings History */}
-            {viewCustomerModal.bookings && viewCustomerModal.bookings.length > 0 && (
+            {/* Bookings History or Feedbacks/Complaints */}
+            {isAdmin ? (
+              viewCustomerModal.bookings && viewCustomerModal.bookings.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-neutral-900 mb-3">Recent Bookings</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {viewCustomerModal.bookings.map((booking: any, index: number) => (
+                      <div key={index} className="bg-neutral-50 rounded-lg p-4 flex items-center justify-between text-sm">
+                        <div>
+                          <p className="font-medium text-neutral-900">Booking #{booking.id}</p>
+                          <p className="text-xs text-neutral-600 mt-1">
+                            Status: <Badge className="inline-block bg-secondary-100 text-secondary-700 px-2 py-0.5 rounded text-xs">{booking.status}</Badge>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-neutral-900">${parseFloat(booking.totalAmount || '0').toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : (
               <div>
-                <h4 className="font-semibold text-neutral-900 mb-3">Recent Bookings</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {viewCustomerModal.bookings.map((booking: any, index: number) => (
-                    <div key={index} className="bg-neutral-50 rounded-lg p-4 flex items-center justify-between text-sm">
-                      <div>
-                        <p className="font-medium text-neutral-900">Booking #{booking.id}</p>
-                        <p className="text-xs text-neutral-600 mt-1">
-                          Status: <Badge className="inline-block bg-secondary-100 text-secondary-700 px-2 py-0.5 rounded text-xs">{booking.status}</Badge>
-                        </p>
+                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-secondary-500" />
+                  Recent Feedbacks & Complaints
+                </h4>
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {(() => {
+                    const allReviews = viewCustomerModal.bookings?.flatMap((b: any) => 
+                      (b.reviews || []).map((r: any) => ({ ...r, bookingId: b.id }))
+                    ).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
+
+                    if (allReviews.length === 0) {
+                      return (
+                        <div className="text-center py-8 bg-neutral-50 rounded-lg border border-dashed border-neutral-300">
+                          <MessageSquare className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+                          <p className="text-sm text-neutral-500">No feedbacks or complaints yet</p>
+                        </div>
+                      );
+                    }
+
+                    return allReviews.map((review: any, index: number) => (
+                      <div key={index} className={`p-4 rounded-lg border ${review.rating <= 2 ? 'bg-red-50 border-red-100' : 'bg-neutral-50 border-neutral-100'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-300'}`} 
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-neutral-500">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-neutral-700 italic mb-2">"{review.comment}"</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider">
+                            Booking #{review.bookingId}
+                          </span>
+                          {review.rating <= 2 && (
+                            <Badge className="bg-red-100 text-red-700 border-none text-[10px] px-1.5 py-0">
+                              <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                              Complaint
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-neutral-900">${parseFloat(booking.totalAmount || '0').toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
             )}

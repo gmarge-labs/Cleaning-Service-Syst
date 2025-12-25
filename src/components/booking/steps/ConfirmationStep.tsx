@@ -1,20 +1,34 @@
 import { Button } from '../../ui/button';
-import { BookingData } from '../BookingFlow';
-import { CheckCircle2, Calendar, Clock, Download, Mail } from 'lucide-react';
+import { BookingData, SystemSettings } from '../BookingFlow';
+import { CheckCircle2, Calendar, Clock, Download, Mail, Users } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { calculateBookingDuration, formatDisplayHours } from '../../../utils/bookingUtils';
 
 interface ConfirmationStepProps {
   data: BookingData;
   onComplete: () => void;
   onBookAnother: () => void;
   mode?: 'new' | 'reschedule';
+  settings?: SystemSettings | null;
 }
 
-export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new' }: ConfirmationStepProps) {
-  // Use booking ID from data if available, otherwise generate one
-  const bookingId = data.id || `BK-${Date.now().toString().slice(-8)}`;
+export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new', settings }: ConfirmationStepProps) {
+  // Use booking ID from data if available, otherwise generate a temporary one
+  const generateFallbackId = () => {
+    if (!data.date) return `BK-${Date.now().toString().slice(-8)}`;
+    const year = data.date.getFullYear();
+    const month = String(data.date.getMonth() + 1).padStart(2, '0');
+    const day = String(data.date.getDate()).padStart(2, '0');
+    return `BK-${year}${month}${day}-001`;
+  };
+
+  const bookingId = data.id || generateFallbackId();
+  
+  // Calculate duration
+  const { estimatedHours, cleanerCount } = calculateBookingDuration(data, settings);
+  const displayHours = formatDisplayHours(estimatedHours, cleanerCount, false); // Customer view
   
   // Show toast notification for reschedule
   useEffect(() => {
@@ -110,6 +124,25 @@ export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new'
             </div>
           </div>
 
+          {/* Duration & Cleaners */}
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm text-neutral-600">Estimated Duration</div>
+              <div className="flex items-center gap-4">
+                <div className="font-semibold text-neutral-900">
+                  {displayHours} {displayHours === 1 ? 'hour' : 'hours'}
+                </div>
+                <div className="flex items-center gap-1.5 text-neutral-600 text-sm">
+                  <Users className="w-4 h-4" />
+                  <span>{cleanerCount} {cleanerCount === 1 ? 'cleaner' : 'cleaners'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Frequency */}
           {data.frequency && (
             <div className="flex items-start gap-3">
@@ -189,10 +222,10 @@ export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new'
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-secondary-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-semibold">
+              {/* <div className="w-6 h-6 rounded-full bg-secondary-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-semibold">
                 4
-              </div>
-              <div>
+              </div> */}
+              {/* <div>
                 <div className="font-medium text-neutral-900">
                   {data.paymentMethod === 'free-cleaning-reward' ? 'Enjoy Your Free Cleaning!' : 'Post-Service Payment'}
                 </div>
@@ -202,7 +235,7 @@ export function ConfirmationStep({ data, onComplete, onBookAnother, mode = 'new'
                     : 'Remaining balance charged automatically after completion'
                   }
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

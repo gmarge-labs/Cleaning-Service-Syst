@@ -1,10 +1,12 @@
 import { BookingData, SystemSettings } from './BookingFlow';
-import { Tag, Clock, Calendar } from 'lucide-react';
+import { Tag, Clock, Calendar, Users } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { calculateBookingDuration, formatDisplayHours } from '../../utils/bookingUtils';
 
 interface PricingSidebarProps {
   bookingData: BookingData;
   settings?: SystemSettings | null;
+  isAdmin?: boolean;
 }
 
 const DEFAULT_SERVICE_PRICES: Record<string, number> = {
@@ -22,7 +24,7 @@ const DEFAULT_FREQUENCY_DISCOUNTS: Record<string, number> = {
   'Monthly': 0.05,
 };
 
-export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
+export function PricingSidebar({ bookingData, settings, isAdmin = false }: PricingSidebarProps) {
   // Use settings or defaults
   const servicePrices = settings?.servicePrices ?? DEFAULT_SERVICE_PRICES;
   const roomPrices = settings?.roomPrices ?? {};
@@ -100,90 +102,38 @@ export function PricingSidebar({ bookingData, settings }: PricingSidebarProps) {
   // Calculate total
   const total = subtotal - discount;
   
-  // Calculate estimated duration
-  let estimatedHours = 2 + (roomCount * 0.5); // Fallback
-  let cleanerCount = 1;
+  // Calculate estimated duration and cleaner count
+  const { estimatedHours, cleanerCount } = calculateBookingDuration(bookingData, settings);
 
-  if (settings?.durationSettings) {
-    const ds = settings.durationSettings as any;
-    let totalMinutes = ds.baseMinutes || 60;
-    
-    totalMinutes += (bookingData.bedrooms || 0) * (ds.perBedroom || 30);
-    totalMinutes += (bookingData.bathrooms || 0) * (ds.perBathroom || 45);
-    totalMinutes += (bookingData.toilets || 0) * (ds.perToilet || 15);
-    
-    if (bookingData.rooms) {
-      bookingData.rooms.forEach(roomId => {
-        const quantity = bookingData.roomQuantities?.[roomId] || 1;
-        let roomDuration = ds.perOtherRoom || 20;
-        
-        // Specific room durations
-        if (roomId === 'kitchen') roomDuration = ds.perKitchen || 45;
-        else if (roomId === 'living-room') roomDuration = ds.perLivingRoom || 30;
-        else if (roomId === 'dining-room') roomDuration = ds.perDiningRoom || 20;
-        else if (roomId === 'laundry-room') roomDuration = ds.perLaundryRoom || 20;
-        else if (roomId === 'balcony') roomDuration = ds.perBalcony || 20;
-        else if (roomId === 'basement') roomDuration = ds.perBasement || 45;
-        else if (roomId === 'garage') roomDuration = ds.perGarage || 30;
-        else if (roomId === 'home-office') roomDuration = ds.perHomeOffice || 20;
-        
-        totalMinutes += quantity * roomDuration;
-      });
-    }
-
-    // Kitchen Add-ons Duration
-    if (bookingData.kitchenAddOns) {
-      Object.values(bookingData.kitchenAddOns).forEach((addons: any) => {
-        addons.forEach((addonId: string) => {
-          let addonDuration = 0;
-          if (addonId === 'inside-fridge') addonDuration = ds.perInsideFridge || 20;
-          else if (addonId === 'inside-oven') addonDuration = ds.perInsideOven || 25;
-          else if (addonId === 'microwave') addonDuration = ds.perMicrowave || 10;
-          else if (addonId === 'dishes') addonDuration = ds.perDishes || 20;
-          totalMinutes += addonDuration;
-        });
-      });
-    }
-
-    // Laundry Details Duration
-    if (bookingData.laundryRoomDetails) {
-      Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
-        const basketDuration = ds.perLaundryBasket || 30;
-        totalMinutes += (details.baskets || 1) * basketDuration;
-      });
-    }
-
-    // General Add-ons Duration
-    if (bookingData.addOns) {
-      bookingData.addOns.forEach(addon => {
-        let addonDuration = 0;
-        const quantity = addon.quantity || 1;
-        
-        // Map addon names/ids to duration settings
-        if (addon.name === 'Inside Windows') addonDuration = ds.perWindow || 15;
-        else if (addon.name === 'Pet Hair Removal') addonDuration = ds.perPetHair || 30;
-        else if (addon.name === 'Organization') addonDuration = ds.perOrganizationHour || 60;
-        
-        totalMinutes += addonDuration * quantity;
-      });
-    }
-
-    let multiplier = 1.0;
-    if (bookingData.serviceType === 'Deep Cleaning') multiplier = ds.deepCleaningMultiplier || 1.5;
-    else if (bookingData.serviceType === 'Move In/Out') multiplier = ds.moveInOutMultiplier || 2.0;
-    else if (bookingData.serviceType === 'Post-Construction') multiplier = ds.postConstructionMultiplier || 2.5;
-    else multiplier = ds.standardCleaningMultiplier || 1.0;
-
-    const totalMins = Math.round(totalMinutes * multiplier);
-    estimatedHours = Number((totalMins / 60).toFixed(1));
-    cleanerCount = Math.ceil(totalMins / 240);
-    if (cleanerCount < 1) cleanerCount = 1;
-  }
+  // Calculate customer-facing duration based on rounding rules:
+  // < 30 mins -> 0.5 hours
+  // >= 30 mins -> 1.0 hour
+  const displayHours = formatDisplayHours(estimatedHours, cleanerCount, isAdmin);
 
   return (
     <div className="sticky top-28">
       <div className="bg-white rounded-2xl border border-neutral-200 shadow-lg p-6 space-y-6">
-        <h3 className="font-semibold text-xl text-neutral-900">Booking Summary</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="font-semibold text-xl text-neutral-900">Booking Summary</h3>
+        </div>
+
+        {/* Duration and Cleaners - Only visible to Admin during booking flow */}
+        {isAdmin && (
+          <div className="flex items-center gap-4 py-3 border-y border-neutral-100">
+            <div className="flex items-center gap-2 text-neutral-700">
+              <Clock className="w-4 h-4 text-secondary-500" />
+              <span className="text-sm font-medium">
+                {estimatedHours} {estimatedHours === 1 ? 'hour' : 'hours'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-700">
+              <Users className="w-4 h-4 text-secondary-500" />
+              <span className="text-sm font-medium">
+                {cleanerCount} {cleanerCount === 1 ? 'cleaner' : 'cleaners'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Service Details */}
         {bookingData.serviceType && (

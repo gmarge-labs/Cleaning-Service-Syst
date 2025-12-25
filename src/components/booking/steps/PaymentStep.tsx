@@ -250,7 +250,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
         </Tabs>
 
         {/* Free Cleaning Loyalty Program */}
-        {qualifiesForFreeCleaning ? (
+        {/* {qualifiesForFreeCleaning ? (
           <div className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 space-y-3">
             <div className="flex items-start gap-3">
               <div className="text-3xl">🎉</div>
@@ -302,7 +302,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Payment Breakdown */}
         <div className="border-t border-neutral-200 pt-6 space-y-3">

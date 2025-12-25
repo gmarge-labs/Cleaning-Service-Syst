@@ -741,6 +741,22 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                     <label className="text-sm text-neutral-600">SSN</label>
                     <p className="font-semibold text-neutral-900">{selectedApplication.ssn}</p>
                   </div>
+                  {selectedApplication.idUrl && (
+                    <div className="md:col-span-2">
+                      <label className="text-sm text-neutral-600">ID Document</label>
+                      <div className="mt-2">
+                        <a 
+                          href={selectedApplication.idUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-medium text-secondary-600 hover:bg-secondary-50 transition-colors"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View ID Document
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -791,7 +807,12 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                       </div>
                       <div>
                         <label className="text-sm text-neutral-600">Relationship</label>
-                        <p className="font-semibold text-neutral-900">{selectedApplication.reference1Relationship}</p>
+                        <p className="font-semibold text-neutral-900">
+                          {selectedApplication.reference1Relationship}
+                          {selectedApplication.reference1Relationship === 'Other' && selectedApplication.reference1RelationshipOther && (
+                            <span className="text-neutral-500 font-normal ml-1">({selectedApplication.reference1RelationshipOther})</span>
+                          )}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm text-neutral-600">Address</label>
@@ -816,7 +837,12 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                       </div>
                       <div>
                         <label className="text-sm text-neutral-600">Relationship</label>
-                        <p className="font-semibold text-neutral-900">{selectedApplication.reference2Relationship}</p>
+                        <p className="font-semibold text-neutral-900">
+                          {selectedApplication.reference2Relationship}
+                          {selectedApplication.reference2Relationship === 'Other' && selectedApplication.reference2RelationshipOther && (
+                            <span className="text-neutral-500 font-normal ml-1">({selectedApplication.reference2RelationshipOther})</span>
+                          )}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm text-neutral-600">Address</label>
@@ -829,16 +855,43 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
                 </div>
               </div>
 
-              {/* Submission Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                <div className="flex items-start gap-3">
-                  <div className="text-blue-600 text-2xl">📅</div>
-                  <div>
-                    <h3 className="font-semibold text-blue-900 mb-1">Application Submitted</h3>
-                    <p className="text-sm text-blue-700 flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      {selectedApplication.submittedDate}
-                    </p>
+              {/* Submission Info & Agreements */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                  <div className="flex items-start gap-3">
+                    <div className="text-blue-600 text-2xl">📅</div>
+                    <div>
+                      <h3 className="font-semibold text-blue-900 mb-1">Application Submitted</h3>
+                      <p className="text-sm text-blue-700 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        {selectedApplication.submittedDate || new Date(selectedApplication.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                  <h3 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    Agreements
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className={`w-4 h-4 rounded flex items-center justify-center ${selectedApplication.agreedToBackgroundCheck ? 'bg-green-500 text-white' : 'bg-neutral-200'}`}>
+                        {selectedApplication.agreedToBackgroundCheck && <CheckSquare className="w-3 h-3" />}
+                      </div>
+                      <span className={selectedApplication.agreedToBackgroundCheck ? 'text-green-800' : 'text-neutral-500'}>
+                        Background Check Authorized
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className={`w-4 h-4 rounded flex items-center justify-center ${selectedApplication.agreedToTerms ? 'bg-green-500 text-white' : 'bg-neutral-200'}`}>
+                        {selectedApplication.agreedToTerms && <CheckSquare className="w-3 h-3" />}
+                      </div>
+                      <span className={selectedApplication.agreedToTerms ? 'text-green-800' : 'text-neutral-500'}>
+                        Terms & Conditions Accepted
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
