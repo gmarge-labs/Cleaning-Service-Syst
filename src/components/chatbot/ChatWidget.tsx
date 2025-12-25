@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sparkles, MessageCircle, X } from 'lucide-react';
 import { EllaChat } from './EllaChat';
 import { Badge } from '../ui/badge';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface ChatWidgetProps {
   onBookingComplete?: () => void;
@@ -67,8 +68,8 @@ export function ChatWidget({ onBookingComplete }: ChatWidgetProps) {
       {!isOpen && hasUnread && (
         <div className="fixed bottom-24 right-6 bg-white rounded-xl shadow-xl p-4 z-40 max-w-xs border border-neutral-200 animate-in slide-in-from-bottom-2">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary-500 to-accent-500 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary-500 to-accent-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img src={logo} alt="Ella" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
               <div className="font-semibold text-neutral-900 mb-1">Hi! I'm Ella 👋</div>

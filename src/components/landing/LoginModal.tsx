@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../store/slices/authSlice';
 import { ForgotPasswordModal } from '../auth/ForgotPasswordModal';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -204,9 +205,7 @@ export function LoginModal({
         {/* Header with Gradient */}
         <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-6 pb-8 flex-shrink-0">
           <div className="flex items-center justify-center mb-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-white" />
-            </div>
+            <img src={logo} alt="Sparkleville Logo" className="h-16 w-auto" />
           </div>
           <DialogTitle className="text-center text-white text-2xl mb-1">Welcome Back!</DialogTitle>
           <DialogDescription className="text-center text-white/90 text-sm">

@@ -150,6 +150,46 @@ enum Role {
   CLEANER
 }
 
+model CleanerApplication {
+  id                      String   @id @default(cuid())
+  firstName               String
+  lastName                String
+  email                   String
+  phone                   String
+  dateOfBirth             DateTime
+  gender                  String
+  address                 String
+  city                    String
+  state                   String
+  zipCode                 String?
+  ssn                     String?
+  idUrl                   String?
+  reference1Name          String?
+  reference1Phone         String?
+  reference1Relationship  String?
+  reference1RelationshipOther String?
+  reference1Address       String?
+  reference1City          String?
+  reference1State         String?
+  reference2Name          String?
+  reference2Phone         String?
+  reference2Relationship  String?
+  reference2RelationshipOther String?
+  reference2Address       String?
+  reference2City          String?
+  reference2State         String?
+  status                  ApplicationStatus @default(PENDING)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String
@@ -181,16 +221,20 @@ model SystemSettings {
 }
 
 model InventoryItem {
-  id               String   @id @default(cuid())
-  name             String
-  category         String
-  quantity         Int
-  unit             String
-  reorderThreshold Int
-  vendor           String?
-  cost             Decimal  @db.Decimal(10, 2)
-  lastRestocked    DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  name                  String
+  category              String
+  purchaseUnit          String?
+  quantityPurchased     Int?
+  itemsPerPurchaseUnit  Int?
+  baseUnit              String?
+  pricePerPurchaseUnit  Decimal? @db.Decimal(10, 2)
+  quantity              Int      // Total base units
+  reorderThreshold      Int
+  vendor                String?
+  cost                  Decimal  @db.Decimal(10, 2) // Legacy/Total cost
+  lastRestocked         DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../utils/notification';
+import { sendEmail } from '../utils/email.service';
 
 const prisma = new PrismaClient();
 
@@ -111,8 +112,38 @@ export const updateReviewStatus = async (req: Request, res: Response) => {
         status,
         adminReply,
         repliedAt: adminReply ? new Date() : undefined
+      },
+      include: {
+        booking: {
+          include: {
+            user: true
+          }
+        }
       }
     });
+
+    // If there's an admin reply, send an email to the customer
+    if (adminReply && review.booking) {
+      const customerEmail = review.booking.user?.email || review.booking.guestEmail;
+      const customerName = review.booking.user?.name || review.booking.guestName || 'Valued Customer';
+
+      if (customerEmail) {
+        try {
+          await sendEmail({
+            to: customerEmail,
+            subject: 'Response to your Sparkleville review',
+            templateType: 'broadcast',
+            variables: {
+              name: customerName,
+              message: `Hello ${customerName},\n\nThank you for your review! Our team has responded to your feedback:\n\n"${adminReply}"\n\nBest regards,\nThe Sparkleville Team`
+            }
+          });
+          console.log(`Reply email sent to ${customerEmail}`);
+        } catch (emailError) {
+          console.error('Error sending review reply email:', emailError);
+        }
+      }
+    }
 
     res.json(review);
   } catch (error) {

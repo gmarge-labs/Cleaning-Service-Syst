@@ -93,7 +93,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Toaster position="top-right" richColors expand={false} />
+      <Toaster position="top-right" richColors expand={false} duration={2000} />
       <div className="min-h-screen bg-neutral-50">
         {currentView === 'landing' ? (
           <Layout

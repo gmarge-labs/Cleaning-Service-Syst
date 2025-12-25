@@ -61,7 +61,7 @@ export function CleanerProfile({ currentView, onNavigate }: CleanerProfileProps)
     setIsEditing(false);
     toast.success('✅ Profile Updated Successfully!', {
       description: 'Your profile information has been saved.',
-      duration: 3000,
+      duration: 2000,
     });
   };
 

@@ -260,7 +260,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
 
   const handleComplete = () => {
     toast.success('Cleaner onboarded successfully! Welcome to the team!', {
-      duration: 4000,
+      duration: 2000,
     });
     setTimeout(() => {
       onComplete();

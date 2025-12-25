@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { ForgotPasswordModal } from '../auth/ForgotPasswordModal';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface CleanerLoginProps {
   onLogin: () => void;
@@ -24,9 +25,7 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary-600 to-accent-500 p-6">
       {/* Logo */}
       <div className="flex items-center justify-center gap-3 mt-12 mb-16">
-        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-          <Sparkles className="w-9 h-9 text-white" />
-        </div>
+        <img src={logo} alt="Sparkleville Logo" className="h-16 w-auto" />
         <div className="text-white">
           <div className="text-2xl font-bold">Sparkleville</div>
           <div className="text-sm text-white/80">Cleaner App</div>

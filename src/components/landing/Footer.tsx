@@ -3,6 +3,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface FooterProps {
   onAdminLogin?: () => void;
@@ -62,9 +63,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
         {/* Centered Logo Background */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex items-center gap-4 opacity-20">
-            <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shadow-2xl">
-              <Sparkles className="w-20 h-20 text-white" />
-            </div>
+            <img src={logo} alt="" className="h-32 w-auto" />
             <div>
               <div className="font-bold text-xl text-white">{general.companyName}</div>
               <div className="text-xs text-neutral-400">Professional Cleaning</div>
@@ -80,9 +79,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
+              <img src={logo} alt="Sparkleville Logo" className="h-12 w-auto" />
               <div>
                 <div className="font-bold text-xl text-white">{general.companyName}</div>
                 <div className="text-xs text-neutral-400">Professional Cleaning</div>

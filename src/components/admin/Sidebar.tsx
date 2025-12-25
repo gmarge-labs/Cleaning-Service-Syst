@@ -2,6 +2,7 @@ import { Sparkles, LayoutDashboard, Calendar, Users, MessageSquare, BarChart3, P
 import { UserRole, Page } from './AdminDashboard';
 import { Badge } from '../ui/badge';
 import { useState, useEffect } from 'react';
+import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface User {
   id: string;
@@ -107,9 +108,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
         <div className="flex items-center justify-between">
           {isOpen && (
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
+              <img src={logo} alt="Sparkleville Logo" className="h-10 w-auto" />
               <div>
                 <div className="font-bold text-lg">Sparkleville</div>
                 <div className="text-xs text-neutral-400">Admin Portal</div>

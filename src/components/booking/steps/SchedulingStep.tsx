@@ -360,15 +360,15 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
 
         {mode !== 'reschedule' && selectedDate && selectedTime && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-4">
-            <div>
+            {/* commenting the frequency card out <div>
               <Label className="text-sm font-semibold text-secondary-700 flex items-center gap-2">
                 <Tag className="w-5 h-5 text-secondary-500" />
                 Select Frequency *
               </Label>
               <p className="text-xs text-neutral-600 mb-3">Save more with regular cleanings</p>
-            </div>
+            </div> */}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {frequencies.map((f) => (
                 <button
                   key={f.id}
@@ -388,7 +388,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
                   )}
                 </button>
               ))}
-            </div>
+            </div> */}
           </div>
         )}
 

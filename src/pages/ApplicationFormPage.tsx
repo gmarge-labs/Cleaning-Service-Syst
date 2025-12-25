@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle, Briefcase, User, MapPin, Clock, Phone, FileText, Upload, Award } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Briefcase, User, MapPin, Phone, FileText, Upload, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { ProgressIndicator } from '../components/booking/ProgressIndicator';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
 
@@ -28,6 +27,7 @@ interface ApplicationFormData {
   
   // Step 3: Identification
   ssn: string;
+  idUrl: string;
   
   // Step 4: References
   reference1Name: string;
@@ -91,6 +91,7 @@ export function ApplicationFormPage() {
     state: '',
     zipCode: '',
     ssn: '',
+    idUrl: '',
     reference1Name: '',
     reference1Phone: '',
     reference1Relationship: '',
@@ -130,9 +131,19 @@ export function ApplicationFormPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch('/api/cleaners/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit application');
+      }
+
       toast.success('Application submitted successfully!', {
         description: 'We\'ll review your application and get back to you within 2-3 business days.',
       });
@@ -141,7 +152,12 @@ export function ApplicationFormPage() {
       setTimeout(() => {
         navigate('/careers');
       }, 2000);
-    }, 2000);
+    } catch (error) {
+      console.error('Submit application error:', error);
+      toast.error('Failed to submit application. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -215,7 +231,7 @@ export function ApplicationFormPage() {
                 </div>
                 <div>
                   <Label htmlFor="gender">Gender *</Label>
-                  <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                  <Select value={formData.gender} onValueChange={(value: string) => handleInputChange('gender', value)}>
                     <SelectTrigger className="mt-1.5 bg-white">
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
@@ -269,7 +285,7 @@ export function ApplicationFormPage() {
                   </div>
                   <div>
                     <Label htmlFor="state">State *</Label>
-                    <Select value={formData.state} onValueChange={(value) => handleInputChange('state', value)}>
+                    <Select value={formData.state} onValueChange={(value: string) => handleInputChange('state', value)}>
                       <SelectTrigger className="mt-1.5 bg-white">
                         <SelectValue placeholder="Select state" />
                       </SelectTrigger>
@@ -307,24 +323,85 @@ export function ApplicationFormPage() {
               </div>
               <div>
                 <h2 className="text-2xl">Identification</h2>
-                <p className="text-neutral-600">Please provide your Social Security Number</p>
+                <p className="text-neutral-600">Please provide your identification details</p>
               </div>
             </div>
 
             <div className="p-6 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl border border-neutral-200">
-              <div>
-                <Label htmlFor="ssn">Social Security Number (Optional)</Label>
-                <Input
-                  id="ssn"
-                  type="text"
-                  value={formData.ssn}
-                  onChange={(e) => handleInputChange('ssn', e.target.value)}
-                  placeholder="123-45-6789"
-                  className="mt-1.5 bg-white"
-                />
-                <p className="text-xs text-neutral-500 mt-2">
-                  Your SSN is optional and will be kept confidential.
-                </p>
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="ssn">Social Security Number</Label>
+                  <Input
+                    id="ssn"
+                    type="text"
+                    value={formData.ssn}
+                    onChange={(e) => handleInputChange('ssn', e.target.value)}
+                    placeholder="123-45-6789"
+                    className="mt-1.5 bg-white"
+                  />
+                  <p className="text-xs text-neutral-500 mt-2">
+                    Your SSN will be kept confidential.
+                  </p>
+                </div>
+
+                <div className="border-t border-neutral-200 pt-6">
+                  <Label className="mb-2 block">Form of Identification</Label>
+                  <p className="text-sm text-neutral-600 mb-4">
+                    Please upload a clear photo or scan of your ID (Driver's License, Passport, or State ID).
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {formData.idUrl ? (
+                      <div className="relative inline-block">
+                        {formData.idUrl.startsWith('data:image') ? (
+                          <img
+                            src={formData.idUrl}
+                            alt="ID Preview"
+                            className="w-full max-w-md h-48 object-cover rounded-lg border border-neutral-200"
+                          />
+                        ) : (
+                          <div className="w-full max-w-md h-48 flex items-center justify-center bg-neutral-100 rounded-lg border border-neutral-200">
+                            <FileText className="w-12 h-12 text-neutral-400" />
+                            <span className="ml-2 text-sm text-neutral-600">Document Uploaded</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('idUrl', '')}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-secondary-500 hover:bg-secondary-50/30 transition-all group">
+                        <div className="flex flex-col items-center justify-center py-6">
+                          <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-secondary-100 transition-colors">
+                            <Upload className="w-6 h-6 text-neutral-400 group-hover:text-secondary-500" />
+                          </div>
+                          <p className="text-sm font-medium text-neutral-700">Click to upload ID</p>
+                          <p className="text-xs text-neutral-400 mt-1">PNG, JPG, PDF up to 10MB</p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                handleInputChange('idUrl', reader.result as string);
+                                toast.success('ID uploaded successfully!');
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -378,7 +455,7 @@ export function ApplicationFormPage() {
                   </div>
                   <div>
                     <Label htmlFor="reference1Relationship">Relationship</Label>
-                    <Select value={formData.reference1Relationship} onValueChange={(value) => handleInputChange('reference1Relationship', value)}>
+                    <Select value={formData.reference1Relationship} onValueChange={(value: string) => handleInputChange('reference1Relationship', value)}>
                       <SelectTrigger className="mt-1.5 bg-white">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
@@ -426,7 +503,7 @@ export function ApplicationFormPage() {
                     </div>
                     <div>
                       <Label htmlFor="reference1State">State</Label>
-                      <Select value={formData.reference1State} onValueChange={(value) => handleInputChange('reference1State', value)}>
+                      <Select value={formData.reference1State} onValueChange={(value: string) => handleInputChange('reference1State', value)}>
                         <SelectTrigger className="mt-1.5 bg-white">
                           <SelectValue placeholder="Select state" />
                         </SelectTrigger>
@@ -477,7 +554,7 @@ export function ApplicationFormPage() {
                   </div>
                   <div>
                     <Label htmlFor="reference2Relationship">Relationship</Label>
-                    <Select value={formData.reference2Relationship} onValueChange={(value) => handleInputChange('reference2Relationship', value)}>
+                    <Select value={formData.reference2Relationship} onValueChange={(value: string) => handleInputChange('reference2Relationship', value)}>
                       <SelectTrigger className="mt-1.5 bg-white">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
@@ -525,7 +602,7 @@ export function ApplicationFormPage() {
                     </div>
                     <div>
                       <Label htmlFor="reference2State">State</Label>
-                      <Select value={formData.reference2State} onValueChange={(value) => handleInputChange('reference2State', value)}>
+                      <Select value={formData.reference2State} onValueChange={(value: string) => handleInputChange('reference2State', value)}>
                         <SelectTrigger className="mt-1.5 bg-white">
                           <SelectValue placeholder="Select state" />
                         </SelectTrigger>
@@ -580,9 +657,19 @@ export function ApplicationFormPage() {
 
               <div className="p-6 bg-neutral-50 rounded-xl">
                 <h3 className="font-semibold mb-3">Identification</h3>
-                <p className="text-sm">
-                  {formData.ssn}
-                </p>
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-neutral-600">SSN:</span> {formData.ssn || 'Not provided'}</p>
+                  <p>
+                    <span className="text-neutral-600">ID Document:</span>{' '}
+                    {formData.idUrl ? (
+                      <span className="text-green-600 font-medium flex items-center gap-1 inline-flex">
+                        <CheckCircle className="w-4 h-4" /> Uploaded
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 font-medium">Not uploaded</span>
+                    )}
+                  </p>
+                </div>
               </div>
 
               <div className="p-6 bg-neutral-50 rounded-xl">
@@ -614,7 +701,7 @@ export function ApplicationFormPage() {
                 <Checkbox
                   id="backgroundCheck"
                   checked={formData.agreedToBackgroundCheck}
-                  onCheckedChange={(checked) => handleInputChange('agreedToBackgroundCheck', checked as boolean)}
+                  onCheckedChange={(checked: boolean) => handleInputChange('agreedToBackgroundCheck', checked)}
                 />
                 <label htmlFor="backgroundCheck" className="text-sm text-neutral-700 cursor-pointer leading-relaxed">
                   I consent to a background check and understand it's required for employment *
@@ -625,7 +712,7 @@ export function ApplicationFormPage() {
                 <Checkbox
                   id="terms"
                   checked={formData.agreedToTerms}
-                  onCheckedChange={(checked) => handleInputChange('agreedToTerms', checked as boolean)}
+                  onCheckedChange={(checked: boolean) => handleInputChange('agreedToTerms', checked)}
                 />
                 <label htmlFor="terms" className="text-sm text-neutral-700 cursor-pointer leading-relaxed">
                   I agree to the{' '}
