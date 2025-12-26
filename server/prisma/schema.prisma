@@ -28,6 +28,7 @@ model User {
   bookings            Booking[]       @relation("CustomerBookings")
   assignedBookings    Booking[]       @relation("CleanerBookings")
   notifications       Notification[]
+  pushToken           String?         // Expo push token
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 }

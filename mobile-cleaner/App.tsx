@@ -12,6 +12,8 @@ import { CleanerMessages } from './src/components/cleaner/CleanerMessages';
 import { authService, User as UserType } from './src/api/auth.service';
 import { jobService, Booking as BookingType } from './src/api/job.service';
 import { socketService } from './src/api/socket.service';
+import { pushNotificationService } from './src/api/push-notification.service';
+import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completion' | 'messages' | 'profile' | 'earnings' | 'notifications';
@@ -21,6 +23,9 @@ export default function App() {
     const [user, setUser] = useState<UserType | null>(null);
     const [claimedJobs, setClaimedJobs] = useState<string[]>([]);
     const [selectedJob, setSelectedJob] = useState<BookingType | null>(null);
+    const [expoPushToken, setExpoPushToken] = useState<string>('');
+    const notificationListener = React.useRef<Notifications.Subscription>();
+    const responseListener = React.useRef<Notifications.Subscription>();
 
     React.useEffect(() => {
         const checkUser = async () => {
@@ -33,10 +38,39 @@ export default function App() {
         };
         checkUser();
 
+        // Register for push notifications
+        pushNotificationService.registerForPushNotificationsAsync().then(token => setExpoPushToken(token ?? ''));
+
+        // Listeners
+        notificationListener.current = pushNotificationService.addNotificationReceivedListener(notification => {
+            setExpoPushToken(token => token); // Just to force re-render if needed or log
+            console.log('Notification Received:', notification);
+        });
+
+        responseListener.current = pushNotificationService.addNotificationResponseReceivedListener(response => {
+            console.log('Notification Response:', response);
+            // Handle navigation based on notification here if needed
+            const data = response.notification.request.content.data;
+            if (data?.bookingId) {
+                // Logic to navigate to job details could go here
+                // For now just logging
+            }
+            setCurrentView('notifications');
+        });
+
         return () => {
             socketService.disconnect();
+            if (notificationListener.current) pushNotificationService.removeNotificationSubscription(notificationListener.current);
+            if (responseListener.current) pushNotificationService.removeNotificationSubscription(responseListener.current);
         };
     }, []);
+
+    // Sync push token with backend when user is available and token is ready
+    React.useEffect(() => {
+        if (user && expoPushToken) {
+            authService.updatePushToken(user.id, expoPushToken);
+        }
+    }, [user, expoPushToken]);
 
     const handleLogin = (loggedInUser: UserType) => {
         setUser(loggedInUser);

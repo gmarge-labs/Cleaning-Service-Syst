@@ -54,7 +54,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 
       // Hash new password
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      
+
       // Update user with new password
       const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -250,19 +250,19 @@ export const getAllUsers = async (req: Request, res: Response) => {
         }
       }
     });
-    
+
     // Transform the data to include a formatted address
     const usersWithAddress = users.map((user: any) => {
       const { password, ...userData } = user;
       const primaryAddress = user.addresses?.[0];
       return {
         ...userData,
-        address: primaryAddress 
+        address: primaryAddress
           ? `${primaryAddress.street}, ${primaryAddress.city}, ${primaryAddress.state}`
           : user.address || null,
       };
     });
-    
+
     // Return paginated response
     res.json({
       data: usersWithAddress,
@@ -321,6 +321,22 @@ export const createUser = async (req: Request, res: Response) => {
     res.status(201).json(userWithoutPassword);
   } catch (error) {
     console.error('Create user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const updatePushToken = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { pushToken } = req.body;
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken },
+    });
+    res.json({ message: 'Push token updated successfully' });
+  } catch (error) {
+    console.error('Update push token error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

@@ -36,5 +36,14 @@ export const authService = {
     getCurrentUser: async (): Promise<User | null> => {
         const userJson = await AsyncStorage.getItem('user');
         return userJson ? JSON.parse(userJson) : null;
+    },
+
+    updatePushToken: async (userId: string, token: string) => {
+        try {
+            await api.patch(`/users/${userId}/push-token`, { pushToken: token });
+        } catch (error) {
+            console.error('Error updating push token:', error);
+            // Don't throw, just log. It's not critical if it fails once.
+        }
     }
 };

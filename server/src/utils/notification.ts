@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { emitToUser } from './socket';
+import { Expo } from 'expo-server-sdk';
+
+const expo = new Expo();
 
 const prisma = new PrismaClient();
 
@@ -34,6 +37,26 @@ export const createNotification = async ({
 
     // Emit real-time notification via socket
     emitToUser(userId, 'new_notification', notification);
+
+    // Send Push Notification
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { pushToken: true }
+    });
+
+    if (user?.pushToken && Expo.isExpoPushToken(user.pushToken)) {
+      try {
+        await expo.sendPushNotificationsAsync([{
+          to: user.pushToken,
+          sound: 'default',
+          title,
+          body: message,
+          data,
+        }]);
+      } catch (pushError) {
+        console.error('Error sending push notification:', pushError);
+      }
+    }
 
     return notification;
   } catch (error) {

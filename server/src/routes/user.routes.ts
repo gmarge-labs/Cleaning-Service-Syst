@@ -9,6 +9,7 @@ import {
   deletePaymentMethod,
   getAllUsers,
   createUser,
+  updatePushToken,
 } from '../controllers/user.controller';
 
 const router = Router();
@@ -17,6 +18,7 @@ router.get('/', getAllUsers);
 router.post('/', createUser);
 router.get('/:userId', getProfile);
 router.patch('/:userId', updateProfile);
+router.patch('/:userId/push-token', updatePushToken);
 router.post('/:userId/password', changePassword);
 
 // Address routes
