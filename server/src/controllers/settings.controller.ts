@@ -94,6 +94,8 @@ const DEFAULT_SETTINGS = {
     reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
     completion: 'Hi {customer_name}, Your cleaning service has been completed. We hope you\'re satisfied with the results...',
     welcome: 'Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services.',
+    application_accepted: 'Dear {name}, Congratulations! Your application to join the Sparkleville team has been accepted. We are excited to have you on board. Our team will contact you shortly with the next steps for onboarding.',
+    application_rejected: 'Dear {name}, Thank you for your interest in joining Sparkleville. After carefully reviewing your application, we regret to inform you that we will not be moving forward with your application at this time. We wish you the best in your future endeavors.',
   }
 };
 

@@ -57,11 +57,31 @@ export const createBooking = async (req: Request, res: Response) => {
       }
     }
 
-    // Generate custom booking ID: BK-YYYYMMDD-XXXX
+    // Generate custom booking ID: BK-YYYYMMDD-XXX
     const bookingDate = new Date(date);
-    const dateStr = bookingDate.toISOString().split('T')[0].replace(/-/g, '');
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const customId = `BK-${dateStr}-${randomStr}`;
+    // Use UTC date components to match the ISO date string sent from frontend
+    const year = bookingDate.getUTCFullYear();
+    const month = String(bookingDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(bookingDate.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+
+    // Count bookings for this specific day to get the sequence number
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const count = await prisma.booking.count({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    const sequence = String(count + 1).padStart(3, '0');
+    const customId = `BK-${dateStr}-${sequence}`;
 
     // Combine rooms and roomQuantities to ensure all selected rooms are captured
     const combinedRooms: Record<string, number> = {};

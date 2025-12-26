@@ -8,10 +8,16 @@ import { toast } from 'sonner';
 import { Pagination } from '../../ui/pagination';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { formatDisplayHours } from '../../../utils/bookingUtils';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 
 type Tab = 'unpublished' | 'published';
 
 export function BookingsPage() {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isAdmin = user?.role === 'ADMIN';
+  
   const [activeTab, setActiveTab] = useState<Tab>('unpublished');
   const [searchTerm, setSearchTerm] = useState('');
   const [showManualBooking, setShowManualBooking] = useState(false);
@@ -562,7 +568,7 @@ export function BookingsPage() {
                   Job Parameters
                 </h4>
                 <div className="bg-neutral-50 rounded-lg p-4 space-y-3 text-sm">
-                  {viewDetailsModal.paymentPerHour && (
+                  {isAdmin && viewDetailsModal.paymentPerHour && (
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Payment per Hour:</span>
                       <span className="font-medium text-neutral-900">${viewDetailsModal.paymentPerHour}</span>
@@ -602,16 +608,20 @@ export function BookingsPage() {
 
             {/* Pricing & Status */}
             <div className="border-t border-neutral-200 pt-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-neutral-900">Total Amount</span>
-                <span className="text-3xl font-bold text-neutral-900">${viewDetailsModal.total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-neutral-900">Estimated Cleaner Pay</span>
-                <span className="text-xl font-bold text-neutral-700">
-                  ${((viewDetailsModal.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                </span>
-              </div>
+              {isAdmin && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-neutral-900">Total Amount</span>
+                    <span className="text-3xl font-bold text-neutral-900">${viewDetailsModal.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-neutral-900">Estimated Cleaner Pay</span>
+                    <span className="text-xl font-bold text-neutral-700">
+                      ${(formatDisplayHours(viewDetailsModal.estimatedDuration / 60, viewDetailsModal.cleanerCount || 1, false) * (viewDetailsModal.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-neutral-900">Payment Method</span>
                 <span className="font-medium text-neutral-700">{viewDetailsModal.paymentMethod || 'Credit Card'}</span>
@@ -692,7 +702,7 @@ export function BookingsPage() {
             </div>
 
             {/* Number of Cleaners and Payment per Hour - Same Row */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
               <div>
                 <label className="flex items-center gap-2 font-semibold text-neutral-900 mb-3">
                   <Users className="w-5 h-5 text-secondary-500" />
@@ -707,20 +717,22 @@ export function BookingsPage() {
                   placeholder="Enter number of cleaners"
                 />
               </div>
-              <div>
-                <label className="flex items-center gap-2 font-semibold text-neutral-900 mb-3">
-                  <DollarSign className="w-5 h-5 text-secondary-500" />
-                  Payment per Hour
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  step="0.5"
-                  value={jobData.paymentPerHour}
-                  onChange={(e) => setJobData({ ...jobData, paymentPerHour: parseFloat(e.target.value) || 0 })}
-                  placeholder="e.g., 25.00"
-                />
-              </div>
+              {isAdmin && (
+                <div>
+                  <label className="flex items-center gap-2 font-semibold text-neutral-900 mb-3">
+                    <DollarSign className="w-5 h-5 text-secondary-500" />
+                    Payment per Hour
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.5"
+                    value={jobData.paymentPerHour}
+                    onChange={(e) => setJobData({ ...jobData, paymentPerHour: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g., 25.00"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tools Required */}
@@ -1244,10 +1256,16 @@ export function BookingsPage() {
                   {activeTab === 'published' && (
                     <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Total Charge</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner pay</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Expenses</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Profit</th>
+                  
+                  {isAdmin && (
+                    <>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Total Charge</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner pay</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Expenses</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Profit</th>
+                    </>
+                  )}
+                  
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Actions</th>
                 </tr>
               </thead>
@@ -1255,7 +1273,7 @@ export function BookingsPage() {
                 {activeTab === 'unpublished' ? (
                   paginatedUnpublished.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="p-8 text-center text-neutral-500">
+                      <td colSpan={isAdmin ? 10 : 6} className="p-8 text-center text-neutral-500">
                         No unpublished bookings found.
                       </td>
                     </tr>
@@ -1288,30 +1306,36 @@ export function BookingsPage() {
                             {Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m
                           </div>
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                            <DollarSign className="w-4 h-4" />
-                            {booking.total.toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <DollarSign className="w-4 h-4" />
-                            {((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <DollarSign className="w-4 h-4" />
-                            {((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-green-600 font-semibold">
-                            <DollarSign className="w-4 h-4" />
-                            {(booking.total - ((booking.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
-                          </div>
-                        </td>
+                        
+                        {isAdmin && (
+                          <>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900 font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                {booking.total.toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <DollarSign className="w-4 h-4" />
+                                {(formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <DollarSign className="w-4 h-4" />
+                                {(formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-green-600 font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                {(booking.total - (formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
+                              </div>
+                            </td>
+                          </>
+                        )}
+                        
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <Button
@@ -1339,7 +1363,7 @@ export function BookingsPage() {
                 ) : (
                   paginatedPublished.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="p-8 text-center text-neutral-500">
+                      <td colSpan={isAdmin ? 11 : 7} className="p-8 text-center text-neutral-500">
                         No published jobs found.
                       </td>
                     </tr>
@@ -1385,30 +1409,36 @@ export function BookingsPage() {
                             <span className="text-xs text-neutral-600">claimed</span>
                           </div>
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                            <DollarSign className="w-4 h-4" />
-                            {job.total.toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <DollarSign className="w-4 h-4" />
-                            {((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <DollarSign className="w-4 h-4" />
-                            {((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-1 text-green-600 font-semibold">
-                            <DollarSign className="w-4 h-4" />
-                            {(job.total - ((job.estimatedDuration / 60) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
-                          </div>
-                        </td>
+                        
+                        {isAdmin && (
+                          <>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900 font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                {job.total.toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <DollarSign className="w-4 h-4" />
+                                {(formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <DollarSign className="w-4 h-4" />
+                                {(formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-1 text-green-600 font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                {(job.total - (formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
+                              </div>
+                            </td>
+                          </>
+                        )}
+                        
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <Button

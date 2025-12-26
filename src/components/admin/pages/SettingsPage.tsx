@@ -111,6 +111,8 @@ export function SettingsPage() {
     reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
     completion: 'Hi {customer_name}, Your cleaning service has been completed. We hope you\'re satisfied with the results...',
     welcome: 'Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services.',
+    application_accepted: 'Dear {name}, Congratulations! Your application to join the Sparkleville team has been accepted. We are excited to have you on board. Our team will contact you shortly with the next steps for onboarding.',
+    application_rejected: 'Dear {name}, Thank you for your interest in joining Sparkleville. After carefully reviewing your application, we regret to inform you that we will not be moving forward with your application at this time. We wish you the best in your future endeavors.',
   });
 
   const [integrations, setIntegrations] = useState({
@@ -1049,6 +1051,35 @@ export function SettingsPage() {
                   rows={4}
                   className="mt-1.5"
                 />
+              </div>
+
+              <div className="pt-4 border-t border-neutral-100">
+                <h3 className="text-sm font-semibold text-neutral-900 mb-4">Cleaner Application Templates</h3>
+                <div className="space-y-6">
+                  <div>
+                    <Label htmlFor="application-accepted-template">Application Accepted Email</Label>
+                    <Textarea
+                      id="application-accepted-template"
+                      value={notificationTemplates.application_accepted}
+                      onChange={(e) => setNotificationTemplates({ ...notificationTemplates, application_accepted: e.target.value })}
+                      placeholder="Dear {name}, Congratulations! Your application has been accepted..."
+                      rows={4}
+                      className="mt-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="application-rejected-template">Application Rejected Email</Label>
+                    <Textarea
+                      id="application-rejected-template"
+                      value={notificationTemplates.application_rejected}
+                      onChange={(e) => setNotificationTemplates({ ...notificationTemplates, application_rejected: e.target.value })}
+                      placeholder="Dear {name}, Thank you for your interest..."
+                      rows={4}
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

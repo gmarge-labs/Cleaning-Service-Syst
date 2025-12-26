@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Download, Mail, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Download, Mail, ArrowLeft, Users, Clock } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -12,6 +12,7 @@ import { PricingSidebar } from '../booking/PricingSidebar';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner';
 import logo from '../../images/logo/Sparkleville1(2).png';
+import { calculateBookingDuration, formatDisplayHours } from '../../utils/bookingUtils';
 
 interface AdminBookingData extends BookingData {
   // Additional admin-specific fields
@@ -319,6 +320,10 @@ function InvoiceStep({
   const deposit = data.depositPaid ? total * ((settings?.pricing?.depositPercentage || 20) / 100) : 0;
   const balanceDue = total - deposit;
 
+  // Calculate duration for invoice (customer view)
+  const { estimatedHours, cleanerCount } = calculateBookingDuration(data, settings);
+  const displayHours = formatDisplayHours(estimatedHours, cleanerCount, false);
+
   const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
   const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -418,6 +423,14 @@ function InvoiceStep({
                 <div className="flex justify-between">
                   <span className="text-neutral-600">Frequency:</span>
                   <span className="font-medium text-neutral-900">{data.frequency || 'One-time'}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-neutral-100 mt-1">
+                  <span className="text-neutral-600">Duration:</span>
+                  <span className="font-medium text-neutral-900">{displayHours} {displayHours === 1 ? 'hour' : 'hours'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">Staffing:</span>
+                  <span className="font-medium text-neutral-900">{cleanerCount} {cleanerCount === 1 ? 'cleaner' : 'cleaners'}</span>
                 </div>
               </div>
             </div>
@@ -854,7 +867,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
           {/* Pricing Sidebar - Show after first step and before confirmation */}
           {currentStep > 0 && currentStep < STEPS.length - 1 && (
             <div className="lg:col-span-1">
-              <PricingSidebar bookingData={bookingData} settings={settings} />
+              <PricingSidebar bookingData={bookingData} settings={settings} isAdmin={true} />
             </div>
           )}
         </div>
