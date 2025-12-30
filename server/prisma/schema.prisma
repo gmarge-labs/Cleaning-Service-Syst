@@ -27,10 +27,27 @@ model User {
   paymentMethods      PaymentMethod[]
   bookings            Booking[]       @relation("CustomerBookings")
   assignedBookings    Booking[]       @relation("CleanerBookings")
+  claimedJobs         Booking[]       @relation("CleanerAssignments")
   notifications       Notification[]
+  sentMessages        Message[]       @relation("SentMessages")
+  receivedMessages    Message[]       @relation("ReceivedMessages")
   pushToken           String?         // Expo push token
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  text        String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
 }
 
 model Address {
@@ -63,6 +80,11 @@ model Booking {
   id                  String        @id
   userId              String?
   user                User?         @relation("CustomerBookings", fields: [userId], references: [id])
+  
+  // Multiple cleaners can claim a job
+  claimedBy           User[]        @relation("CleanerAssignments")
+  
+  // Legacy field - keeping for compatibility if needed, but we'll use claimedBy
   cleanerId           String?
   cleaner             User?         @relation("CleanerBookings", fields: [cleanerId], references: [id])
   
@@ -138,6 +160,7 @@ enum BookingStatus {
   BOOKED
   PENDING
   CONFIRMED
+  IN_PROGRESS
   COMPLETED
   CANCELLED
   RESCHEDULED

@@ -12,12 +12,29 @@ export interface Booking {
     bedrooms: number;
     bathrooms: number;
     toilets: number;
+    rooms?: any;
+    addOns?: any[];
+    kitchenAddOns?: any;
+    laundryRoomDetails?: any;
+    hasPet?: boolean;
+    petDetails?: any;
+    specialInstructions?: string;
+    frequency?: string;
+    estimatedDuration?: number;
+    cleanerCount?: number;
+    paymentPerHour?: number;
     date: string;
     time: string;
     totalAmount: number;
     status: string;
     distance?: string;
     cleanerId?: string;
+    claimedBy?: Array<{
+        id: string;
+        name: string;
+        phone: string;
+        email: string;
+    }>;
     cleaner?: {
         name: string;
         phone: string;
@@ -32,10 +49,12 @@ export interface Booking {
 export const jobService = {
     getAvailableJobs: async (): Promise<Booking[]> => {
         try {
-            // Unassigned jobs (status BOOKED and cleanerId is null)
-            const response = await api.get('/bookings', { params: { status: 'BOOKED' } });
-            // Filter locally for now if server doesn't support thorough filtering
-            return response.data.filter((b: any) => !b.cleanerId);
+            // Fetch jobs that are published (BOOKED, CONFIRMED, RESCHEDULED, or PENDING)
+            const response = await api.get('/bookings', { 
+                params: { status: 'BOOKED,CONFIRMED,RESCHEDULED,PENDING' } 
+            });
+            // The server already filters for jobs that need more cleaners
+            return response.data;
         } catch (error) {
             console.error('Error fetching available jobs:', error);
             return [];

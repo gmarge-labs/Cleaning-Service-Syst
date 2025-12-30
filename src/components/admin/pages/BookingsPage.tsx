@@ -12,13 +12,13 @@ import { formatDisplayHours } from '../../../utils/bookingUtils';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 
-type Tab = 'unpublished' | 'published';
+type Tab = 'unclaimed' | 'claimed';
 
 export function BookingsPage() {
   const { user } = useSelector((state: RootState) => state.auth);
   const isAdmin = user?.role === 'ADMIN';
   
-  const [activeTab, setActiveTab] = useState<Tab>('unpublished');
+  const [activeTab, setActiveTab] = useState<Tab>('unclaimed');
   const [searchTerm, setSearchTerm] = useState('');
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [viewDetailsModal, setViewDetailsModal] = useState<any>(null);
@@ -32,8 +32,8 @@ export function BookingsPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Pagination state
-  const [unpublishedPage, setUnpublishedPage] = useState(1);
-  const [publishedPage, setPublishedPage] = useState(1);
+  const [unclaimedPage, setUnclaimedPage] = useState(1);
+  const [claimedPage, setClaimedPage] = useState(1);
   const itemsPerPage = 10;
 
   const [bookings, setBookings] = useState<any[]>([]);
@@ -72,8 +72,8 @@ export function BookingsPage() {
     }
   };
 
-  const unpublishedBookings = bookings
-    .filter(b => b.status === 'PENDING' || b.status === 'BOOKED')
+  const unclaimedBookings = bookings
+    .filter(b => (b.status === 'BOOKED' || b.status === 'CONFIRMED' || b.status === 'RESCHEDULED' || b.status === 'PENDING') && (b.claimedBy?.length || 0) < (b.cleanerCount || 1))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .map(b => ({
       ...b,
@@ -81,44 +81,46 @@ export function BookingsPage() {
       service: b.serviceType,
       date: new Date(b.date),
       total: parseFloat(b.totalAmount),
-    }));
-
-  const publishedJobs = bookings
-    .filter(b => b.status === 'CONFIRMED' || b.status === 'RESCHEDULED' || b.status === 'COMPLETED')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .map(b => ({
-      ...b,
-      customer: b.guestName || 'Unknown Customer',
-      service: b.serviceType,
-      date: new Date(b.date),
-      total: parseFloat(b.totalAmount),
-      claimedBy: [], // Placeholder until assignments are implemented
       requiredCleaners: b.cleanerCount || 1,
+      claimedCount: b.claimedBy?.length || 0,
     }));
 
-  const filteredUnpublishedBookings = unpublishedBookings.filter((booking) =>
+  const claimedJobs = bookings
+    .filter(b => (b.claimedBy?.length || 0) >= (b.cleanerCount || 1) || b.status === 'COMPLETED')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map(b => ({
+      ...b,
+      customer: b.guestName || 'Unknown Customer',
+      service: b.serviceType,
+      date: new Date(b.date),
+      total: parseFloat(b.totalAmount),
+      requiredCleaners: b.cleanerCount || 1,
+      claimedCount: b.claimedBy?.length || 0,
+    }));
+
+  const filteredUnclaimedBookings = unclaimedBookings.filter((booking) =>
     booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
     booking.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredPublishedJobs = publishedJobs.filter((job) =>
+  const filteredClaimedJobs = claimedJobs.filter((job) =>
     job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Paginated data
-  const paginatedUnpublished = filteredUnpublishedBookings.slice(
-    (unpublishedPage - 1) * itemsPerPage,
-    unpublishedPage * itemsPerPage
+  const paginatedUnclaimed = filteredUnclaimedBookings.slice(
+    (unclaimedPage - 1) * itemsPerPage,
+    unclaimedPage * itemsPerPage
   );
 
-  const paginatedPublished = filteredPublishedJobs.slice(
-    (publishedPage - 1) * itemsPerPage,
-    publishedPage * itemsPerPage
+  const paginatedClaimed = filteredClaimedJobs.slice(
+    (claimedPage - 1) * itemsPerPage,
+    claimedPage * itemsPerPage
   );
 
-  const unpublishedTotalPages = Math.ceil(filteredUnpublishedBookings.length / itemsPerPage);
-  const publishedTotalPages = Math.ceil(filteredPublishedJobs.length / itemsPerPage);
+  const unclaimedTotalPages = Math.ceil(filteredUnclaimedBookings.length / itemsPerPage);
+  const claimedTotalPages = Math.ceil(filteredClaimedJobs.length / itemsPerPage);
 
   const handleCompleteBooking = () => {
     setShowManualBooking(false);
@@ -827,7 +829,7 @@ export function BookingsPage() {
               viewCleanersModal.claimedBy.map((cleaner: any) => (
                 <div key={cleaner.id} className="bg-neutral-50 rounded-lg p-4 flex items-center gap-4">
                   <img
-                    src={cleaner.photo}
+                    src={cleaner.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleaner.name)}&background=random`}
                     alt={cleaner.name}
                     className="w-16 h-16 rounded-full object-cover"
                   />
@@ -835,16 +837,24 @@ export function BookingsPage() {
                     <h3 className="font-semibold text-neutral-900">{cleaner.name}</h3>
                     <div className="flex items-center gap-4 text-sm text-neutral-600 mt-1">
                       <span className="flex items-center gap-1">
-                        ⭐ {cleaner.rating}
+                        ⭐ {cleaner.rating || '5.0'}
                       </span>
-                      <span>{cleaner.completedJobs} jobs completed</span>
+                      <span>{cleaner.completedJobs || 0} jobs completed</span>
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setSelectedCleanerProfile(cleaner);
+                      setSelectedCleanerProfile({
+                        ...cleaner,
+                        photo: cleaner.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleaner.name)}&background=random`,
+                        rating: cleaner.rating || '5.0',
+                        completedJobs: cleaner.completedJobs || 0,
+                        bio: cleaner.bio || 'Professional cleaner at Sparkleville.',
+                        skills: cleaner.skills || ['Residential Cleaning', 'Deep Cleaning'],
+                        joinedDate: cleaner.createdAt || new Date().toISOString()
+                      });
                     }}
                   >
                     View Full Profile
@@ -1180,22 +1190,14 @@ export function BookingsPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-orange-600">{unpublishedBookings.length}</div>
-          <div className="text-sm text-neutral-600">UnClaimed</div>
+          <div className="text-2xl font-bold text-orange-600">{unclaimedBookings.length}</div>
+          <div className="text-sm text-neutral-600">Unclaimed Jobs</div>
         </div>
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-yellow-600">{publishedJobs.filter(j => j.status === 'Open').length}</div>
-          <div className="text-sm text-neutral-600">Open Jobs</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-secondary-500">{publishedJobs.filter(j => j.status === 'In Progress').length}</div>
-          <div className="text-sm text-neutral-600">In Progress</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-green-600">{publishedJobs.filter(j => j.status === 'Assigned').length}</div>
-          <div className="text-sm text-neutral-600">Assigned</div>
+          <div className="text-2xl font-bold text-secondary-500">{claimedJobs.length}</div>
+          <div className="text-sm text-neutral-600">Claimed Jobs</div>
         </div>
       </div>
 
@@ -1204,22 +1206,22 @@ export function BookingsPage() {
         <div className="border-b border-neutral-200">
           <div className="flex">
             <button
-              onClick={() => setActiveTab('unpublished')}
-              className={`flex-1 py-4 px-6 font-medium transition-colors ${activeTab === 'unpublished'
+              onClick={() => setActiveTab('unclaimed')}
+              className={`flex-1 py-4 px-6 font-medium transition-colors ${activeTab === 'unclaimed'
                 ? 'text-secondary-500 border-b-2 border-secondary-500 bg-secondary-50/50'
                 : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
             >
-              Unclaimed ({unpublishedBookings.length})
+              Unclaimed ({unclaimedBookings.length})
             </button>
             <button
-              onClick={() => setActiveTab('published')}
-              className={`flex-1 py-4 px-6 font-medium transition-colors ${activeTab === 'published'
+              onClick={() => setActiveTab('claimed')}
+              className={`flex-1 py-4 px-6 font-medium transition-colors ${activeTab === 'claimed'
                 ? 'text-secondary-500 border-b-2 border-secondary-500 bg-secondary-50/50'
                 : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
             >
-              Claimed ({publishedJobs.length})
+              Claimed ({claimedJobs.length})
             </button>
           </div>
         </div>
@@ -1251,16 +1253,17 @@ export function BookingsPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Customer</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Service</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Duration</th>
-              
-                  {activeTab === 'published' && (
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
-                  )}
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
+                    {activeTab === 'claimed' ? 'Duration (per cleaner)' : 'Duration'}
+                  </th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
+                    {activeTab === 'claimed' ? 'Cleaner pay (per person)' : 'Cleaner pay (total)'}
+                  </th>
                   
                   {isAdmin && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Total Charge</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaner pay</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Expenses</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Profit</th>
                     </>
@@ -1270,206 +1273,155 @@ export function BookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
-                {activeTab === 'unpublished' ? (
-                  paginatedUnpublished.length === 0 ? (
-                    <tr>
-                      <td colSpan={isAdmin ? 10 : 6} className="p-8 text-center text-neutral-500">
-                        No unpublished bookings found.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedUnpublished.map((booking) => (
-                      <tr key={booking.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="py-4 px-6">
-                          <span className="font-mono font-semibold text-secondary-500">{booking.id}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="font-medium text-neutral-900">{booking.customer}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="text-sm text-neutral-900">{booking.service}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="text-sm">
-                            <div className="flex items-center gap-1 text-neutral-900">
-                              <Calendar className="w-4 h-4" />
-                              {booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                            <div className="flex items-center gap-1 text-neutral-600">
-                              <Clock className="w-4 h-4" />
-                              {booking.time}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="text-sm text-neutral-600">
-                            {Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m
-                          </div>
-                        </td>
-                        
-                        {isAdmin && (
-                          <>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                                <DollarSign className="w-4 h-4" />
-                                {booking.total.toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900">
-                                <DollarSign className="w-4 h-4" />
-                                {(formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900">
-                                <DollarSign className="w-4 h-4" />
-                                {(formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-green-600 font-semibold">
-                                <DollarSign className="w-4 h-4" />
-                                {(booking.total - (formatDisplayHours(booking.estimatedDuration / 60, booking.cleanerCount || 1, false) * (booking.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
-                              </div>
-                            </td>
-                          </>
-                        )}
-                        
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setViewDetailsModal(booking)}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
-                            {/* <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditJobModal(booking)}
-                              className="text-secondary-600 hover:text-secondary-700 hover:bg-secondary-50"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Publish
-                            </Button> */}
-                          </div>
+                {(() => {
+                  const currentData = 
+                    activeTab === 'unclaimed' ? paginatedUnclaimed :
+                    paginatedClaimed;
+                  
+                  if (currentData.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={isAdmin ? 11 : 8} className="p-8 text-center text-neutral-500">
+                          No {activeTab} bookings found.
                         </td>
                       </tr>
-                    ))
-                  )
-                ) : (
-                  paginatedPublished.length === 0 ? (
-                    <tr>
-                      <td colSpan={isAdmin ? 11 : 7} className="p-8 text-center text-neutral-500">
-                        No published jobs found.
+                    );
+                  }
+
+                  return currentData.map((booking: any) => (
+                    <tr key={booking.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="py-4 px-6">
+                        <span className="font-mono font-semibold text-secondary-500">{booking.id}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-neutral-900">{booking.customer}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="text-sm text-neutral-900">{booking.service}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="text-sm">
+                          <div className="flex items-center gap-1 text-neutral-900">
+                            <Calendar className="w-4 h-4" />
+                            {booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="flex items-center gap-1 text-neutral-600">
+                            <Clock className="w-4 h-4" />
+                            {booking.time}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="text-sm text-neutral-600">
+                          {activeTab === 'claimed' 
+                            ? `${formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h`
+                            : `${Math.floor((booking.estimatedDuration || 0) / 60)}h ${(booking.estimatedDuration || 0) % 60}m`
+                          }
+                        </div>
+                      </td>
+                      
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col">
+                          <span className={`font-semibold ${booking.claimedCount >= booking.requiredCleaners
+                            ? 'text-green-600'
+                            : booking.claimedCount > 0
+                              ? 'text-orange-600'
+                              : 'text-red-600'
+                            }`}>
+                            {booking.claimedCount}/{booking.requiredCleaners}
+                          </span>
+                          <span className="text-xs text-neutral-600">claimed</span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-1 text-neutral-900">
+                          <DollarSign className="w-4 h-4" />
+                          {(() => {
+                            const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
+                            const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
+                            return activeTab === 'claimed' 
+                              ? (hoursPerCleaner * rate).toFixed(2)
+                              : (hoursPerCleaner * (booking.cleanerCount || 1) * rate).toFixed(2);
+                          })()}
+                        </div>
+                      </td>
+                      
+                      {isAdmin && (
+                        <>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-1 text-neutral-900 font-semibold">
+                              <DollarSign className="w-4 h-4" />
+                              {booking.total.toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-1 text-neutral-900">
+                              <DollarSign className="w-4 h-4" />
+                              {(() => {
+                                const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
+                                const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
+                                return (hoursPerCleaner * (booking.cleanerCount || 1) * rate).toFixed(2);
+                              })()}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-1 text-green-600 font-semibold">
+                              <DollarSign className="w-4 h-4" />
+                              {(() => {
+                                const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
+                                const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
+                                const totalCleanerPay = hoursPerCleaner * (booking.cleanerCount || 1) * rate;
+                                return (booking.total - totalCleanerPay).toFixed(2);
+                              })()}
+                            </div>
+                          </td>
+                        </>
+                      )}
+                      
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewCleanersModal(booking)}
+                          >
+                            <Users className="w-4 h-4 mr-1" />
+                            Cleaners
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewDetailsModal(booking)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    paginatedPublished.map((job) => (
-                      <tr key={job.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="py-4 px-6">
-                          <span className="font-mono font-semibold text-secondary-500">{job.id}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="font-medium text-neutral-900">{job.customer}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="text-sm text-neutral-900">{job.service}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="text-sm">
-                            <div className="flex items-center gap-1 text-neutral-900">
-                              <Calendar className="w-4 h-4" />
-                              {job.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                            <div className="flex items-center gap-1 text-neutral-600">
-                              <Clock className="w-4 h-4" />
-                              {job.time}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="text-sm text-neutral-600">
-                            {Math.floor((job.estimatedDuration || 0) / 60)}h {(job.estimatedDuration || 0) % 60}m
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex flex-col">
-                            <span className={`font-semibold ${job.claimedBy.length >= job.requiredCleaners
-                              ? 'text-green-600'
-                              : job.claimedBy.length > 0
-                                ? 'text-orange-600'
-                                : 'text-red-600'
-                              }`}>
-                              {job.claimedBy.length}/{job.requiredCleaners}
-                            </span>
-                            <span className="text-xs text-neutral-600">claimed</span>
-                          </div>
-                        </td>
-                        
-                        {isAdmin && (
-                          <>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                                <DollarSign className="w-4 h-4" />
-                                {job.total.toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900">
-                                <DollarSign className="w-4 h-4" />
-                                {(formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-neutral-900">
-                                <DollarSign className="w-4 h-4" />
-                                {(formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18)).toFixed(2)}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1 text-green-600 font-semibold">
-                                <DollarSign className="w-4 h-4" />
-                                {(job.total - (formatDisplayHours(job.estimatedDuration / 60, job.cleanerCount || 1, false) * (job.cleanerCount || 1) * (settings?.cleanerPay?.level1 || 18))).toFixed(2)}
-                              </div>
-                            </td>
-                          </>
-                        )}
-                        
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setViewCleanersModal(job)}
-                            >
-                              <Users className="w-4 h-4 mr-1" />
-                              Cleaners
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setViewDetailsModal(job)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )
-                )}
+                  ));
+                })()}
               </tbody>
             </table>
             <Pagination
-              currentPage={activeTab === 'unpublished' ? unpublishedPage : publishedPage}
-              totalPages={activeTab === 'unpublished' ? unpublishedTotalPages : publishedTotalPages}
-              onPageChange={activeTab === 'unpublished' ? setUnpublishedPage : setPublishedPage}
+              currentPage={
+                activeTab === 'unclaimed' ? unclaimedPage :
+                claimedPage
+              }
+              totalPages={
+                activeTab === 'unclaimed' ? unclaimedTotalPages :
+                claimedTotalPages
+              }
+              onPageChange={
+                activeTab === 'unclaimed' ? setUnclaimedPage :
+                setClaimedPage
+              }
               itemsPerPage={itemsPerPage}
-              totalItems={activeTab === 'unpublished' ? filteredUnpublishedBookings.length : filteredPublishedJobs.length}
+              totalItems={
+                activeTab === 'unclaimed' ? filteredUnclaimedBookings.length :
+                filteredClaimedJobs.length
+              }
             />
           </div>
         )}

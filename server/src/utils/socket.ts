@@ -1,7 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { sendBroadcastEmail } from './email.service';
+import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient() as any;
 let io: Server;
 
 export const initSocket = (server: HttpServer) => {
@@ -30,16 +32,43 @@ export const initSocket = (server: HttpServer) => {
     });
 
     // Handle chat messages
-    socket.on('send_message', (data: { 
+    socket.on('send_message', async (data: { 
       senderId: string, 
       receiverId: string, 
       text: string,
       timestamp: string 
     }) => {
-      // Emit to the receiver's room
-      io.to(data.receiverId).emit('receive_message', data);
-      // Also emit back to sender for confirmation (or handle locally)
-      socket.emit('message_sent', data);
+      console.log(`Socket: Message from ${data.senderId} to ${data.receiverId}: ${data.text}`);
+      try {
+        // Persist message to database
+        const message = await prisma.message.create({
+          data: {
+            senderId: data.senderId,
+            receiverId: data.receiverId,
+            text: data.text
+          }
+        });
+        console.log(`Socket: Message saved to DB with ID ${message.id}`);
+
+        // Emit to the receiver's room
+        io.to(data.receiverId).emit('receive_message', {
+          ...data,
+          id: message.id,
+          createdAt: message.createdAt
+        });
+        console.log(`Socket: Emitted receive_message to room ${data.receiverId}`);
+        
+        // Also emit back to sender for confirmation
+        socket.emit('message_sent', {
+          ...data,
+          id: message.id,
+          createdAt: message.createdAt
+        });
+        console.log(`Socket: Emitted message_sent back to sender ${data.senderId}`);
+      } catch (error) {
+        console.error('Socket send_message error:', error);
+        socket.emit('error', { message: 'Failed to send message' });
+      }
     });
 
     // Handle broadcast messages

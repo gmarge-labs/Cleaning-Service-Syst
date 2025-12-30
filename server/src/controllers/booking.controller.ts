@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notification';
 import { sendBookingConfirmation, sendInvoiceEmail } from '../utils/email.service';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient() as any;
 
 export const sendInvoice = async (req: Request, res: Response) => {
   try {
@@ -96,41 +96,50 @@ export const createBooking = async (req: Request, res: Response) => {
     // Calculate estimated duration and cleaner count
     let estimatedDuration = 0;
     let cleanerCount = 1;
+    let paymentPerHour = 20; // Default fallback
 
     try {
       const settings = await prisma.systemSettings.findUnique({ where: { id: 'default' } });
-      if (settings && settings.durationSettings) {
-        const ds = settings.durationSettings as any;
+      if (settings) {
+        if (settings.durationSettings) {
+          const ds = settings.durationSettings as any;
 
-        // Base time
-        let totalMinutes = ds.baseMinutes || 60;
+          // Base time
+          let totalMinutes = ds.baseMinutes || 60;
 
-        // Room times
-        totalMinutes += (bedrooms || 0) * (ds.perBedroom || 30);
-        totalMinutes += (bathrooms || 0) * (ds.perBathroom || 45);
-        totalMinutes += (toilets || 0) * (ds.perToilet || 15);
+          // Room times
+          totalMinutes += (bedrooms || 0) * (ds.perBedroom || 30);
+          totalMinutes += (bathrooms || 0) * (ds.perBathroom || 45);
+          totalMinutes += (toilets || 0) * (ds.perToilet || 15);
 
-        // Other rooms
-        if (rooms && Array.isArray(rooms)) {
-          rooms.forEach((room: string) => {
-            if (!['Bedroom', 'Bathroom', 'Toilet'].includes(room)) {
-              totalMinutes += (roomQuantities?.[room] || 1) * (ds.perOtherRoom || 20);
-            }
-          });
+          // Other rooms
+          if (rooms && Array.isArray(rooms)) {
+            rooms.forEach((room: string) => {
+              if (!['Bedroom', 'Bathroom', 'Toilet'].includes(room)) {
+                totalMinutes += (roomQuantities?.[room] || 1) * (ds.perOtherRoom || 20);
+              }
+            });
+          }
+
+          // Service Multiplier
+          let multiplier = 1.0;
+          if (serviceType === 'Deep Cleaning') multiplier = ds.deepCleaningMultiplier || 1.5;
+          else if (serviceType === 'Move In/Out') multiplier = ds.moveInOutMultiplier || 2.0;
+          else if (serviceType === 'Post-Construction') multiplier = ds.postConstructionMultiplier || 2.5;
+          else multiplier = ds.standardCleaningMultiplier || 1.0;
+
+          estimatedDuration = Math.round(totalMinutes * multiplier);
+
+          // Cleaner count: 1 cleaner per 4 hours (240 mins)
+          cleanerCount = Math.ceil(estimatedDuration / 240);
+          if (cleanerCount < 1) cleanerCount = 1;
         }
 
-        // Service Multiplier
-        let multiplier = 1.0;
-        if (serviceType === 'Deep Cleaning') multiplier = ds.deepCleaningMultiplier || 1.5;
-        else if (serviceType === 'Move In/Out') multiplier = ds.moveInOutMultiplier || 2.0;
-        else if (serviceType === 'Post-Construction') multiplier = ds.postConstructionMultiplier || 2.5;
-        else multiplier = ds.standardCleaningMultiplier || 1.0;
-
-        estimatedDuration = Math.round(totalMinutes * multiplier);
-
-        // Cleaner count: 1 cleaner per 4 hours (240 mins)
-        cleanerCount = Math.ceil(estimatedDuration / 240);
-        if (cleanerCount < 1) cleanerCount = 1;
+        // Set default payment per hour from settings
+        if (settings.cleanerPay) {
+          const cp = settings.cleanerPay as any;
+          paymentPerHour = cp.level1 || 20;
+        }
       }
     } catch (err) {
       console.error('Error calculating duration:', err);
@@ -167,7 +176,8 @@ export const createBooking = async (req: Request, res: Response) => {
         totalAmount,
         estimatedDuration,
         cleanerCount,
-        status: status || 'BOOKED',
+        paymentPerHour,
+        status: status || 'CONFIRMED',
       },
     });
 
@@ -228,13 +238,21 @@ export const createBooking = async (req: Request, res: Response) => {
 
 export const getBookings = async (req: Request, res: Response) => {
   try {
-    const { userId, cleanerId } = req.query;
+    const { userId, cleanerId, status } = req.query;
+    console.log('Fetching bookings with query:', { userId, cleanerId, status });
 
     const bookings = await prisma.booking.findMany({
       where: {
         AND: [
           userId ? { userId: String(userId) } : {},
           cleanerId ? { cleanerId: String(cleanerId) } : {},
+          status ? (
+            typeof status === 'string' && status.includes(',') 
+              ? { status: { in: status.split(',') } }
+              : Array.isArray(status)
+                ? { status: { in: status } }
+                : { status: status as any }
+          ) : {},
         ]
       },
       include: {
@@ -250,11 +268,20 @@ export const getBookings = async (req: Request, res: Response) => {
             name: true,
             phone: true
           }
+        },
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true
+          }
         }
       },
       orderBy: { date: 'asc' },
     });
 
+    console.log(`Found ${bookings.length} bookings`);
     res.json(bookings);
   } catch (error) {
     console.error('Get bookings error:', error);
@@ -381,37 +408,52 @@ export const claimJob = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Cleaner ID is required' });
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id }
+    const booking = await (prisma as any).booking.findUnique({
+      where: { id },
+      include: {
+        claimedBy: true
+      }
     });
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    if (booking.cleanerId) {
-      return res.status(400).json({ message: 'Job already claimed by another cleaner' });
+    // Check if cleaner already claimed this job
+    const alreadyClaimed = (booking as any).claimedBy.some((c: any) => c.id === cleanerId);
+    if (alreadyClaimed) {
+      return res.status(400).json({ message: 'You have already claimed this job' });
     }
 
-    const updatedBooking = await prisma.booking.update({
+    // Check if job is already full
+    const requiredCleaners = (booking as any).cleanerCount || 1;
+    if ((booking as any).claimedBy.length >= requiredCleaners) {
+      return res.status(400).json({ message: 'Job is already full' });
+    }
+
+    const updatedBooking = await (prisma as any).booking.update({
       where: { id },
       data: {
-        cleanerId,
-        status: 'CONFIRMED'
+        claimedBy: {
+          connect: { id: cleanerId }
+        },
+        // If this was the last required cleaner, mark as CONFIRMED
+        status: ((booking as any).claimedBy.length + 1 >= requiredCleaners) ? 'CONFIRMED' : (booking as any).status
       },
       include: {
         user: true,
-        cleaner: true
+        claimedBy: true
       }
     });
 
     // Notify customer
-    if (updatedBooking.user?.id) {
+    if ((updatedBooking as any).user?.id) {
+      const cleaner = (updatedBooking as any).claimedBy.find((c: any) => c.id === cleanerId);
       await createNotification({
-        userId: updatedBooking.user.id,
+        userId: (updatedBooking as any).user.id,
         type: 'BOOKING_CONFIRMED',
         title: 'Cleaner Assigned!',
-        message: `${updatedBooking.cleaner?.name} has been assigned to your cleaning on ${new Date(updatedBooking.date).toLocaleDateString()}.`,
+        message: `${cleaner?.name || 'A cleaner'} has been assigned to your cleaning on ${new Date((updatedBooking as any).date).toLocaleDateString()}.`,
         data: { bookingId: updatedBooking.id }
       });
     }

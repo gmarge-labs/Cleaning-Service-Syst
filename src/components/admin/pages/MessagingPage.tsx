@@ -1,92 +1,77 @@
-import { useState, useEffect } from 'react';
-import { Send, Search, Paperclip, Smile, MoreVertical, Phone, Video } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Search, Paperclip, Smile, MoreVertical, Phone, Video, UserPlus } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Textarea } from '../../ui/textarea';
 import { Badge } from '../../ui/badge';
 import { useSocket } from '../../../hooks/useSocket';
 import { toast } from 'sonner';
-
-// Mock data
-const conversations = [
-  {
-    id: 'cl-001',
-    name: 'Maria Garcia',
-    role: 'Cleaner',
-    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    lastMessage: 'I can take the 2 PM slot tomorrow',
-    time: '5 min ago',
-    unread: 2,
-    online: true,
-  },
-  {
-    id: 'cust-001',
-    name: 'Sarah Johnson',
-    role: 'Customer',
-    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-    lastMessage: 'Thank you for the great service!',
-    time: '1 hour ago',
-    unread: 0,
-    online: false,
-  },
-  {
-    id: 'cl-002',
-    name: 'John Smith',
-    role: 'Cleaner',
-    photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-    lastMessage: 'Running 10 minutes late',
-    time: '2 hours ago',
-    unread: 1,
-    online: true,
-  },
-];
-
-const initialMessages = [
-  {
-    id: 1,
-    sender: 'Maria Garcia',
-    senderId: 'cl-001',
-    text: 'Hi! I wanted to check about tomorrow\'s booking at 123 Main St.',
-    time: '10:30 AM',
-    isOwn: false,
-  },
-  {
-    id: 2,
-    sender: 'You',
-    senderId: 'admin-001',
-    text: 'Hello Maria! Yes, it\'s confirmed for 10 AM. The customer requested deep cleaning.',
-    time: '10:32 AM',
-    isOwn: true,
-  },
-];
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 
 export function MessagingPage() {
-  const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
+  const { user } = useSelector((state: RootState) => state.auth);
+  console.log('MessagingPage user:', user);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [chatMessages, setChatMessages] = useState(initialMessages);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcastSubject, setBroadcastSubject] = useState('Important Announcement from Sparkleville');
   const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'cleaners' | 'customers' | 'staff'>('all');
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isContactsLoading, setIsContactsLoading] = useState(false);
   const { socket, sendMessage, broadcastMessage } = useSocket();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchConversations();
+      fetchContacts();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
 
   useEffect(() => {
     if (socket) {
-      socket.on('receive_message', (data) => {
-        if (data.senderId === selectedConversation.id) {
+      const handleReceiveMessage = (data: any) => {
+        console.log('Socket event received:', data);
+        if (selectedConversation && (data.senderId === selectedConversation.id || data.receiverId === selectedConversation.id)) {
+          console.log('Updating chat messages for current conversation');
           setChatMessages((prev) => [
             ...prev,
             {
-              id: Date.now(),
-              sender: selectedConversation.name,
+              id: data.id || Date.now(),
               senderId: data.senderId,
               text: data.text,
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isOwn: false,
+              createdAt: data.createdAt || new Date().toISOString(),
             },
           ]);
+        } else {
+          console.log('Message received for different conversation or no conversation selected');
         }
-      });
+        // Refresh conversations list to update last message and unread count
+        fetchConversations();
+      };
+
+      socket.on('receive_message', handleReceiveMessage);
+      socket.on('message_sent', handleReceiveMessage);
 
       socket.on('broadcast_received', (data) => {
         toast.info(`Broadcast to ${data.target}`, {
@@ -95,33 +80,108 @@ export function MessagingPage() {
       });
 
       return () => {
-        socket.off('receive_message');
+        socket.off('receive_message', handleReceiveMessage);
+        socket.off('message_sent', handleReceiveMessage);
         socket.off('broadcast_received');
       };
     }
   }, [socket, selectedConversation]);
 
-  const filteredConversations = conversations.filter((conv) =>
-    conv.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchConversations = async () => {
+    if (!user?.id) {
+      console.log('No user ID available for fetchConversations');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      console.log('Fetching conversations for user:', user.id);
+      const response = await fetch('/api/messages/conversations', {
+        headers: {
+          'x-user-id': user.id
+        }
+      });
+      const data = await response.json();
+      console.log('Conversations received:', data.length);
+      if (response.ok) {
+        setConversations(data);
+        if (data.length > 0 && !selectedConversation) {
+          setSelectedConversation(data[0]);
+        }
+      } else {
+        console.error('Fetch conversations failed:', data);
+      }
+    } catch (error) {
+      console.error('Fetch conversations error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMessages = async (partnerId: string) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/messages/${partnerId}`, {
+        headers: {
+          'x-user-id': user.id
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setChatMessages(data);
+      }
+    } catch (error) {
+      console.error('Fetch messages error:', error);
+    }
+  };
+
+  const fetchContacts = async () => {
+    if (!user?.id) {
+      console.log('No user ID available for fetchContacts');
+      return;
+    }
+    try {
+      setIsContactsLoading(true);
+      console.log('Fetching contacts for user:', user.id);
+      const response = await fetch('/api/messages/contacts', {
+        headers: {
+          'x-user-id': user.id
+        }
+      });
+      const data = await response.json();
+      console.log('Contacts received:', data.length);
+      if (response.ok) {
+        setContacts(data);
+      } else {
+        console.error('Fetch contacts failed:', data);
+      }
+    } catch (error) {
+      console.error('Fetch contacts error:', error);
+    } finally {
+      setIsContactsLoading(false);
+    }
+  };
 
   const handleSendMessage = () => {
-    if (messageText.trim()) {
+    if (messageText.trim() && selectedConversation) {
+      console.log(`Sending message to ${selectedConversation.id}: ${messageText}`);
       sendMessage(selectedConversation.id, messageText);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          sender: 'You',
-          senderId: 'admin-001',
-          text: messageText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isOwn: true,
-        },
-      ]);
       setMessageText('');
     }
   };
+
+  const handleStartConversation = (contact: any) => {
+    setSelectedConversation({
+      id: contact.id,
+      name: contact.name,
+      role: contact.role,
+      online: false
+    });
+    setShowContactsModal(false);
+  };
+
+  const filteredConversations = conversations.filter((conv) =>
+    conv.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSendBroadcast = () => {
     if (broadcastText.trim()) {
@@ -134,9 +194,21 @@ export function MessagingPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Internal Messaging</h1>
-        <p className="text-neutral-600 mt-1">Communicate with cleaners and team members</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-neutral-900">Internal Messaging</h1>
+          <p className="text-neutral-600 mt-1">Communicate with cleaners and team members</p>
+        </div>
+        <Button 
+          onClick={() => {
+            fetchContacts();
+            setShowContactsModal(true);
+          }}
+          className="bg-secondary-500 hover:bg-secondary-600"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          New Message
+        </Button>
       </div>
 
       {/* Messaging Interface */}
@@ -158,148 +230,243 @@ export function MessagingPage() {
 
           {/* Conversations */}
           <div className="flex-1 overflow-y-auto">
-            {filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => setSelectedConversation(conv)}
-                className={`w-full p-4 border-b border-neutral-200 hover:bg-neutral-50 transition-colors text-left ${
-                  selectedConversation.id === conv.id ? 'bg-secondary-50' : ''
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative flex-shrink-0">
-                    <img
-                      src={conv.photo}
-                      alt={conv.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    {conv.online && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            {isLoading ? (
+              <div className="p-4 text-center text-neutral-500">Loading...</div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4">
+                <div className="text-sm font-medium text-neutral-500 mb-4 px-2">Available Contacts</div>
+                {isContactsLoading ? (
+                  <div className="text-center text-neutral-500 py-4">Loading contacts...</div>
+                ) : (
+                  <>
+                    {contacts
+                      .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                      .map((contact) => (
+                        <button
+                          key={contact.id}
+                          onClick={() => handleStartConversation(contact)}
+                          className={`w-full p-3 flex items-center gap-3 hover:bg-neutral-50 rounded-lg transition-colors text-left ${
+                            selectedConversation?.id === contact.id ? 'bg-secondary-50' : ''
+                          }`}
+                        >
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`}
+                            alt={contact.name}
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div>
+                            <div className="font-medium text-neutral-900">{contact.name}</div>
+                            <div className="text-xs text-neutral-500 uppercase">{contact.role}</div>
+                          </div>
+                        </button>
+                      ))}
+                    {contacts.length === 0 && (
+                      <div className="text-center text-neutral-500 py-4">No contacts found</div>
                     )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-1">
-                      <div>
-                        <div className="font-semibold text-neutral-900">{conv.name}</div>
-                        <Badge variant="secondary" className="text-xs">
-                          {conv.role}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-neutral-500">{conv.time}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-neutral-600 truncate">{conv.lastMessage}</p>
-                      {conv.unread > 0 && (
-                        <div className="ml-2 w-5 h-5 rounded-full bg-secondary-500 text-white text-xs flex items-center justify-center flex-shrink-0">
-                          {conv.unread}
-                        </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              filteredConversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => setSelectedConversation(conv)}
+                  className={`w-full p-4 border-b border-neutral-200 hover:bg-neutral-50 transition-colors text-left ${
+                    selectedConversation?.id === conv.id ? 'bg-secondary-50' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={conv.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.name)}&background=random`}
+                        alt={conv.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      {conv.online && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                       )}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <div className="font-semibold text-neutral-900">{conv.name}</div>
+                          <Badge variant="secondary" className="text-xs">
+                            {conv.role}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-neutral-500">
+                          {new Date(conv.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-neutral-600 truncate">{conv.lastMessage}</p>
+                        {conv.unread > 0 && (
+                          <div className="ml-2 w-5 h-5 rounded-full bg-secondary-500 text-white text-xs flex items-center justify-center flex-shrink-0">
+                            {conv.unread}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))
+            )}
           </div>
         </div>
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <img
-                  src={selectedConversation.photo}
-                  alt={selectedConversation.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                {selectedConversation.online && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                )}
-              </div>
-              <div>
-                <div className="font-semibold text-neutral-900">{selectedConversation.name}</div>
-                <div className="text-sm text-neutral-600">
-                  {selectedConversation.online ? 'Online' : 'Offline'}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm">
-                <Phone className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Video className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <MoreVertical className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {chatMessages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-md ${
-                    message.isOwn
-                      ? 'bg-secondary-500 text-white'
-                      : 'bg-neutral-100 text-neutral-900'
-                  } rounded-2xl px-4 py-2`}
-                >
-                  {!message.isOwn && (
-                    <div className="text-sm font-medium mb-1">{message.sender}</div>
-                  )}
-                  <p className="text-sm">{message.text}</p>
-                  <div
-                    className={`text-xs mt-1 ${
-                      message.isOwn ? 'text-secondary-100' : 'text-neutral-500'
-                    }`}
-                  >
-                    {message.time}
+          {selectedConversation ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <img
+                      src={selectedConversation.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedConversation.name)}&background=random`}
+                      alt={selectedConversation.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    {selectedConversation.online && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-neutral-900">{selectedConversation.name}</div>
+                    <div className="text-sm text-neutral-600">
+                      {selectedConversation.online ? 'Online' : 'Offline'}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm">
+                    <Phone className="w-5 h-5" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Video className="w-5 h-5" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* Message Input */}
-          <div className="p-4 border-t border-neutral-200">
-            <div className="flex items-end gap-2">
-              <Button variant="ghost" size="sm" className="flex-shrink-0">
-                <Paperclip className="w-5 h-5" />
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.map((message) => {
+                  const isOwn = message.senderId === user?.id;
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-md ${
+                          isOwn
+                            ? 'bg-secondary-500 text-white'
+                            : 'bg-neutral-100 text-neutral-900'
+                        } rounded-2xl px-4 py-2`}
+                      >
+                        <p className="text-sm">{message.text}</p>
+                        <div
+                          className={`text-xs mt-1 ${
+                            isOwn ? 'text-secondary-100' : 'text-neutral-500'
+                          }`}
+                        >
+                          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message Input */}
+              <div className="p-4 border-t border-neutral-200">
+                <div className="flex items-end gap-2">
+                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                    <Paperclip className="w-5 h-5" />
+                  </Button>
+                  <Textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Type a message..."
+                    className="resize-none"
+                    rows={2}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                    <Smile className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    onClick={handleSendMessage}
+                    className="bg-secondary-500 hover:bg-secondary-600 flex-shrink-0"
+                    disabled={!messageText.trim()}
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-neutral-500">
+              Select a conversation to start messaging
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Contacts Modal */}
+      {showContactsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[500px] flex flex-col">
+            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">New Message</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowContactsModal(false)}>
+                <MoreVertical className="w-5 h-5 rotate-45" />
               </Button>
-              <Textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                placeholder="Type a message..."
-                className="resize-none"
-                rows={2}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-              />
-              <Button variant="ghost" size="sm" className="flex-shrink-0">
-                <Smile className="w-5 h-5" />
-              </Button>
-              <Button
-                onClick={handleSendMessage}
-                className="bg-secondary-500 hover:bg-secondary-600 flex-shrink-0"
-                disabled={!messageText.trim()}
-              >
-                <Send className="w-5 h-5" />
-              </Button>
+            </div>
+            <div className="p-4 border-b border-neutral-200">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <Input placeholder="Search contacts..." className="pl-10" />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {isContactsLoading ? (
+                <div className="text-center text-neutral-500 py-8">Loading contacts...</div>
+              ) : (
+                contacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => handleStartConversation(contact)}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-neutral-50 rounded-lg transition-colors text-left"
+                  >
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`}
+                      alt={contact.name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                    <div>
+                      <div className="font-medium text-neutral-900">{contact.name}</div>
+                      <div className="text-xs text-neutral-500 uppercase">{contact.role}</div>
+                    </div>
+                  </button>
+                ))
+              )}
+              {!isContactsLoading && contacts.length === 0 && (
+                <div className="text-center text-neutral-500 py-8">No contacts found</div>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Broadcast Section */}
       <div className="bg-white rounded-xl border border-neutral-200 p-6">

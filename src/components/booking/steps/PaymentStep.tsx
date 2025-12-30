@@ -3,29 +3,24 @@ import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Checkbox } from '../../ui/checkbox';
-import { BookingData } from '../BookingFlow';
-import { CreditCard, Shield, AlertCircle } from 'lucide-react';
+import { BookingData, SystemSettings } from '../BookingFlow';
+import { CreditCard, Shield, AlertCircle, Tag } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { toast } from 'sonner';
+import { calculateBookingPrice } from '../../../utils/bookingUtils';
+import { Badge } from '../../ui/badge';
 
 interface PaymentStepProps {
   data: BookingData;
   onUpdate: (data: Partial<BookingData>) => void;
   onNext: () => void;
   onBack: () => void;
+  settings?: SystemSettings | null;
 }
 
-// Frequency discount percentages
-const FREQUENCY_DISCOUNTS = {
-  'One-time': 0,
-  'Weekly': 15,
-  'Bi-weekly': 10,
-  'Monthly': 5,
-};
-
-export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps) {
+export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: PaymentStepProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>(data.paymentMethod || 'credit-card');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -39,24 +34,24 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
 
   const { user } = useSelector((state: RootState) => state.auth);
 
-  // Get frequency from data (set in SchedulingStep)
-  const frequency = data.frequency || 'One-time';
-
-  // Mock base price (would come from pricing sidebar)
-  const baseAmount = 200;
+  // Calculate price using utility function
+  const { 
+    subtotal, 
+    frequencyDiscount, 
+    frequencyDiscountRate,
+    topBookerDiscount, 
+    topBookerDiscountRate,
+    total: calculatedTotal 
+  } = calculateBookingPrice(data, settings);
 
   // Free cleaning loyalty program
   const COMPLETED_CLEANINGS = 3; // Mock: User has completed 3 cleanings
   const FREE_CLEANING_THRESHOLD = 5; // Free cleaning after 5 cleanings
   const qualifiesForFreeCleaning = COMPLETED_CLEANINGS >= FREE_CLEANING_THRESHOLD;
 
-  // Calculate discount
-  const discountPercentage = FREQUENCY_DISCOUNTS[frequency as keyof typeof FREQUENCY_DISCOUNTS] || 0;
-  const discountAmount = (baseAmount * discountPercentage) / 100;
-
   // Apply free cleaning if selected
-  const freeCleaningDiscount = applyFreeCleaning && qualifiesForFreeCleaning ? baseAmount : 0;
-  const totalAmount = baseAmount - discountAmount - freeCleaningDiscount;
+  const freeCleaningDiscount = applyFreeCleaning && qualifiesForFreeCleaning ? calculatedTotal : 0;
+  const totalAmount = calculatedTotal - freeCleaningDiscount;
 
   // Remove unused handleFrequencyChange
 
@@ -308,12 +303,18 @@ export function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps
         <div className="border-t border-neutral-200 pt-6 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-neutral-600">Service Cost</span>
-            <span className="text-neutral-900 font-medium">${baseAmount.toFixed(2)}</span>
+            <span className="text-neutral-900 font-medium">${subtotal.toFixed(2)}</span>
           </div>
-          {discountPercentage > 0 && (
+          {frequencyDiscount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-green-600">Frequency Discount ({discountPercentage}%)</span>
-              <span className="text-green-600 font-medium">-${discountAmount.toFixed(2)}</span>
+              <span className="text-blue-600">Frequency Discount ({(frequencyDiscountRate * 100).toFixed(0)}%)</span>
+              <span className="text-blue-600 font-medium">-${frequencyDiscount.toFixed(2)}</span>
+            </div>
+          )}
+          {topBookerDiscount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600">Top Booker Discount ({(topBookerDiscountRate * 100).toFixed(0)}%)</span>
+              <span className="text-green-600 font-medium">-${topBookerDiscount.toFixed(2)}</span>
             </div>
           )}
           {applyFreeCleaning && qualifiesForFreeCleaning && (

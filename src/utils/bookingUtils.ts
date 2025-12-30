@@ -88,6 +88,110 @@ export function calculateBookingDuration(bookingData: BookingData, settings?: Sy
   return { estimatedHours, cleanerCount };
 }
 
+export function calculateBookingPrice(bookingData: BookingData, settings?: SystemSettings | null) {
+  const DEFAULT_SERVICE_PRICES: Record<string, number> = {
+    'Standard Cleaning': 89,
+    'Deep Cleaning': 159,
+    'Move In/Out': 199,
+    'Post-Construction': 249,
+  };
+
+  const DEFAULT_ROOM_PRICE = 15;
+
+  const FREQUENCY_DISCOUNTS: Record<string, number> = {
+    'One-time': 0,
+    'Weekly': 0.15,
+    'Bi-weekly': 0.10,
+    'Monthly': 0.05,
+  };
+
+  // Use settings or defaults
+  const servicePrices = settings?.servicePrices ?? DEFAULT_SERVICE_PRICES;
+  const roomPrices = settings?.roomPrices ?? {};
+  
+  // Calculate base price
+  const basePrice = bookingData.serviceType ? servicePrices[bookingData.serviceType] || 0 : 0;
+  
+  // Calculate room pricing
+  const bedroomPrice = roomPrices['Bedroom'] ?? DEFAULT_ROOM_PRICE;
+  const bathroomPrice = roomPrices['Bathroom'] ?? DEFAULT_ROOM_PRICE;
+  const toiletPrice = roomPrices['Toilet'] ?? 10;
+
+  let roomPrice = (bookingData.bedrooms || 0) * bedroomPrice;
+  roomPrice += (bookingData.bathrooms || 0) * bathroomPrice;
+  roomPrice += (bookingData.toilets || 0) * toiletPrice;
+
+  // Additional rooms
+  if (bookingData.rooms) {
+    bookingData.rooms.forEach(roomId => {
+      const quantity = bookingData.roomQuantities?.[roomId] || 1;
+      const settingsKey = roomId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      const price = roomPrices[settingsKey] ?? DEFAULT_ROOM_PRICE;
+      roomPrice += price * quantity;
+    });
+  }
+  
+  // Calculate add-ons
+  const addOnsTotal = bookingData.addOns?.reduce((sum, addon) => {
+    const price = settings?.addonPrices?.[addon.name] ?? addon.price;
+    return sum + (price * (addon.quantity || 1));
+  }, 0) || 0;
+
+  // Add kitchen add-ons if any
+  let kitchenAddOnsTotal = 0;
+  if (bookingData.kitchenAddOns) {
+    Object.values(bookingData.kitchenAddOns).forEach((addons: any) => {
+      addons.forEach((addonId: string) => {
+        const settingsKey = addonId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const price = settings?.addonPrices?.[settingsKey] ?? 20;
+        kitchenAddOnsTotal += price;
+      });
+    });
+  }
+
+  // Add laundry details if any
+  let laundryTotal = 0;
+  if (bookingData.laundryRoomDetails) {
+    Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
+      const price = settings?.addonPrices?.['Laundry Service'] ?? 30;
+      laundryTotal += price * (details.baskets || 1);
+    });
+  }
+  
+  // Calculate subtotal
+  const subtotal = basePrice + roomPrice + addOnsTotal + kitchenAddOnsTotal + laundryTotal;
+  
+  // Calculate frequency discount
+  const frequency = bookingData.frequency || 'One-time';
+  const frequencyDiscountRate = FREQUENCY_DISCOUNTS[frequency] || 0;
+  const frequencyDiscount = subtotal * frequencyDiscountRate;
+
+  // Calculate top booker discount
+  let topBookerDiscountRate = 0;
+  if (settings?.pricing?.topBookerDiscount) {
+    if (settings.pricing.topBookerCategory === 'all') {
+      topBookerDiscountRate = settings.pricing.topBookerDiscount / 100;
+    }
+  }
+  
+  const topBookerDiscount = (subtotal - frequencyDiscount) * topBookerDiscountRate;
+  const total = subtotal - frequencyDiscount - topBookerDiscount;
+
+  return { 
+    basePrice,
+    roomPrice,
+    addOnsTotal,
+    kitchenAddOnsTotal,
+    laundryTotal,
+    subtotal, 
+    frequencyDiscount, 
+    frequencyDiscountRate,
+    topBookerDiscount, 
+    topBookerDiscountRate,
+    total 
+  };
+}
+
 export function formatDisplayHours(estimatedHours: number, cleanerCount: number, isAdmin: boolean = false) {
   if (isAdmin || cleanerCount <= 0) {
     return estimatedHours;

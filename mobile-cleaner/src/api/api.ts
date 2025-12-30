@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Use the local IP of the machine running the server
 // For Windows, find it with 'ipconfig' (e.g., 192.168.0.x)
 // For Mac/Linux, find it with 'ifconfig'
-const BASE_URL = 'http://192.168.0.155:5000/api';
+export const BASE_URL = 'http://10.95.29.253:5000/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -21,8 +21,8 @@ api.interceptors.request.use(
         const userJson = await AsyncStorage.getItem('user');
         if (userJson) {
             const user = JSON.parse(userJson);
-            // You can add custom headers here if the server expects them
-            // config.headers['X-User-Id'] = user.id;
+            // Add X-User-Id header for development authentication
+            config.headers['x-user-id'] = user.id;
         }
         return config;
     },

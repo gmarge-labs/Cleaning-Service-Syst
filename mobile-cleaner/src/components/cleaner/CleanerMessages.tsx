@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Send, User } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -7,146 +7,108 @@ import { Button } from '../Button';
 import { BottomNavigation } from './BottomNavigation';
 import { CleanerView } from './BottomNavigation';
 import { LinearGradient } from 'expo-linear-gradient';
-
-interface Message {
-    id: string;
-    text: string;
-    sender: 'cleaner' | 'admin' | 'supervisor';
-    senderName: string;
-    timestamp: Date;
-    isRead?: boolean;
-}
-
-interface Conversation {
-    id: string;
-    name: string;
-    role: 'Admin' | 'Supervisor';
-    avatar: string;
-    lastMessage: string;
-    lastMessageTime: Date;
-    unreadCount: number;
-    messages: Message[];
-}
+import { messageService, Conversation, Message } from '../../api/message.service';
+import { useSocket } from '../../hooks/useSocket';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface CleanerMessagesProps {
     currentView: CleanerView;
     onNavigate: (view: CleanerView) => void;
 }
 
-const mockConversations: Conversation[] = [
-    {
-        id: 'CONV-001',
-        name: 'Admin Team',
-        role: 'Admin',
-        avatar: 'AT',
-        lastMessage: 'Your weekly earnings have been processed.',
-        lastMessageTime: new Date(Date.now() - 3600000),
-        unreadCount: 2,
-        messages: [
-            {
-                id: 'MSG-001',
-                text: 'Hi Maria! We noticed you completed 5 jobs this week. Great work!',
-                sender: 'admin',
-                senderName: 'Admin Team',
-                timestamp: new Date(Date.now() - 86400000),
-            },
-            {
-                id: 'MSG-002',
-                text: 'Thank you! I really enjoy working with the team.',
-                sender: 'cleaner',
-                senderName: 'Maria Garcia',
-                timestamp: new Date(Date.now() - 82800000),
-            },
-            {
-                id: 'MSG-003',
-                text: 'We have updated our safety protocols. Please ensure you wear protective gloves when handling chemical cleaners.',
-                sender: 'admin',
-                senderName: 'Admin Team',
-                timestamp: new Date(Date.now() - 7200000),
-                isRead: false,
-            },
-            {
-                id: 'MSG-004',
-                text: 'Your weekly earnings have been processed and will be deposited within 24 hours. Total: $1,247.50',
-                sender: 'admin',
-                senderName: 'Admin Team',
-                timestamp: new Date(Date.now() - 3600000),
-                isRead: false,
-            },
-        ],
-    },
-    {
-        id: 'CONV-002',
-        name: 'Sarah Thompson',
-        role: 'Supervisor',
-        avatar: 'ST',
-        lastMessage: 'Keep up the amazing work!',
-        lastMessageTime: new Date(Date.now() - 86400000),
-        unreadCount: 0,
-        messages: [
-            {
-                id: 'MSG-005',
-                text: 'Hi Maria, I wanted to personally thank you for the excellent work at the Johnson residence!',
-                sender: 'supervisor',
-                senderName: 'Sarah Thompson',
-                timestamp: new Date(Date.now() - 172800000),
-            },
-            {
-                id: 'MSG-006',
-                text: 'Thank you so much Sarah! The customers were very kind too.',
-                sender: 'cleaner',
-                senderName: 'Maria Garcia',
-                timestamp: new Date(Date.now() - 169200000),
-            },
-            {
-                id: 'MSG-007',
-                text: 'They left a 5-star review and specifically mentioned your attention to detail. Keep up the amazing work!',
-                sender: 'supervisor',
-                senderName: 'Sarah Thompson',
-                timestamp: new Date(Date.now() - 86400000),
-            },
-        ],
-    },
-];
-
 export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProps) {
-    const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [user, setUser] = useState<any>(null);
     const scrollViewRef = useRef<ScrollView>(null);
+    const { socket, isConnected } = useSocket();
 
-    const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+    useEffect(() => {
+        const loadUser = async () => {
+            const userJson = await AsyncStorage.getItem('user');
+            if (userJson) {
+                setUser(JSON.parse(userJson));
+            }
+        };
+        loadUser();
+        loadConversations();
+    }, []);
 
-    const formatTime = (date: Date) => {
-        const now = new Date();
-        const diffHours = Math.floor((now.getTime() - date.getTime()) / 3600000);
-        if (diffHours < 24) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    useEffect(() => {
+        if (socket && user) {
+            socket.on('receive_message', (message: Message) => {
+                if (selectedConversation && (message.senderId === selectedConversation.id || message.receiverId === selectedConversation.id)) {
+                    setMessages(prev => [...prev, message]);
+                }
+                loadConversations();
+            });
+
+            return () => {
+                socket.off('receive_message');
+            };
+        }
+    }, [socket, selectedConversation, user]);
+
+    const loadConversations = async () => {
+        try {
+            const data = await messageService.getConversations();
+            setConversations(data);
+        } catch (error) {
+            console.error('Error loading conversations:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleSendMessage = () => {
-        if (!newMessage.trim() || !selectedConversation) return;
+    const loadMessages = async (partnerId: string) => {
+        setLoadingMessages(true);
+        try {
+            const data = await messageService.getMessages(partnerId);
+            setMessages(data);
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        } finally {
+            setLoadingMessages(false);
+        }
+    };
 
-        const newMsg: Message = {
-            id: `MSG-${Date.now()}`,
-            text: newMessage,
-            sender: 'cleaner',
-            senderName: 'Maria Garcia',
-            timestamp: new Date(),
-        };
+    const handleSelectConversation = (conv: Conversation) => {
+        setSelectedConversation(conv);
+        loadMessages(conv.id);
+    };
 
-        const updatedConv = {
-            ...selectedConversation,
-            messages: [...selectedConversation.messages, newMsg],
-            lastMessage: newMessage,
-            lastMessageTime: new Date(),
-        };
+    const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread, 0);
 
-        setSelectedConversation(updatedConv);
+    const formatTime = (timeStr: string) => {
+        return timeStr; // The backend already formats it as "10:30 AM" or "Yesterday"
+    };
+
+    const handleSendMessage = async () => {
+        if (!newMessage.trim() || !selectedConversation || !user) return;
+
+        const messageText = newMessage.trim();
         setNewMessage('');
 
-        // In a real app, update the conversations list too
-        setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
+        try {
+            const sentMessage = await messageService.sendMessage(selectedConversation.id, messageText);
+            setMessages(prev => [...prev, sentMessage]);
+            
+            if (socket && isConnected) {
+                socket.emit('send_message', {
+                    senderId: user.id,
+                    receiverId: selectedConversation.id,
+                    text: messageText,
+                });
+            }
+            
+            loadConversations();
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
     };
 
     if (selectedConversation) {
@@ -154,6 +116,7 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
             <KeyboardAvoidingView
                 style={styles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <SafeAreaView style={styles.container}>
                     <LinearGradient
@@ -166,44 +129,54 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
                             <ArrowLeft size={20} color={Colors.white} />
                         </TouchableOpacity>
                         <View style={styles.chatAvatar}>
-                            <Text style={styles.avatarText}>{selectedConversation.avatar}</Text>
+                            <Text style={styles.avatarText}>{selectedConversation.role.charAt(0)}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.chatTitle}>{selectedConversation.name}</Text>
-                            <Text style={styles.chatSubtitle}>{selectedConversation.role}</Text>
+                            <Text style={styles.chatTitle}>{selectedConversation.role}</Text>
                         </View>
                     </LinearGradient>
 
-                    <ScrollView
-                        ref={scrollViewRef}
-                        style={styles.messagesList}
-                        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                    >
-                        {selectedConversation.messages.map((msg) => (
-                            <View
-                                key={msg.id}
-                                style={[
-                                    styles.messageWrapper,
-                                    msg.sender === 'cleaner' ? styles.myMessageWrapper : styles.theirMessageWrapper
-                                ]}
-                            >
-                                {msg.sender !== 'cleaner' && <Text style={styles.senderLabel}>{msg.senderName}</Text>}
-                                <View style={[
-                                    styles.messageBubble,
-                                    msg.sender === 'cleaner' ? styles.myBubble : styles.theirBubble
-                                ]}>
-                                    <Text style={[
-                                        styles.messageText,
-                                        msg.sender === 'cleaner' ? styles.myMessageText : styles.theirMessageText
-                                    ]}>
-                                        {msg.text}
-                                    </Text>
-                                </View>
-                                <Text style={styles.messageTime}>{formatTime(msg.timestamp)}</Text>
-                            </View>
-                        ))}
-                        <View style={{ height: 20 }} />
-                    </ScrollView>
+                    {loadingMessages ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={Colors.primary} />
+                        </View>
+                    ) : (
+                        <ScrollView
+                            ref={scrollViewRef}
+                            style={styles.messagesList}
+                            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {messages.map((msg) => {
+                                const isMe = msg.senderId === user?.id;
+                                return (
+                                    <View
+                                        key={msg.id}
+                                        style={[
+                                            styles.messageWrapper,
+                                            isMe ? styles.myMessageWrapper : styles.theirMessageWrapper
+                                        ]}
+                                    >
+                                        {!isMe && <Text style={styles.senderLabel}>{selectedConversation.role}</Text>}
+                                        <View style={[
+                                            styles.messageBubble,
+                                            isMe ? styles.myBubble : styles.theirBubble
+                                        ]}>
+                                            <Text style={[
+                                                styles.messageText,
+                                                isMe ? styles.myMessageText : styles.theirMessageText
+                                            ]}>
+                                                {msg.text}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.messageTime}>
+                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
+                            <View style={{ height: 20 }} />
+                        </ScrollView>
+                    )}
 
                     <View style={styles.inputContainer}>
                         <View style={styles.textInputWrapper}>
@@ -251,37 +224,48 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
                 </View>
             </LinearGradient>
 
-            <ScrollView style={styles.content}>
-                {conversations.map((conv) => (
-                    <TouchableOpacity
-                        key={conv.id}
-                        style={styles.convCard}
-                        onPress={() => setSelectedConversation(conv)}
-                    >
-                        <View style={styles.convAvatar}>
-                            <Text style={styles.avatarText}>{conv.avatar}</Text>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                </View>
+            ) : (
+                <ScrollView style={styles.content}>
+                    {conversations.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No messages yet</Text>
                         </View>
-                        <View style={styles.convInfo}>
-                            <View style={styles.convHeader}>
-                                <View style={styles.row}>
-                                    <Text style={styles.convName}>{conv.name}</Text>
-                                    <Badge variant="neutral">{conv.role}</Badge>
+                    ) : (
+                        conversations.map((conv) => (
+                            <TouchableOpacity
+                                key={conv.id}
+                                style={styles.convCard}
+                                onPress={() => handleSelectConversation(conv)}
+                            >
+                                <View style={styles.convAvatar}>
+                                    <Text style={styles.avatarText}>{conv.role.charAt(0)}</Text>
                                 </View>
-                                <Text style={styles.convTime}>{formatTime(conv.lastMessageTime)}</Text>
-                            </View>
-                            <View style={styles.convFooter}>
-                                <Text style={styles.lastMsg} numberOfLines={1}>{conv.lastMessage}</Text>
-                                {conv.unreadCount > 0 && (
-                                    <View style={styles.dotBadge}>
-                                        <Text style={styles.dotBadgeText}>{conv.unreadCount}</Text>
+                                <View style={styles.convInfo}>
+                                    <View style={styles.convHeader}>
+                                        <View style={styles.row}>
+                                            <Text style={styles.convName}>{conv.role}</Text>
+                                        </View>
+                                        <Text style={styles.convTime}>{conv.time}</Text>
                                     </View>
-                                )}
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                ))}
-                <View style={{ height: 100 }} />
-            </ScrollView>
+                                    <View style={styles.convFooter}>
+                                        <Text style={styles.lastMsg} numberOfLines={1}>{conv.lastMessage}</Text>
+                                        {conv.unread > 0 && (
+                                            <View style={styles.dotBadge}>
+                                                <Text style={styles.dotBadgeText}>{conv.unread}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    )}
+                    <View style={{ height: 100 }} />
+                </ScrollView>
+            )}
 
             <BottomNavigation
                 currentView={currentView}
@@ -519,5 +503,22 @@ const styles = StyleSheet.create({
     },
     backBtn: {
         padding: 8,
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: Colors.gray,
+        textAlign: 'center',
     }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform } from 'react-native';
-import { ArrowLeft, MapPin, Clock, DollarSign, Navigation, CheckCircle, AlertCircle, Package, Shield, Send, Key, IdCard, ListChecks, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Clock, DollarSign, Navigation, CheckCircle, AlertCircle, Package, Shield, Send, Key, IdCard, ListChecks, ChevronRight, Users, Wrench, Info, Home } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
 import { Button } from '../Button';
@@ -125,7 +125,7 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                         <ArrowLeft size={24} color={Colors.white} />
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
-                        <Text style={styles.headerTitle}>{job.guestName || 'Customer'}</Text>
+                        <Text style={styles.headerTitle}>Job Details</Text>
                         <Text style={styles.headerSubtitle}>{job.id}</Text>
                     </View>
                     <Badge variant={isClockedIn ? 'success' : 'outline'} style={{ borderColor: Colors.white }}>
@@ -200,27 +200,167 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                             <View style={styles.scheduleGrid}>
                                 <View>
                                     <Text style={styles.label}>Scheduled Date</Text>
-                                    <Text style={styles.value}>{new Date(job.date).toLocaleDateString()}</Text>
+                                    <Text style={styles.value}>{new Date(job.date).toLocaleDateString('en-US', { 
+                                        weekday: 'short',
+                                        month: 'short', 
+                                        day: 'numeric'
+                                    })}</Text>
                                 </View>
                                 <View>
                                     <Text style={styles.label}>Start Time</Text>
                                     <Text style={styles.value}>{job.time}</Text>
                                 </View>
+                                <View>
+                                    <Text style={styles.label}>Frequency</Text>
+                                    <Text style={styles.value}>{job.frequency || 'One-time'}</Text>
+                                </View>
                             </View>
                         </View>
 
-                        {/* Service */}
+                        {/* Property Details */}
                         <View style={styles.detailCard}>
-                            <Text style={styles.detailTitle}>Service Details</Text>
-                            <View style={[styles.row, { marginTop: 8 }]}>
-                                <Text style={styles.label}>Type: </Text>
-                                <Text style={styles.value}>{job.serviceType}</Text>
+                            <View style={styles.detailHeader}>
+                                <Home size={20} color={Colors.secondary} />
+                                <Text style={styles.detailTitle}>Property Details</Text>
                             </View>
-                            <View style={styles.paymentRow}>
-                                <DollarSign size={20} color={Colors.success} />
-                                <Text style={styles.paymentValue}>${Number(job.totalAmount).toFixed(2)}</Text>
+                            <Text style={[styles.label, { marginBottom: 8 }]}>Type: <Text style={styles.value}>{job.propertyType}</Text></Text>
+                            <View style={styles.propertyGrid}>
+                                <View style={styles.propertyItem}>
+                                    <Text style={styles.propertyLabel}>Bedrooms</Text>
+                                    <Text style={styles.propertyValue}>{job.bedrooms}</Text>
+                                </View>
+                                <View style={styles.propertyItem}>
+                                    <Text style={styles.propertyLabel}>Bathrooms</Text>
+                                    <Text style={styles.propertyValue}>{job.bathrooms}</Text>
+                                </View>
+                                {job.toilets !== undefined && (
+                                    <View style={styles.propertyItem}>
+                                        <Text style={styles.propertyLabel}>Toilets</Text>
+                                        <Text style={styles.propertyValue}>{job.toilets}</Text>
+                                    </View>
+                                )}
                             </View>
+
+                            {/* Additional Rooms */}
+                            {job.rooms && typeof job.rooms === 'object' && !Array.isArray(job.rooms) && Object.keys(job.rooms).length > 0 ? (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={styles.label}>Additional Rooms:</Text>
+                                    <View style={styles.badgeContainer}>
+                                        {Object.entries(job.rooms).map(([room, count]: [string, any]) => 
+                                            count > 0 ? (
+                                                <Badge key={room} variant="outline">
+                                                    {room.replace(/([A-Z])/g, ' $1').replace(/-/g, ' ')} x{count}
+                                                </Badge>
+                                            ) : null
+                                        )}
+                                    </View>
+                                </View>
+                            ) : null}
                         </View>
+
+                        {/* Service & Add-ons */}
+                        <View style={styles.detailCard}>
+                            <View style={styles.detailHeader}>
+                                <Package size={20} color={Colors.secondary} />
+                                <Text style={styles.detailTitle}>Service & Add-ons</Text>
+                            </View>
+                            <View style={[styles.row, { justifyContent: 'space-between' }]}>
+                                <Text style={styles.value}>{job.serviceType}</Text>
+                                <View style={styles.row}>
+                                    <DollarSign size={16} color={Colors.success} />
+                                    <Text style={[styles.value, { color: Colors.success }]}>
+                                        {((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {job.addOns && job.addOns.length > 0 ? (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={styles.label}>Add-ons:</Text>
+                                    <View style={styles.badgeContainer}>
+                                        {job.addOns.map((addon: any, index: number) => (
+                                            <Badge key={index} variant="secondary">
+                                                {typeof addon === 'string' ? addon : addon.name}
+                                                {addon.quantity && addon.quantity > 1 ? ` x${addon.quantity}` : ''}
+                                            </Badge>
+                                        ))}
+                                    </View>
+                                </View>
+                            ) : null}
+
+                            {/* Kitchen Add-ons */}
+                            {job.kitchenAddOns && typeof job.kitchenAddOns === 'object' && Object.keys(job.kitchenAddOns).length > 0 ? (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={styles.label}>Kitchen Add-ons:</Text>
+                                    {Object.entries(job.kitchenAddOns).map(([kitchenIndex, addons]: [string, any]) => (
+                                        addons && addons.length > 0 ? (
+                                            <View key={kitchenIndex} style={{ marginTop: 4 }}>
+                                                <Text style={[styles.label, { fontSize: 10 }]}>Kitchen #{parseInt(kitchenIndex) + 1}</Text>
+                                                <View style={styles.badgeContainer}>
+                                                    {addons.map((addon: string, idx: number) => (
+                                                        <Badge key={idx} variant="outline">{addon}</Badge>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        ) : null
+                                    ))}
+                                </View>
+                            ) : null}
+
+                            {/* Laundry Details */}
+                            {job.laundryRoomDetails && typeof job.laundryRoomDetails === 'object' && Object.keys(job.laundryRoomDetails).length > 0 ? (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={styles.label}>Laundry Details:</Text>
+                                    {Object.entries(job.laundryRoomDetails).map(([laundryIndex, details]: [string, any]) => (
+                                        details ? (
+                                            <View key={laundryIndex} style={{ marginTop: 4 }}>
+                                                <Text style={[styles.label, { fontSize: 10 }]}>Laundry Room #{parseInt(laundryIndex) + 1}</Text>
+                                                <Text style={styles.detailText}>Baskets: {details.baskets}, Rounds: {details.rounds}</Text>
+                                            </View>
+                                        ) : null
+                                    ))}
+                                </View>
+                            ) : null}
+                        </View>
+
+                        {/* Pets */}
+                        {job.hasPet ? (
+                            <View style={styles.detailCard}>
+                                <View style={styles.detailHeader}>
+                                    <Info size={20} color={Colors.secondary} />
+                                    <Text style={styles.detailTitle}>Pets Information</Text>
+                                </View>
+                                <View style={styles.badgeContainer}>
+                                    {job.petDetails?.dog ? <Badge variant="secondary" style={styles.petBadge}>Dogs</Badge> : null}
+                                    {job.petDetails?.cat ? <Badge variant="secondary" style={styles.petBadge}>Cats</Badge> : null}
+                                    {job.petDetails?.other ? <Badge variant="secondary" style={styles.petBadge}>Other Pets</Badge> : null}
+                                </View>
+                                {job.petDetails?.customPets && job.petDetails.customPets.length > 0 ? (
+                                    <Text style={[styles.detailText, { marginTop: 8 }]}>Other types: {job.petDetails.customPets.join(', ')}</Text>
+                                ) : null}
+                                <Text style={[styles.detailText, { marginTop: 4 }]}>
+                                    Presence: {job.petDetails?.petPresent ? 'Pets will be home' : 'Pets will be away'}
+                                </Text>
+                                {job.petDetails?.petInstructions ? (
+                                    <View style={styles.instructionBox}>
+                                        <Text style={styles.instructionText}>"{job.petDetails.petInstructions}"</Text>
+                                    </View>
+                                ) : null}
+                            </View>
+                        ) : null}
+
+                        {/* Special Instructions */}
+                        {job.specialInstructions ? (
+                            <View style={styles.detailCard}>
+                                <View style={styles.detailHeader}>
+                                    <Wrench size={20} color={Colors.secondary} />
+                                    <Text style={styles.detailTitle}>Special Instructions</Text>
+                                </View>
+                                <View style={styles.instructionBox}>
+                                    <Text style={styles.instructionText}>"{job.specialInstructions}"</Text>
+                                </View>
+                            </View>
+                        ) : null}
                     </View>
                 )}
             </ScrollView>
@@ -498,6 +638,55 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: Colors.black,
+    },
+    propertyGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+        marginTop: 8,
+    },
+    propertyItem: {
+        flex: 1,
+        minWidth: '28%',
+        backgroundColor: 'rgba(32, 201, 151, 0.05)',
+        padding: Spacing.sm,
+        borderRadius: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(32, 201, 151, 0.1)',
+    },
+    propertyLabel: {
+        fontSize: 10,
+        color: Colors.gray,
+        marginBottom: 2,
+    },
+    propertyValue: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: Colors.secondary,
+    },
+    badgeContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+    },
+    instructionBox: {
+        backgroundColor: 'rgba(32, 201, 151, 0.05)',
+        padding: Spacing.md,
+        borderRadius: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: Colors.secondary,
+        marginTop: 8,
+    },
+    instructionText: {
+        fontSize: 14,
+        color: Colors.black,
+        fontStyle: 'italic',
+        lineHeight: 20,
+    },
+    petBadge: {
+        backgroundColor: Colors.black,
     },
     footer: {
         padding: Spacing.lg,

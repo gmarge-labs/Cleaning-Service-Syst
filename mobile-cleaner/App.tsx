@@ -95,8 +95,15 @@ export default function App() {
         setCurrentView('job-details');
     };
 
-    const handleClaimJob = (jobId: string) => {
-        setClaimedJobs([...claimedJobs, jobId]);
+    const handleClaimJob = async (jobId: string) => {
+        if (!user) return;
+        try {
+            await jobService.claimJob(jobId, user.id);
+            setClaimedJobs([...claimedJobs, jobId]);
+            setCurrentView('dashboard');
+        } catch (error: any) {
+            alert(error.message);
+        }
     };
 
     const unreadCount = 0; // Handled by sub-components or unified later

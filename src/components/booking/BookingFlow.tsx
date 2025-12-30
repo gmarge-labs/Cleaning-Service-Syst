@@ -183,7 +183,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       case 'Schedule':
         return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} mode={mode} />;
       case 'Payment':
-        return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} />;
+        return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
       case 'Confirmation':
         return <ConfirmationStep data={bookingData} onComplete={onComplete} mode={mode} settings={settings} onBookAnother={() => {
           setCurrentStep(0);

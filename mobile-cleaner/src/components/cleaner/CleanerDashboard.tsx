@@ -53,7 +53,16 @@ export function CleanerDashboard({
                 jobService.getAvailableJobs(),
                 jobService.getAssignedJobs(user.id)
             ]);
-            setAvailableJobs(available);
+            
+            // Filter available jobs to exclude those already claimed by this user
+            // and those that are already full
+            const filteredAvailable = available.filter(job => {
+                const isAlreadyClaimedByMe = job.claimedBy?.some(c => c.id === user.id);
+                const needsMoreCleaners = (job.claimedBy?.length || 0) < (job.cleanerCount || 1);
+                return !isAlreadyClaimedByMe && needsMoreCleaners;
+            });
+
+            setAvailableJobs(filteredAvailable);
             setMyJobs(assigned);
 
             // Also fetch history if on completed tab, or just fetch it here
@@ -77,13 +86,11 @@ export function CleanerDashboard({
     }, [user?.id]);
 
     const handleClaim = async (jobId: string) => {
-        if (!user?.id) return;
         try {
-            await jobService.claimJob(jobId, user.id);
-            onClaimJob(jobId);
+            await onClaimJob(jobId);
             fetchData(); // Refresh data
         } catch (error: any) {
-            alert(error.message);
+            // Error handled in App.tsx or here
         }
     };
 
@@ -233,7 +240,9 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                     </View>
                 </View>
                 <View style={styles.cardFooter}>
-                    <Text style={styles.paymentText}>${Number(job.totalAmount).toFixed(2)}</Text>
+                    <Text style={styles.paymentText}>
+                        ${((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                    </Text>
                     <View style={styles.actions}>
                         {showStartButton && !isCompleted && (
                             <Button title="Start" onPress={() => onStart(job)} variant="gradient" style={styles.startBtn} />
@@ -275,7 +284,9 @@ const AvailableJobCard = ({ job, onViewDetails, onClaim }: any) => {
                     </View>
                 </View>
                 <View style={styles.cardFooter}>
-                    <Text style={styles.paymentText}>${Number(job.totalAmount).toFixed(2)}</Text>
+                    <Text style={styles.paymentText}>
+                        ${((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                    </Text>
                     <View style={styles.actions}>
                         <Button title="Claim" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
                         <TouchableOpacity onPress={() => onViewDetails(job)} style={styles.detailsBtn}>
