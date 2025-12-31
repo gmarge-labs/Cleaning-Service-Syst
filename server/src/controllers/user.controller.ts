@@ -74,7 +74,7 @@ export const getCleaningStats = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const { name, phone, address, notificationSettings, currentPassword, newPassword } = req.body;
+  const { name, phone, address, notificationSettings, currentPassword, newPassword, profileImage } = req.body;
 
   try {
     // If password change is requested, validate current password first
@@ -101,6 +101,7 @@ export const updateProfile = async (req: Request, res: Response) => {
           address,
           notificationSettings,
           password: hashedPassword,
+          profileImage,
         },
       });
 
@@ -116,6 +117,7 @@ export const updateProfile = async (req: Request, res: Response) => {
         phone,
         address,
         notificationSettings,
+        profileImage,
       },
     });
 

@@ -31,7 +31,7 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
-type JobStatus = 'assigned' | 'in-progress' | 'completed';
+type JobStatus = 'pending' | 'assigned' | 'arrived' | 'in-progress' | 'completed';
 type WorkflowStep = 'job-details' | 'payment' | 'review' | 'revision-request';
 
 interface CompletionPhoto {
@@ -66,42 +66,87 @@ export function ActiveJob() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [emailNotif, setEmailNotif] = useState(true);
   const [smsNotif, setSmsNotif] = useState(true);
+  const [elapsedTime, setElapsedTime] = useState('0:00:00');
+
+  useEffect(() => {
+    let interval: any;
+    if (jobStatus === 'in-progress' && activeJob?.startTime) {
+      interval = setInterval(() => {
+        const start = new Date(activeJob.startTime).getTime();
+        const now = new Date().getTime();
+        const diff = now - start;
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        setElapsedTime(
+          `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+      }, 1000);
+    } else {
+      setElapsedTime('0:00:00');
+    }
+    return () => clearInterval(interval);
+  }, [jobStatus, activeJob?.startTime]);
 
   useEffect(() => {
     if (user?.id) {
       fetchActiveJob();
+      
+      // Poll for updates every 10 seconds while there's an active job
+      const interval = setInterval(() => {
+        fetchActiveJob(false); // Pass false to avoid showing loader every time
+      }, 10000);
+      
+      return () => clearInterval(interval);
     }
   }, [user?.id]);
 
-  const fetchActiveJob = async () => {
+  const fetchActiveJob = async (showLoader = true) => {
     try {
-      setIsLoading(true);
+      if (showLoader) setIsLoading(true);
       const response = await fetch(`/api/dashboard/active-job?userId=${user?.id}`);
       if (response.ok) {
         const data = await response.json();
         setActiveJob(data);
         // Map backend status to frontend status
         if (data.status === 'COMPLETED') setJobStatus('completed');
-        else if (data.status === 'CONFIRMED') setJobStatus('in-progress');
-        else setJobStatus('assigned');
+        else if (data.status === 'IN_PROGRESS') {
+          setJobStatus('in-progress');
+          setShowVerificationModal(false);
+        }
+        else if (data.status === 'ARRIVED') {
+          setJobStatus('arrived');
+          setCleanerArrived(true);
+          if (!showVerificationModal && workflowStep === 'job-details') {
+            setShowVerificationModal(true);
+          }
+        }
+        else if (data.status === 'CONFIRMED' || (data.claimedBy && data.claimedBy.length > 0)) {
+          setJobStatus('assigned');
+        }
+        else setJobStatus('pending');
       } else {
         setActiveJob(null);
-        setJobStatus('completed'); // Default to completed for the mock job
       }
     } catch (error) {
       console.error('Error fetching active job:', error);
     } finally {
-      setIsLoading(false);
+      if (showLoader) setIsLoading(false);
     }
-  };
-
-  // Generate random 6-digit secret code (in production, this would come from backend)
-  const generateSecretCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
   const getStatusInfo = () => {
     switch (jobStatus) {
+      case 'pending':
+        return {
+          label: 'Finding Cleaners',
+          color: 'text-neutral-600',
+          bgColor: 'bg-neutral-50',
+          borderColor: 'border-neutral-200',
+          icon: Clock
+        };
       case 'assigned':
         return {
           label: 'Cleaner Assigned',
@@ -109,6 +154,14 @@ export function ActiveJob() {
           bgColor: 'bg-blue-50',
           borderColor: 'border-blue-200',
           icon: User
+        };
+      case 'arrived':
+        return {
+          label: 'Cleaner Arrived',
+          color: 'text-orange-600',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200',
+          icon: Bell
         };
       case 'in-progress':
         return {
@@ -126,14 +179,63 @@ export function ActiveJob() {
           borderColor: 'border-green-200',
           icon: CheckCircle
         };
+      default:
+        return {
+          label: 'Booking Pending',
+          color: 'text-neutral-600',
+          bgColor: 'bg-neutral-50',
+          borderColor: 'border-neutral-200',
+          icon: Clock
+        };
     }
+  };
+
+  const getCleaningTasks = (serviceType: string) => {
+    const baseTasks = [
+      'Dust all surfaces',
+      'Vacuum all floors',
+      'Mop hard floors',
+      'Empty trash bins',
+      'Wipe down light switches'
+    ];
+    
+    const type = serviceType?.toLowerCase() || '';
+    if (type.includes('deep')) {
+      return [...baseTasks, 'Clean inside windows', 'Deep clean baseboards', 'Sanitize door handles', 'Clean behind appliances'];
+    }
+    
+    if (type.includes('kitchen')) {
+      return [...baseTasks, 'Clean oven interior', 'Clean fridge interior', 'Degrease stovetop', 'Sanitize countertops'];
+    }
+
+    return [...baseTasks, 'Clean sink and faucet', 'Sanitize toilet', 'Clean mirrors'];
   };
 
   const statusInfo = getStatusInfo();
   const StatusIcon = statusInfo.icon;
 
-  const handleAcceptWork = () => {
-    setWorkflowStep('review');
+  const handleAcceptWork = async () => {
+    try {
+      const response = await fetch(`/api/bookings/${displayJob.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ isAccepted: true }),
+      });
+
+      if (response.ok) {
+        toast.success('Work accepted! Thank you.');
+        setWorkflowStep('review');
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to accept work');
+      }
+    } catch (error) {
+      console.error('Error accepting work:', error);
+      toast.error('An error occurred while accepting the work');
+    }
   };
 
   const handleRejectWork = () => {
@@ -216,11 +318,30 @@ export function ActiveJob() {
     }
   };
 
-  const handleVerifyAndStartJob = () => {
-    setShowVerificationModal(false);
-    setJobStatus('in-progress');
-    setCleanerArrived(false);
-    alert('Cleaner verified! Job is now in progress.');
+  const handleVerifyAndStartJob = async () => {
+    try {
+      const response = await fetch(`/api/bookings/${displayJob.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: 'IN_PROGRESS' }),
+      });
+
+      if (response.ok) {
+        setShowVerificationModal(false);
+        setJobStatus('in-progress');
+        setCleanerArrived(false);
+        toast.success('Cleaner verified! Job is now in progress.');
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to update job status');
+      }
+    } catch (error) {
+      console.error('Error verifying cleaner:', error);
+      toast.error('An error occurred during verification');
+    }
   };
 
   const handleRejectVerification = () => {
@@ -229,12 +350,6 @@ export function ActiveJob() {
       setCleanerArrived(false);
       alert('Verification rejected. Support team has been notified.');
     }
-  };
-
-  // Simulate cleaner arriving (in production, this would be triggered by cleaner app)
-  const simulateCleanerArrival = () => {
-    setCleanerArrived(true);
-    setShowVerificationModal(true);
   };
 
   if (isLoading) {
@@ -264,17 +379,26 @@ export function ActiveJob() {
     { id: '4', url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800', caption: 'Bedroom organized' }
   ];
 
+  if (!activeJob) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-neutral-300">
+        <Briefcase className="w-12 h-12 text-neutral-300 mb-4" />
+        <h3 className="text-lg font-semibold text-neutral-900">No Active Jobs</h3>
+        <p className="text-neutral-500 max-w-xs text-center mt-2">
+          You don't have any cleaning jobs in progress right now.
+        </p>
+        <Button 
+          className="mt-6 bg-secondary-500 hover:bg-secondary-600 text-white"
+          onClick={() => window.location.href = '/booking'}
+        >
+          Book a Cleaning
+        </Button>
+      </div>
+    );
+  }
+
   // Use real data with fallbacks to prevent crashes
-  const displayJob = activeJob || {
-    id: `BK-${user?.id?.slice(-4) || 'DEMO'}-${new Date().getTime().toString().slice(-4)}`,
-    customerId: user?.id || 'user004',
-    date: 'Dec 25, 2025',
-    time: '4:00 PM',
-    address: '123 Sparkle Lane, Clean City, NY 10001',
-    service: 'Deep Cleaning',
-    totalAmount: 200.00,
-    status: 'COMPLETED'
-  };
+  const displayJob = activeJob;
 
   return (
     <div className="space-y-6">
@@ -292,11 +416,11 @@ export function ActiveJob() {
                 <div className="flex items-center gap-4 mt-1">
                   <div className="flex items-center gap-1.5">
                     <Key className="w-4 h-4 text-neutral-600" />
-                    <p className="text-sm text-neutral-600">Secret Code: <span className="font-bold text-neutral-900">{displayJob.id}</span></p>
+                    <p className="text-sm text-neutral-600">Secret Code: <span className="font-bold text-neutral-900">{displayJob.securityCode || 'Pending'}</span></p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <IdCard className="w-4 h-4 text-neutral-600" />
-                    <p className="text-sm text-neutral-600">Customer ID: <span className="font-medium text-neutral-900">{displayJob.customerId || displayJob.userId}</span></p>
+                    <p className="text-sm text-neutral-600">Cleaner ID: <span className="font-medium text-neutral-900">{displayJob.claimedBy?.[0]?.id || 'Assigning...'}</span></p>
                   </div>
                 </div>
               </div>
@@ -304,69 +428,83 @@ export function ActiveJob() {
 
             {/* Status Progress */}
             <div className="flex items-center gap-2 mb-2">
-              <div className={`w-full h-2 rounded-full ${jobStatus === 'assigned' || jobStatus === 'in-progress' || jobStatus === 'completed' ? 'bg-blue-500' : 'bg-neutral-200'}`} />
-              <div className={`w-full h-2 rounded-full ${jobStatus === 'in-progress' || jobStatus === 'completed' ? 'bg-orange-500' : 'bg-neutral-200'}`} />
+              <div className={`w-full h-2 rounded-full ${['assigned', 'arrived', 'in-progress', 'completed'].includes(jobStatus) ? 'bg-blue-500' : 'bg-neutral-200'}`} />
+              <div className={`w-full h-2 rounded-full ${['in-progress', 'completed'].includes(jobStatus) ? 'bg-orange-500' : 'bg-neutral-200'}`} />
               <div className={`w-full h-2 rounded-full ${jobStatus === 'completed' ? 'bg-green-500' : 'bg-neutral-200'}`} />
             </div>
             <div className="flex justify-between text-xs text-neutral-600">
-              <span>Assigned</span>
+              <span>{jobStatus === 'pending' ? 'Finding Cleaners' : 'Assigned'}</span>
               <span>In Progress</span>
               <span>Completed</span>
             </div>
-
-            {/* Quick Actions for Testing */}
-            <div className="flex gap-2 mt-4 flex-wrap">
-              <Button 
-                onClick={() => setJobStatus('assigned')} 
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                Set Assigned
-              </Button>
-              <Button 
-                onClick={simulateCleanerArrival} 
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                Simulate Arrival
-              </Button>
-              <Button 
-                onClick={() => setJobStatus('in-progress')} 
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                Set In Progress
-              </Button>
-              <Button 
-                onClick={() => setJobStatus('completed')} 
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                Set Completed
-              </Button>
-            </div>
           </div>
 
-          {/* Assigned Cleaner */}
-          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Assigned Cleaner</h3>
-            <div className="flex items-center gap-4">
-              <img 
-                src={cleaner.photo} 
-                alt={cleaner.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-              <div className="flex-1">
-                <h4 className="font-semibold text-neutral-900">{cleaner.name}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <IdCard className="w-4 h-4 text-neutral-600" />
-                  <span className="text-sm text-neutral-600">ID: {cleaner.id}</span>
+          {/* In Progress Timer & Checklist */}
+          {jobStatus === 'in-progress' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 flex flex-col items-center justify-center text-center">
+                <Clock className="w-12 h-12 text-secondary-500 mb-4 animate-pulse" />
+                <h4 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Time Elapsed</h4>
+                <div className="text-5xl font-bold text-neutral-900 my-2 font-mono">{elapsedTime}</div>
+                <p className="text-sm text-neutral-600">Started at {new Date(displayJob.startTime).toLocaleTimeString()}</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+                <h4 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-secondary-500" />
+                  Cleaning Checklist
+                </h4>
+                <div className="space-y-3">
+                  {getCleaningTasks(displayJob.service || displayJob.serviceType).map((task, index) => (
+                    <div key={index} className="flex items-center gap-3 p-2 hover:bg-neutral-50 rounded-lg transition-colors">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                      </div>
+                      <span className="text-neutral-700">{task}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Assigned Cleaners */}
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Assigned Cleaners</h3>
+            <div className="space-y-4">
+              {displayJob.claimedBy && displayJob.claimedBy.length > 0 ? (
+                displayJob.claimedBy.map((cleaner: any) => (
+                  <div key={cleaner.id} className="flex items-center gap-4 p-3 border border-neutral-100 rounded-lg">
+                    <img 
+                      src={cleaner.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleaner.name)}&background=random`} 
+                      alt={cleaner.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-neutral-900">{cleaner.name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <IdCard className="w-4 h-4 text-neutral-600" />
+                        <span className="text-sm text-neutral-600">ID: {cleaner.id}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={cleaner.photo} 
+                    alt={cleaner.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-neutral-900">{cleaner.name}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <IdCard className="w-4 h-4 text-neutral-600" />
+                      <span className="text-sm text-neutral-600">ID: {cleaner.id}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Verification Notice for Assigned Status */}
@@ -377,7 +515,7 @@ export function ActiveJob() {
                   <div className="flex-1">
                     <p className="font-medium text-blue-900 mb-1">Verification Required</p>
                     <p className="text-sm text-blue-800">
-                      When the cleaner arrives, they will provide their ID ({cleaner.id}) and the secret code ({displayJob.id}) for you to verify before they begin work.
+                      When the cleaner arrives, they will provide their ID and the secret code ({displayJob.securityCode || 'Pending'}) for you to verify before they begin work.
                     </p>
                   </div>
                 </div>
@@ -952,12 +1090,12 @@ export function ActiveJob() {
             <div className="bg-neutral-50 rounded-xl p-6 mb-6 space-y-4">
               <div className="flex items-center gap-4 pb-4 border-b border-neutral-200">
                 <img 
-                  src={cleaner.photo} 
-                  alt={cleaner.name}
+                  src={displayJob.claimedBy?.[0]?.profileImage || cleaner.photo} 
+                  alt={displayJob.claimedBy?.[0]?.name || cleaner.name}
                   className="w-16 h-16 rounded-full object-cover border-2 border-secondary-500"
                 />
                 <div>
-                  <h4 className="font-bold text-lg text-neutral-900">{cleaner.name}</h4>
+                  <h4 className="font-bold text-lg text-neutral-900">{displayJob.claimedBy?.[0]?.name || cleaner.name}</h4>
                   <p className="text-sm text-neutral-600">Professional Cleaner</p>
                 </div>
               </div>
@@ -968,7 +1106,7 @@ export function ActiveJob() {
                     <IdCard className="w-5 h-5 text-secondary-500" />
                     <span className="text-sm font-medium text-neutral-600">Cleaner ID</span>
                   </div>
-                  <span className="font-bold text-neutral-900">{cleaner.id}</span>
+                  <span className="font-bold text-neutral-900">{displayJob.claimedBy?.[0]?.id || cleaner.id}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-white rounded-lg">
@@ -976,7 +1114,7 @@ export function ActiveJob() {
                     <Key className="w-5 h-5 text-secondary-500" />
                     <span className="text-sm font-medium text-neutral-600">Secret Code</span>
                   </div>
-                  <span className="font-bold text-2xl text-secondary-500 tracking-wider">{displayJob.id}</span>
+                  <span className="font-bold text-2xl text-secondary-500 tracking-wider">{displayJob.securityCode || 'Pending'}</span>
                 </div>
               </div>
             </div>
@@ -988,8 +1126,8 @@ export function ActiveJob() {
                 <div className="text-sm text-orange-800">
                   <p className="font-semibold mb-1">Please verify:</p>
                   <ul className="space-y-1 ml-4">
-                    <li>• Check the cleaner's ID matches: {cleaner.id}</li>
-                    <li>• Confirm they can provide secret code: {displayJob.id}</li>
+                    <li>• Check the cleaner's ID matches: {displayJob.claimedBy?.[0]?.id || cleaner.id}</li>
+                    <li>• Confirm they can provide secret code: {displayJob.securityCode || 'Pending'}</li>
                     <li>• Verify the person matches their photo</li>
                   </ul>
                 </div>

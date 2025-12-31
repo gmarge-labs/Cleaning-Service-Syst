@@ -393,9 +393,14 @@ export function BookingsPage() {
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Clock className="w-4 h-4 text-secondary-500" />
-                  <span>
-                    Duration: {Math.floor((viewDetailsModal.estimatedDuration || 0) / 60)}h {(viewDetailsModal.estimatedDuration || 0) % 60}m
-                  </span>
+                  <div className="flex flex-col">
+                    <span>
+                      Total Duration: {Math.floor((viewDetailsModal.estimatedDuration || 0) / 60)}h {(viewDetailsModal.estimatedDuration || 0) % 60}m
+                    </span>
+                    <span className="text-xs text-secondary-500 font-medium">
+                      ({formatDisplayHours((viewDetailsModal.estimatedDuration || 0) / 60, viewDetailsModal.cleanerCount || 1, false)}h clock time)
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
                   <Users className="w-4 h-4 text-secondary-500" />
@@ -1258,7 +1263,7 @@ export function BookingsPage() {
                   </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
-                    {activeTab === 'claimed' ? 'Cleaner pay (per person)' : 'Cleaner pay (total)'}
+                    Cleaner pay (per person)
                   </th>
                   
                   {isAdmin && (
@@ -1315,7 +1320,14 @@ export function BookingsPage() {
                         <div className="text-sm text-neutral-600">
                           {activeTab === 'claimed' 
                             ? `${formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h`
-                            : `${Math.floor((booking.estimatedDuration || 0) / 60)}h ${(booking.estimatedDuration || 0) % 60}m`
+                            : (
+                              <div className="flex flex-col">
+                                <span>{Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m</span>
+                                <span className="text-xs text-secondary-500 font-medium">
+                                  ({formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h clock time)
+                                </span>
+                              </div>
+                            )
                           }
                         </div>
                       </td>
@@ -1340,9 +1352,8 @@ export function BookingsPage() {
                           {(() => {
                             const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
                             const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
-                            return activeTab === 'claimed' 
-                              ? (hoursPerCleaner * rate).toFixed(2)
-                              : (hoursPerCleaner * (booking.cleanerCount || 1) * rate).toFixed(2);
+                            // Always show pay per person as requested
+                            return (hoursPerCleaner * rate).toFixed(2);
                           })()}
                         </div>
                       </td>

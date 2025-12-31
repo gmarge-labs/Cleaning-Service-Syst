@@ -17,9 +17,12 @@ interface JobDetailsProps {
 }
 
 export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: JobDetailsProps) {
+    const isClaimedByMe = job.claimedBy?.some(c => c.id === user?.id) || 
+                         job.cleanerId === user?.id;
     const [isClockedIn, setIsClockedIn] = useState(job.status === 'IN_PROGRESS');
     const [startTime, setStartTime] = useState<Date | null>(job.status === 'IN_PROGRESS' ? new Date() : null);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [arrivalNotified, setArrivalNotified] = useState(job.status === 'ARRIVED' || job.status === 'IN_PROGRESS');
     const [securityCodeInput, setSecurityCodeInput] = useState('');
     const [cleanerIdInput, setCleanerIdInput] = useState('');
     const [showTaskList, setShowTaskList] = useState(job.status === 'IN_PROGRESS');
@@ -27,7 +30,7 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
     const [elapsedTime, setElapsedTime] = useState('0:00');
 
     const cleanerId = user?.id || 'CLN-12845';
-    const jobSecurityCode = '4738';
+    const jobSecurityCode = job.securityCode || job.id.slice(-4).toUpperCase();
 
     const cleaningTasks = [
         'Dust all surfaces',
@@ -55,7 +58,17 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
         return () => clearInterval(interval);
     }, [isClockedIn, startTime]);
 
-    const handleArrival = () => {
+    const handleArrival = async () => {
+        try {
+            await jobService.notifyArrival(job.id, user.id);
+            setArrivalNotified(true);
+            setShowVerificationModal(true);
+        } catch (error: any) {
+            alert(error.message);
+        }
+    };
+
+    const handleStartClick = () => {
         setShowVerificationModal(true);
     };
 
@@ -370,14 +383,18 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
 
             {/* Footer Actions */}
             <View style={styles.footer}>
-                {!job.cleanerId ? (
-                    <Button title="Claim Job" onPress={() => onClaimJob(job.id)} variant="gradient" />
+                {!isClaimedByMe ? (
+                    <Button title="Start" onPress={() => onClaimJob(job.id)} variant="gradient" />
                 ) : job.status === 'COMPLETED' ? (
                     <View style={{ alignItems: 'center', padding: Spacing.sm }}>
                         <Text style={{ color: Colors.success, fontWeight: 'bold' }}>Job Completed</Text>
                     </View>
                 ) : !isClockedIn ? (
-                    <Button title="Start Job" onPress={handleArrival} variant="gradient" />
+                    !arrivalNotified ? (
+                        <Button title="Arrive" onPress={handleArrival} variant="gradient" />
+                    ) : (
+                        <Button title="Start" onPress={handleStartClick} variant="gradient" />
+                    )
                 ) : (
                     <Button
                         title="Complete Job"
@@ -406,13 +423,19 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                             style={styles.codeCard}
                         >
                             <View style={styles.codeItem}>
-                                <Text style={styles.codeLabel}>Security Code</Text>
-                                <Text style={styles.codeValue}>{jobSecurityCode}</Text>
+                                <Text style={styles.codeLabel}>Job Security Code</Text>
+                                <View style={styles.codeRow}>
+                                    <Key size={24} color={Colors.white} style={{ marginRight: 8 }} />
+                                    <Text style={styles.codeValue}>{jobSecurityCode}</Text>
+                                </View>
                             </View>
                             <View style={styles.codeDivider} />
                             <View style={styles.codeItem}>
-                                <Text style={styles.codeLabel}>Cleaner ID</Text>
-                                <Text style={styles.codeValue}>{cleanerId}</Text>
+                                <Text style={styles.codeLabel}>Your Cleaner ID</Text>
+                                <View style={styles.codeRow}>
+                                    <IdCard size={24} color={Colors.white} style={{ marginRight: 8 }} />
+                                    <Text style={styles.codeValue}>{cleanerId}</Text>
+                                </View>
                             </View>
                         </LinearGradient>
 
@@ -726,29 +749,35 @@ const styles = StyleSheet.create({
         color: Colors.gray,
     },
     codeCard: {
-        flexDirection: 'row',
         backgroundColor: Colors.primary,
-        borderRadius: 16,
-        padding: Spacing.md,
+        borderRadius: 24,
+        padding: Spacing.xl,
         marginBottom: Spacing.xl,
     },
     codeItem: {
-        flex: 1,
         alignItems: 'center',
+        paddingVertical: Spacing.sm,
     },
     codeLabel: {
-        fontSize: 10,
+        fontSize: 14,
         color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 4,
+        marginBottom: 8,
+    },
+    codeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     codeValue: {
-        fontSize: 20,
+        fontSize: 36,
         fontWeight: 'bold',
         color: Colors.white,
+        letterSpacing: 2,
     },
     codeDivider: {
-        width: 1,
+        height: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        marginVertical: Spacing.md,
     },
     inputSection: {
         gap: Spacing.md,

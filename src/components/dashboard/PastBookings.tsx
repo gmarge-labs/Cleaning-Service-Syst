@@ -1,84 +1,58 @@
-import { useState } from 'react';
-import { Star, Calendar, DollarSign, FileText, RefreshCw, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { Star, Calendar, DollarSign, FileText, RefreshCw, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-// Mock data
-const pastBookings = [
-  {
-    id: 1,
-    serviceType: 'Deep Cleaning',
-    date: new Date('2025-11-15'),
-    cleaner: {
-      name: 'Maria Garcia',
-      photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    },
-    rating: 5,
-    total: 189.00,
-    reviewed: true,
-  },
-  {
-    id: 2,
-    serviceType: 'Standard Cleaning',
-    date: new Date('2025-11-08'),
-    cleaner: {
-      name: 'John Smith',
-      photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-    },
-    rating: 5,
-    total: 120.00,
-    reviewed: true,
-  },
-  {
-    id: 3,
-    serviceType: 'Move In/Out',
-    date: new Date('2025-10-28'),
-    cleaner: {
-      name: 'Emily Chen',
-      photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-    },
-    rating: 4,
-    total: 249.00,
-    reviewed: true,
-  },
-  {
-    id: 4,
-    serviceType: 'Standard Cleaning',
-    date: new Date('2025-10-15'),
-    cleaner: {
-      name: 'Carlos Rodriguez',
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-    },
-    rating: 5,
-    total: 120.00,
-    reviewed: true,
-  },
-  {
-    id: 5,
-    serviceType: 'Deep Cleaning',
-    date: new Date('2025-10-01'),
-    cleaner: {
-      name: 'Sarah Johnson',
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
-    },
-    rating: 5,
-    total: 189.00,
-    reviewed: true,
-  },
-];
-
 export function PastBookings() {
+  const { user } = useSelector((state: RootState) => state.auth);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredBookings = pastBookings.filter((booking) => {
-    const matchesSearch = booking.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.cleaner.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || booking.serviceType === filterType;
+  useEffect(() => {
+    if (user?.id) {
+      fetchPastBookings();
+    }
+  }, [user?.id]);
+
+  const fetchPastBookings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/bookings?userId=${user?.id}&status=COMPLETED`);
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching past bookings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredBookings = bookings.filter((booking) => {
+    const serviceType = booking.serviceType || '';
+    const cleanerName = booking.claimedBy?.[0]?.name || 'Cleaner';
+    
+    const matchesSearch = serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         cleanerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterType === 'all' || serviceType === filterType;
     return matchesSearch && matchesFilter;
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="w-10 h-10 text-secondary-500 animate-spin mb-4" />
+        <p className="text-neutral-600">Loading your history...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -125,29 +99,30 @@ export function PastBookings() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
                   <div>
                     <h3 className="text-xl font-semibold text-neutral-900">{booking.serviceType}</h3>
+                    <p className="text-sm text-neutral-500">Cleaner: {booking.claimedBy?.[0]?.name || 'Professional Cleaner'}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-neutral-900">${booking.total.toFixed(2)}</div>
+                    <div className="text-2xl font-bold text-neutral-900">${Number(booking.totalAmount).toFixed(2)}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>{booking.date.toLocaleDateString('en-US', { 
+                    <span>{new Date(booking.date).toLocaleDateString('en-US', { 
                       month: 'long', 
                       day: 'numeric',
                       year: 'numeric'
                     })}</span>
                   </div>
                   
-                  {booking.reviewed && (
+                  {booking.reviews && booking.reviews.length > 0 && (
                     <div className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
                           className={`w-4 h-4 ${
-                            i < booking.rating
+                            i < booking.reviews[0].rating
                               ? 'text-yellow-400 fill-current'
                               : 'text-neutral-300'
                           }`}
@@ -171,7 +146,7 @@ export function PastBookings() {
                     <FileText className="w-4 h-4 mr-2" />
                     View Receipt
                   </Button>
-                  {!booking.reviewed && (
+                  {(!booking.reviews || booking.reviews.length === 0) && (
                     <Button variant="outline" size="sm">
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Leave Review

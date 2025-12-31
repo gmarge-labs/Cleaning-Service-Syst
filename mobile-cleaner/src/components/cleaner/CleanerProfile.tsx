@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Switch, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Switch, Platform, Image, Alert } from 'react-native';
 import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, Clock, Save, Edit2, IdCard, CheckCircle, X, Settings, Star, Camera } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -9,6 +9,7 @@ import { CleanerView } from './BottomNavigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService, User as UserType } from '../../api/auth.service';
 import { LogOut } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 interface CleanerProfileProps {
     currentView: CleanerView;
@@ -54,6 +55,28 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
     });
 
     const [editedProfile, setEditedProfile] = useState<ProfileData>(profile);
+    const [profileImage, setProfileImage] = useState<string | null>(user?.profileImage || null);
+
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled) {
+            const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+            setProfileImage(base64Image);
+        }
+    };
 
     const handleEdit = () => {
         setIsEditing(true);
@@ -68,21 +91,21 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
     const handleSave = async () => {
         setIsLoading(true);
         try {
-            // In a real app, we'd call an API to update the user
-            // const updated = await authService.updateProfile(user.id, editedProfile);
+            if (!user) return;
+            
+            const updated = await authService.updateProfile(user.id, {
+                name: editedProfile.name,
+                email: editedProfile.email,
+                phone: editedProfile.phone,
+                address: editedProfile.address,
+                profileImage: profileImage || undefined
+            });
+            
             setProfile(editedProfile);
-            if (user) {
-                onUpdateUser({
-                    ...user,
-                    name: editedProfile.name,
-                    email: editedProfile.email,
-                    phone: editedProfile.phone,
-                    address: editedProfile.address,
-                });
-            }
+            onUpdateUser(updated);
             setIsEditing(false);
-        } catch (error) {
-            alert('Failed to update profile');
+        } catch (error: any) {
+            alert(error.message || 'Failed to update profile');
         } finally {
             setIsLoading(false);
         }
@@ -137,9 +160,22 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
 
                 <View style={styles.profileCard}>
                     <View style={styles.profileMain}>
-                        <View style={styles.avatarContainer}>
-                            <User size={32} color={Colors.white} />
-                        </View>
+                        <TouchableOpacity 
+                            style={styles.avatarContainer} 
+                            onPress={pickImage}
+                            disabled={!isEditing}
+                        >
+                            {profileImage ? (
+                                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                            ) : (
+                                <User size={32} color={Colors.white} />
+                            )}
+                            {isEditing && (
+                                <View style={styles.cameraIconContainer}>
+                                    <Camera size={12} color={Colors.white} />
+                                </View>
+                            )}
+                        </TouchableOpacity>
                         <View style={styles.nameContainer}>
                             <Text style={styles.nameText}>{profile.name}</Text>
                             <View style={styles.idRow}>
@@ -422,6 +458,27 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        position: 'relative',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 32,
+    },
+    cameraIconContainer: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        backgroundColor: Colors.secondary,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.white,
     },
     nameContainer: {
         flex: 1,

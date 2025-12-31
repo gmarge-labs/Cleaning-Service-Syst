@@ -30,6 +30,7 @@ export interface Booking {
     status: string;
     distance?: string;
     cleanerId?: string;
+    securityCode?: string;
     claimedBy?: Array<{
         id: string;
         name: string;
@@ -98,18 +99,55 @@ export const jobService = {
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to update job status');
         }
+    },
+
+    notifyArrival: async (jobId: string, cleanerId: string) => {
+        try {
+            const response = await api.post(`/bookings/${jobId}/arrive`, { cleanerId });
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Failed to notify arrival');
+        }
     }
 };
 
 /**
+ * Formats the duration for display to the cleaner/customer.
+ * Rounds to the nearest 0.5 or 1.0 hour per cleaner.
+ */
+export function formatDisplayHours(estimatedHours: number, cleanerCount: number) {
+    if (cleanerCount <= 0) {
+        return estimatedHours;
+    }
+
+    const hoursPerCleaner = estimatedHours / cleanerCount;
+    const wholeHours = Math.floor(hoursPerCleaner);
+    const minutes = Math.round((hoursPerCleaner - wholeHours) * 60);
+
+    if (minutes === 0) {
+        return wholeHours;
+    } else if (minutes < 30) {
+        return wholeHours + 0.5;
+    } else {
+        return wholeHours + 1.0;
+    }
+}
+
+/**
  * Calculates the cleaner's actual earnings for a job.
- * Formula: (Payment Per Hour * (Duration in Minutes / 60)) + Tip
+ * Formula: (Payment Per Hour * Hours Shown to Customer) + (Tip / Cleaner Count)
  */
 export const calculateEarnings = (job: Booking): number => {
     const rate = job.paymentPerHour ? Number(job.paymentPerHour) : 20;
-    const duration = job.estimatedDuration || 120;
-    const hours = duration / 60;
-    const basePay = rate * hours;
+    const cleanerCount = job.cleanerCount || 1;
+    const totalDurationHours = (job.estimatedDuration || 120) / 60;
+    
+    // Use hours shown to customer (clock time per cleaner)
+    const hoursPerCleaner = formatDisplayHours(totalDurationHours, cleanerCount);
+    
+    const basePay = rate * hoursPerCleaner;
     const tip = job.tipAmount ? Number(job.tipAmount) : 0;
-    return basePay + tip;
+    
+    // Split tip among cleaners
+    return basePay + (tip / cleanerCount);
 };

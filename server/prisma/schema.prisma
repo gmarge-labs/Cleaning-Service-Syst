@@ -32,6 +32,7 @@ model User {
   sentMessages        Message[]       @relation("SentMessages")
   receivedMessages    Message[]       @relation("ReceivedMessages")
   pushToken           String?         // Expo push token
+  profileImage        String?         // Profile picture URL
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 }
@@ -129,6 +130,10 @@ model Booking {
   toolsRequired       String?
   
   status              BookingStatus @default(PENDING)
+  securityCode        String?       // 4-digit verification code
+  startTime           DateTime?     // Actual start time
+  endTime             DateTime?     // Actual end time
+  isAccepted          Boolean       @default(false) // Customer accepted the work
   
   reviews             Review[]
   
@@ -160,6 +165,7 @@ enum BookingStatus {
   BOOKED
   PENDING
   CONFIRMED
+  ARRIVED
   IN_PROGRESS
   COMPLETED
   CANCELLED

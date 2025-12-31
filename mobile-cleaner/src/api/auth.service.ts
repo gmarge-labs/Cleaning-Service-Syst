@@ -8,6 +8,7 @@ export interface User {
     role: string;
     phone?: string;
     address?: string;
+    profileImage?: string;
     createdAt?: string;
 }
 
@@ -36,6 +37,17 @@ export const authService = {
     getCurrentUser: async (): Promise<User | null> => {
         const userJson = await AsyncStorage.getItem('user');
         return userJson ? JSON.parse(userJson) : null;
+    },
+
+    updateProfile: async (userId: string, data: Partial<User>): Promise<User> => {
+        try {
+            const response = await api.patch(`/users/${userId}`, data);
+            const updatedUser = response.data;
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            return updatedUser;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Failed to update profile');
+        }
     },
 
     updatePushToken: async (userId: string, token: string) => {

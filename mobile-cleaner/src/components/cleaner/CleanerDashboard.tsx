@@ -12,6 +12,8 @@ import { User as UserType } from '../../api/auth.service';
 
 interface CleanerDashboardProps {
     user: UserType | null;
+    activeTab: string;
+    onTabChange: (tab: string) => void;
     onSelectJob: (job: Booking) => void;
     onStartJob: (job: Booking) => void;
     onClaimJob: (jobId: string) => void;
@@ -28,6 +30,8 @@ import { RefreshControl } from 'react-native';
 
 export function CleanerDashboard({
     user,
+    activeTab,
+    onTabChange,
     onSelectJob,
     onStartJob,
     onClaimJob,
@@ -38,7 +42,6 @@ export function CleanerDashboard({
     onNavigateToNotifications,
     unreadCount = 0
 }: CleanerDashboardProps) {
-    const [activeTab, setActiveTab] = useState('available');
     const [availableJobs, setAvailableJobs] = useState<Booking[]>([]);
     const [myJobs, setMyJobs] = useState<Booking[]>([]);
     const [completedJobs, setCompletedJobs] = useState<Booking[]>([]);
@@ -154,7 +157,7 @@ export function CleanerDashboard({
 
             <Tabs
                 activeTab={activeTab}
-                onTabChange={setActiveTab}
+                onTabChange={onTabChange}
                 tabs={[
                     { id: 'available', label: 'Available', count: availableJobs.length },
                     { id: 'upcoming', label: 'My Jobs', count: myJobs.length },
@@ -270,7 +273,12 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                             </View>
                         )}
                         {showStartButton && !isCompleted && (
-                            <Button title="Start" onPress={() => onStart(job)} variant="gradient" style={styles.startBtn} />
+                            <Button 
+                                title={job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'} 
+                                onPress={() => onStart(job)} 
+                                variant="gradient" 
+                                style={styles.startBtn} 
+                            />
                         )}
                         <TouchableOpacity onPress={() => onSelect(job)} style={styles.detailsBtn}>
                             <Text style={styles.detailsText}>Details</Text>
@@ -313,7 +321,7 @@ const AvailableJobCard = ({ job, onViewDetails, onClaim }: any) => {
                         ${calculateEarnings(job).toFixed(2)}
                     </Text>
                     <View style={styles.actions}>
-                        <Button title="Claim" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
+                        <Button title="Start" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
                         <TouchableOpacity onPress={() => onViewDetails(job)} style={styles.detailsBtn}>
                             <Text style={styles.detailsText}>Details</Text>
                             <ChevronRight size={16} color={Colors.gray} />

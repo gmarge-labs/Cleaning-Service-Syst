@@ -21,6 +21,7 @@ type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completion' | 'm
 
 export default function App() {
     const [currentView, setCurrentView] = useState<CleanerView>('login');
+    const [activeTab, setActiveTab] = useState('available');
     const [user, setUser] = useState<UserType | null>(null);
     const [claimedJobs, setClaimedJobs] = useState<string[]>([]);
     const [selectedJob, setSelectedJob] = useState<BookingType | null>(null);
@@ -134,6 +135,8 @@ export default function App() {
             {currentView === 'dashboard' && (
                 <CleanerDashboard
                     user={user}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
                     onSelectJob={handleSelectJob}
                     onStartJob={handleStartJob}
                     onClaimJob={handleClaimJob}

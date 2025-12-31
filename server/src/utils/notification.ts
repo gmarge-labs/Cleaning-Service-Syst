@@ -4,7 +4,7 @@ import prisma from './prisma';
 
 const expo = new Expo();
 
-export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_UPDATED' | 'BOOKING_CANCELLED' | 'BOOKING_CONFIRMED' | 'USER_REGISTERED' | 'SYSTEM_ALERT' | 'REVIEW_RECEIVED' | 'MESSAGE_RECEIVED';
+export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_UPDATED' | 'BOOKING_CANCELLED' | 'BOOKING_CONFIRMED' | 'USER_REGISTERED' | 'SYSTEM_ALERT' | 'REVIEW_RECEIVED' | 'MESSAGE_RECEIVED' | 'CLEANER_ARRIVED';
 
 interface CreateNotificationParams {
   userId: string;

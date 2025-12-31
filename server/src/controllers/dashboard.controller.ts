@@ -114,17 +114,33 @@ export const getActiveJob = async (req: Request, res: Response) => {
       where: {
         userId: userId as string,
         status: {
-          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
+          in: [
+            'PENDING', 
+            'CONFIRMED', 
+            'ARRIVED', 
+            'IN_PROGRESS', 
+            'COMPLETED'
+          ]
         },
+        isAccepted: false,
         reviews: {
           none: {}
         }
-      },
+      } as any,
       orderBy: {
         createdAt: 'desc'
       },
       include: {
-        reviews: true
+        reviews: true,
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            profileImage: true
+          } as any
+        }
       }
     });
 
