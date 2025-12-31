@@ -17,9 +17,10 @@ import {
   X
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, FormEvent } from 'react';
 import { sendMessageToOpenAI, Message } from '../utils/openai-service';
 import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '../components/ui/scroll-reveal';
+import { toast } from 'sonner';
 
 interface ContactPageProps {
   onStartChat: () => void;
@@ -34,6 +35,7 @@ interface ChatMessage {
 
 export function ContactPage({ onStartChat }: ContactPageProps) {
   const [inputMessage, setInputMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -54,6 +56,42 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
+
+  const handleContactSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      message: formData.get('message'),
+    };
+
+    try {
+      const response = await fetch('/api/support/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        toast.success('Message sent successfully! We\'ll get back to you soon.');
+        (e.target as HTMLFormElement).reset();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast.error('An error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -453,7 +491,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                     </div>
 
                     {/* Contact Form */}
-                    <form className="space-y-4 mb-6 flex-1">
+                    <form onSubmit={handleContactSubmit} className="space-y-4 mb-6 flex-1">
                       <div>
                         <label htmlFor="name" className="block text-sm font-semibold text-neutral-700 mb-2">
                           Full Name *
@@ -512,10 +550,15 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                       <Button
                         type="submit"
                         size="lg"
+                        disabled={isSubmitting}
                         className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white hover:opacity-90 px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-all"
                       >
-                        <Send className="w-5 h-5 mr-2" />
-                        Send Message
+                        {isSubmitting ? (
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        ) : (
+                          <Send className="w-5 h-5 mr-2" />
+                        )}
+                        {isSubmitting ? 'Sending...' : 'Send Message'}
                       </Button>
                     </form>
 

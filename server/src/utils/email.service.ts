@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -13,10 +14,31 @@ interface EmailOptions {
 // Initialize SendGrid with API key from settings
 let isInitialized = false;
 let lastApiKey = '';
+let mailtrapTransporter: nodemailer.Transporter | null = null;
 
-async function initializeSendGrid() {
+async function initializeEmailTransport() {
   try {
-    // Check environment variable first
+    // Check for Mailtrap first (as requested by user)
+    const mailtrapUser = process.env.MAILTRAP_USER;
+    const mailtrapPass = process.env.MAILTRAP_PASS;
+
+    if (mailtrapUser && mailtrapPass) {
+      if (!mailtrapTransporter) {
+        mailtrapTransporter = nodemailer.createTransport({
+          host: "sandbox.smtp.mailtrap.io",
+          port: 2525,
+          auth: {
+            user: mailtrapUser,
+            pass: mailtrapPass
+          }
+        });
+        console.log('✅ Mailtrap transporter initialized');
+      }
+      isInitialized = true;
+      return;
+    }
+
+    // Fallback to SendGrid
     const envApiKey = process.env.SENDGRID_API_KEY;
     if (envApiKey && envApiKey !== 'your_sendgrid_api_key') {
       if (!isInitialized || lastApiKey !== envApiKey) {
@@ -79,11 +101,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     console.log('📧 Attempting to send email to:', options.to);
     
-    // Initialize SendGrid if not already done
-    await initializeSendGrid();
+    // Initialize email transport if not already done
+    await initializeEmailTransport();
 
     if (!isInitialized) {
-      console.warn('⚠️ SendGrid not initialized, skipping email send');
+      console.warn('⚠️ Email transport not initialized, skipping email send');
       return false;
     }
 
@@ -168,6 +190,18 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         </html>
       `
     };
+
+    if (mailtrapTransporter) {
+      await mailtrapTransporter.sendMail({
+        from: `"${companyName}" <${fromEmail}>`,
+        to: options.to,
+        subject: options.subject,
+        text: msg.text,
+        html: msg.html,
+      });
+      console.log(`✅ Email sent successfully via Mailtrap to ${options.to}`);
+      return true;
+    }
 
     await sgMail.send(msg);
     console.log(`✅ Email sent successfully to ${options.to}`);

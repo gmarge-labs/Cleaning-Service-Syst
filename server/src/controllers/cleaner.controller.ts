@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { sendApplicationAccepted, sendApplicationRejected } from '../utils/email.service';
+import { sendApplicationAccepted, sendApplicationRejected, sendEmail } from '../utils/email.service';
 
 const prisma = new PrismaClient();
 
@@ -91,6 +91,33 @@ export const submitApplication = async (req: Request, res: Response) => {
         }
       });
     }
+
+    // Send email to company
+    const settings = await prisma.systemSettings.findUnique({
+      where: { id: 'default' }
+    });
+
+    const general = settings?.general as any;
+    const companyEmail = general?.email || 'hello@Sparkleville.com';
+
+    await sendEmail({
+      to: companyEmail,
+      subject: `New Cleaner Application: ${application.firstName} ${application.lastName}`,
+      templateType: 'broadcast',
+      variables: {
+        name: 'Admin',
+        message: `
+          You have received a new cleaner application:
+          
+          Name: ${application.firstName} ${application.lastName}
+          Email: ${application.email}
+          Phone: ${application.phone}
+          Location: ${application.city}, ${application.state}
+          
+          Please log in to the admin dashboard to review the full application.
+        `
+      }
+    });
 
     res.status(201).json({
       message: 'Application submitted successfully',

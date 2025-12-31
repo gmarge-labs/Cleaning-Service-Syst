@@ -25,6 +25,7 @@ import inventoryRoutes from './routes/inventory.routes';
 import reviewRoutes from './routes/review.routes';
 import cleanerRoutes from './routes/cleaner.routes';
 import messageRoutes from './routes/message.routes';
+import supportRoutes from './routes/support.routes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -36,6 +37,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/cleaners', cleanerRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/support', supportRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });

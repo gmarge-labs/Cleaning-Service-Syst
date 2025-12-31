@@ -115,46 +115,61 @@ export function CareersPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast.success('Application submitted successfully! We\'ll be in touch soon.');
-      
-      // Reset form
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        dateOfBirth: '',
-        hasExperience: '',
-        yearsOfExperience: '',
-        previousEmployer: '',
-        availability: [],
-        transportation: '',
-        preferredAreas: '',
-        hasCriminalRecord: '',
-        criminalRecordDetails: '',
-        reference1Name: '',
-        reference1Phone: '',
-        reference1Relationship: '',
-        reference2Name: '',
-        reference2Phone: '',
-        reference2Relationship: '',
-        hasInsurance: '',
-        agreedToBackgroundCheck: false,
-        agreedToTerms: false,
+    try {
+      const response = await fetch('/api/cleaners/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-    }, 2000);
+
+      if (response.ok) {
+        toast.success('Application submitted successfully! We\'ll be in touch soon.');
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          dateOfBirth: '',
+          hasExperience: '',
+          yearsOfExperience: '',
+          previousEmployer: '',
+          availability: [],
+          transportation: '',
+          preferredAreas: '',
+          hasCriminalRecord: '',
+          criminalRecordDetails: '',
+          reference1Name: '',
+          reference1Phone: '',
+          reference1Relationship: '',
+          reference2Name: '',
+          reference2Phone: '',
+          reference2Relationship: '',
+          hasInsurance: '',
+          agreedToBackgroundCheck: false,
+          agreedToTerms: false,
+        });
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to submit application. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast.error('An error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
