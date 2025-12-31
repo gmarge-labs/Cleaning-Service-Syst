@@ -27,7 +27,7 @@ export const pushNotificationService = {
             });
         }
 
-        if (Device.isDevice) {
+        if (Device.isDevice || Platform.OS === 'web') {
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
             if (existingStatus !== 'granted') {
@@ -35,12 +35,19 @@ export const pushNotificationService = {
                 finalStatus = status;
             }
             if (finalStatus !== 'granted') {
-                alert('Failed to get push token for push notification!');
+                if (Platform.OS !== 'web') {
+                    alert('Failed to get push token for push notification!');
+                }
                 return;
             }
-            // Learn more about projectId:
-            // https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-            // For now we just get the token directly, assuming EAS is configured or using default Expo Go for dev
+
+            // Push notifications on web require VAPID configuration in app.json
+            // We'll skip token fetch on web for now to avoid errors during development
+            if (Platform.OS === 'web') {
+                console.log('Push notifications are limited on web without VAPID configuration.');
+                return;
+            }
+
             try {
                 const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
                 token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;

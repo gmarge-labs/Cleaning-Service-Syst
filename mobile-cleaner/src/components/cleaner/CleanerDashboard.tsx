@@ -7,7 +7,7 @@ import { Button } from '../Button';
 import { Tabs } from '../Tabs';
 import { BottomNavigation, CleanerView } from './BottomNavigation';
 
-import { jobService, Booking } from '../../api/job.service';
+import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { User as UserType } from '../../api/auth.service';
 
 interface CleanerDashboardProps {
@@ -53,7 +53,7 @@ export function CleanerDashboard({
                 jobService.getAvailableJobs(),
                 jobService.getAssignedJobs(user.id)
             ]);
-            
+
             // Filter available jobs to exclude those already claimed by this user
             // and those that are already full
             const filteredAvailable = available.filter(job => {
@@ -128,8 +128,26 @@ export function CleanerDashboard({
                 </View>
 
                 <View style={styles.statsRow}>
-                    <StatCard icon={<Calendar size={16} color={Colors.white} />} label="Today" value={availableJobs.length.toString()} sub="Jobs" />
-                    <StatCard icon={<DollarSign size={16} color={Colors.white} />} label="Week" value="$498" sub="Earned" />
+                    <StatCard
+                        icon={<Calendar size={16} color={Colors.white} />}
+                        label="Today"
+                        value={myJobs.filter(job => new Date(job.date).toDateString() === new Date().toDateString()).length.toString()}
+                        sub="Jobs"
+                    />
+                    <StatCard
+                        icon={<DollarSign size={16} color={Colors.white} />}
+                        label="Week"
+                        value={`$${completedJobs
+                            .filter(job => {
+                                const jobDate = new Date(job.date);
+                                const now = new Date();
+                                const weekAgo = new Date(now.setDate(now.getDate() - 7));
+                                return jobDate >= weekAgo;
+                            })
+                            .reduce((sum, job) => sum + calculateEarnings(job), 0)
+                            .toFixed(0)}`}
+                        sub="Earned"
+                    />
                     <StatCard icon={<Star size={16} color={Colors.white} />} label="Rating" value="4.9" sub="Average" />
                 </View>
             </LinearGradient>
@@ -140,7 +158,7 @@ export function CleanerDashboard({
                 tabs={[
                     { id: 'available', label: 'Available', count: availableJobs.length },
                     { id: 'upcoming', label: 'My Jobs', count: myJobs.length },
-                    { id: 'completed', label: 'Completed' },
+                    { id: 'completed', label: 'Completed', count: completedJobs.length },
                 ]}
             />
 
@@ -225,10 +243,12 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                 </Badge>
             </View>
             <View style={styles.cardContent}>
-                <View style={styles.jobInfoItem}>
-                    <MapPin size={16} color={Colors.gray} />
-                    <Text style={styles.jobInfoText}>{job.address}</Text>
-                </View>
+                {!isCompleted && (
+                    <View style={styles.jobInfoItem}>
+                        <MapPin size={16} color={Colors.gray} />
+                        <Text style={styles.jobInfoText}>{job.address}</Text>
+                    </View>
+                )}
                 <View style={styles.jobInfoRow}>
                     <View style={styles.jobInfoItem}>
                         <Clock size={16} color={Colors.gray} />
@@ -241,9 +261,14 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                 </View>
                 <View style={styles.cardFooter}>
                     <Text style={styles.paymentText}>
-                        ${((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                        ${calculateEarnings(job).toFixed(2)}
                     </Text>
                     <View style={styles.actions}>
+                        {isCompleted && (
+                            <View style={[styles.startBtn, styles.completedBadge]}>
+                                <Text style={styles.completedBadgeText}>Completed</Text>
+                            </View>
+                        )}
                         {showStartButton && !isCompleted && (
                             <Button title="Start" onPress={() => onStart(job)} variant="gradient" style={styles.startBtn} />
                         )}
@@ -285,7 +310,7 @@ const AvailableJobCard = ({ job, onViewDetails, onClaim }: any) => {
                 </View>
                 <View style={styles.cardFooter}>
                     <Text style={styles.paymentText}>
-                        ${((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                        ${calculateEarnings(job).toFixed(2)}
                     </Text>
                     <View style={styles.actions}>
                         <Button title="Claim" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
@@ -492,5 +517,17 @@ const styles = StyleSheet.create({
         color: Colors.gray,
         fontWeight: '500',
         marginRight: 4,
+    },
+    completedBadge: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: Colors.success,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    completedBadgeText: {
+        color: Colors.success,
+        fontSize: 14,
+        fontWeight: 'bold',
     },
 });

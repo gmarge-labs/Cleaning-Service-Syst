@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 const DEFAULT_SETTINGS = {
   general: {
@@ -76,7 +74,7 @@ const DEFAULT_SETTINGS = {
     perWindow: 15,
     perPetHair: 30,
     perOrganizationHour: 60,
-    
+
     standardCleaningMultiplier: 1.0,
     deepCleaningMultiplier: 1.5,
     moveInOutMultiplier: 2.0,
@@ -157,10 +155,10 @@ export const updateSettings = async (req: Request, res: Response) => {
 
 export const getQualifiedUsersCount = async (req: Request, res: Response) => {
   const { category } = req.query;
-  
+
   try {
     let count = 0;
-    
+
     if (category === 'all') {
       count = await prisma.user.count({
         where: { role: 'CUSTOMER' }
@@ -168,12 +166,12 @@ export const getQualifiedUsersCount = async (req: Request, res: Response) => {
     } else {
       let min = 0;
       let max = 999999;
-      
+
       if (category === '5-9') { min = 5; max = 9; }
       else if (category === '10-15') { min = 10; max = 15; }
       else if (category === '16-20') { min = 16; max = 20; }
       else if (category === '21+') { min = 21; }
-      
+
       const users = await prisma.user.findMany({
         where: { role: 'CUSTOMER' },
         select: {
@@ -182,10 +180,10 @@ export const getQualifiedUsersCount = async (req: Request, res: Response) => {
           }
         }
       });
-      
+
       count = users.filter(u => u._count.bookings >= min && u._count.bookings <= max).length;
     }
-    
+
     res.json({ count });
   } catch (error) {
     console.error('Get qualified users count error:', error);

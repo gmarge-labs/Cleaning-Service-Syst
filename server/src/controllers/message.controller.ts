@@ -1,8 +1,7 @@
 import { Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { AuthRequest } from '../utils/auth';
-
-const prisma = new PrismaClient() as any;
+import prisma from '../utils/prisma';
 
 export const getConversations = async (req: AuthRequest, res: Response) => {
   try {

@@ -1,14 +1,12 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from './utils/prisma';
 
 async function main() {
   try {
     console.log('Connecting to database...');
     const userCount = await prisma.user.count();
     console.log(`Successfully connected! Current user count: ${userCount}`);
-    
+
     const users = await prisma.user.findMany({
       take: 10,
       select: {

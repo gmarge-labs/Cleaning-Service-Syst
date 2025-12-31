@@ -30,24 +30,45 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
   const [emailNotif, setEmailNotif] = useState(true);
   const [smsNotif, setSmsNotif] = useState(true);
   const [applyFreeCleaning, setApplyFreeCleaning] = useState(false);
+  const [cleaningStats, setCleaningStats] = useState({
+    completedCount: 0,
+    progressToNext: 0,
+    availableRewards: 0,
+    threshold: 5
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const { user } = useSelector((state: RootState) => state.auth);
 
+  useEffect(() => {
+    const fetchCleaningStats = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setCleaningStats(data);
+        }
+      } catch (error) {
+        console.error('Error fetching cleaning stats:', error);
+      }
+    };
+
+    fetchCleaningStats();
+  }, [user?.id]);
+
   // Calculate price using utility function
-  const { 
-    subtotal, 
-    frequencyDiscount, 
+  const {
+    subtotal,
+    frequencyDiscount,
     frequencyDiscountRate,
-    topBookerDiscount, 
+    topBookerDiscount,
     topBookerDiscountRate,
-    total: calculatedTotal 
+    total: calculatedTotal
   } = calculateBookingPrice(data, settings);
 
   // Free cleaning loyalty program
-  const COMPLETED_CLEANINGS = 3; // Mock: User has completed 3 cleanings
-  const FREE_CLEANING_THRESHOLD = 5; // Free cleaning after 5 cleanings
-  const qualifiesForFreeCleaning = COMPLETED_CLEANINGS >= FREE_CLEANING_THRESHOLD;
+  const qualifiesForFreeCleaning = cleaningStats.availableRewards > 0;
 
   // Apply free cleaning if selected
   const freeCleaningDiscount = applyFreeCleaning && qualifiesForFreeCleaning ? calculatedTotal : 0;
@@ -254,7 +275,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
                   Congratulations! Free Cleaning Available
                 </h3>
                 <p className="text-sm text-orange-800 mb-3">
-                  You've completed {COMPLETED_CLEANINGS} cleanings and earned a free cleaning worth ${baseAmount.toFixed(2)}!
+                  You have {cleaningStats.availableRewards} free cleaning reward{cleaningStats.availableRewards > 1 ? 's' : ''} available!
                 </p>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -281,17 +302,17 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
                   Earn a Free Cleaning!
                 </h4>
                 <p className="text-sm text-orange-800 mb-3">
-                  Complete {FREE_CLEANING_THRESHOLD} cleanings and get your next one free. You're {COMPLETED_CLEANINGS} of {FREE_CLEANING_THRESHOLD} there!
+                  Complete {cleaningStats.threshold} cleanings and get your next one free. You're {cleaningStats.progressToNext} of {cleaningStats.threshold} there!
                 </p>
                 <div className="space-y-2">
                   <div className="w-full bg-orange-200 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-orange-500 to-orange-600 transition-all duration-500"
-                      style={{ width: `${(COMPLETED_CLEANINGS / FREE_CLEANING_THRESHOLD) * 100}%` }}
+                      style={{ width: `${(cleaningStats.progressToNext / cleaningStats.threshold) * 100}%` }}
                     />
                   </div>
                   <p className="text-xs text-orange-700">
-                    {FREE_CLEANING_THRESHOLD - COMPLETED_CLEANINGS} more cleaning{FREE_CLEANING_THRESHOLD - COMPLETED_CLEANINGS === 1 ? '' : 's'} to unlock your reward!
+                    {cleaningStats.threshold - cleaningStats.progressToNext} more cleaning{cleaningStats.threshold - cleaningStats.progressToNext === 1 ? '' : 's'} to unlock your reward!
                   </p>
                 </div>
               </div>

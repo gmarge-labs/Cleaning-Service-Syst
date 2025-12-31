@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient() as any;
+import prisma from '../utils/prisma';
 
 export const getInventory = async (req: Request, res: Response) => {
   try {
@@ -23,7 +21,7 @@ export const createInventoryItem = async (req: Request, res: Response) => {
         name,
         category,
         quantity: parseInt(quantity),
-        unit,
+        baseUnit: unit,
         reorderThreshold: parseInt(reorderThreshold),
         vendor,
         cost: parseFloat(cost)
@@ -46,7 +44,7 @@ export const updateInventoryItem = async (req: Request, res: Response) => {
         name,
         category,
         quantity: parseInt(quantity),
-        unit,
+        baseUnit: unit,
         reorderThreshold: parseInt(reorderThreshold),
         vendor,
         cost: parseFloat(cost)

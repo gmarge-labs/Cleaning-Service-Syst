@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, X, CheckCircle, Upload, AlertTriangle } from 'lucide
 import { Colors, Spacing } from '../../constants/theme';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { jobService, Booking } from '../../api/job.service';
+import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import * as ImagePicker from 'expo-image-picker';
@@ -152,7 +152,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Earnings:</Text>
-                        <Text style={styles.summaryValue}>${Number(job.totalAmount).toFixed(2)}</Text>
+                        <Text style={styles.summaryValue}>${calculateEarnings(job).toFixed(2)}</Text>
                     </View>
                 </View>
 

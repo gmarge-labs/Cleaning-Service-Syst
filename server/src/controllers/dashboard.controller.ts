@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Role, BookingStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role, BookingStatus } from '@prisma/client';
+import prisma from '../utils/prisma';
 
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
@@ -37,9 +36,9 @@ export const getAdminStats = async (req: Request, res: Response) => {
     const serviceTypeData = Object.entries(serviceTypeCounts).map(([name, value]) => ({
       name,
       value,
-      color: name === 'Standard Cleaning' ? '#FF1493' : 
-             name === 'Deep Cleaning' ? '#8b5cf6' : 
-             name === 'Move In/Out' ? '#FF69B4' : '#f59e0b'
+      color: name === 'Standard Cleaning' ? '#FF1493' :
+        name === 'Deep Cleaning' ? '#8b5cf6' :
+          name === 'Move In/Out' ? '#FF69B4' : '#f59e0b'
     }));
 
     // Revenue data for chart (last 7 days)

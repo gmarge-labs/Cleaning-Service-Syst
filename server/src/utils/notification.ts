@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client';
 import { emitToUser } from './socket';
 import { Expo } from 'expo-server-sdk';
+import prisma from './prisma';
 
 const expo = new Expo();
-
-const prisma = new PrismaClient();
 
 export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_UPDATED' | 'BOOKING_CANCELLED' | 'BOOKING_CONFIRMED' | 'USER_REGISTERED' | 'SYSTEM_ALERT' | 'REVIEW_RECEIVED' | 'MESSAGE_RECEIVED';
 

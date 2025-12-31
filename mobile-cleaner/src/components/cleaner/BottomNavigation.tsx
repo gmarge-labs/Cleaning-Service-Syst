@@ -11,7 +11,7 @@ interface BottomNavigationProps {
     unreadMessages?: number;
 }
 
-export function BottomNavigation({ currentView, onNavigate, unreadMessages = 2 }: BottomNavigationProps) {
+export function BottomNavigation({ currentView, onNavigate, unreadMessages = 0 }: BottomNavigationProps) {
     const navItems = [
         {
             id: 'dashboard' as CleanerView,

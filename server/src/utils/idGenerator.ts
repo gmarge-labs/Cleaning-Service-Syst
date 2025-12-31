@@ -1,7 +1,5 @@
-
-import { PrismaClient, Role } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role } from '@prisma/client';
+import prisma from './prisma';
 
 const PREFIXES: Record<Role, string> = {
   [Role.CUSTOMER]: 'user',
@@ -13,7 +11,7 @@ const PREFIXES: Record<Role, string> = {
 
 export async function generateUserId(role: Role): Promise<string> {
   const prefix = PREFIXES[role];
-  
+
   // Find the last user with this role, ordered by ID descending
   // We need to filter by ID starting with the prefix to be safe
   const lastUser = await prisma.user.findFirst({
@@ -25,7 +23,7 @@ export async function generateUserId(role: Role): Promise<string> {
     },
     orderBy: {
       createdAt: 'desc' // Using createdAt as a proxy for order, but ideally we'd parse the ID. 
-                        // However, since we are generating them sequentially, the latest created should have the highest number.
+      // However, since we are generating them sequentially, the latest created should have the highest number.
     }
   });
 
@@ -37,7 +35,7 @@ export async function generateUserId(role: Role): Promise<string> {
   // Extract the number part
   const idPart = lastUser.id.replace(prefix, '');
   const currentNumber = parseInt(idPart, 10);
-  
+
   if (isNaN(currentNumber)) {
     // Fallback if for some reason the ID format is messed up
     return `${prefix}001`;
@@ -50,10 +48,10 @@ export async function generateUserId(role: Role): Promise<string> {
   // User said: "user001, adm02, (for cleaner it should be spkl0001)"
   // adm02 implies 2 digits? user001 implies 3? spkl0001 implies 4?
   // Let's try to follow the examples.
-  
+
   let padding = 3;
   if (role === Role.CLEANER) padding = 4;
-  if (role === Role.ADMIN) padding = 2; 
+  if (role === Role.ADMIN) padding = 2;
 
   return `${prefix}${nextNumber.toString().padStart(padding, '0')}`;
 }

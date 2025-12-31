@@ -13,6 +13,7 @@ import { authService, User as UserType } from './src/api/auth.service';
 import { jobService, Booking as BookingType } from './src/api/job.service';
 import { socketService } from './src/api/socket.service';
 import { pushNotificationService } from './src/api/push-notification.service';
+import { notificationService } from './src/api/notification.service';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -23,6 +24,7 @@ export default function App() {
     const [user, setUser] = useState<UserType | null>(null);
     const [claimedJobs, setClaimedJobs] = useState<string[]>([]);
     const [selectedJob, setSelectedJob] = useState<BookingType | null>(null);
+    const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
     const [expoPushToken, setExpoPushToken] = useState<string>('');
     const notificationListener = React.useRef<Notifications.Subscription>();
     const responseListener = React.useRef<Notifications.Subscription>();
@@ -33,6 +35,8 @@ export default function App() {
             if (savedUser) {
                 setUser(savedUser);
                 socketService.connect(savedUser.id, savedUser.role);
+                const count = await notificationService.getUnreadCount(savedUser.id);
+                setUnreadNotifications(count);
                 setCurrentView('dashboard');
             }
         };
@@ -58,6 +62,14 @@ export default function App() {
             setCurrentView('notifications');
         });
 
+        // Socket listener for new notifications
+        const socket = socketService.getSocket();
+        if (socket) {
+            socket.on('new_notification', () => {
+                setUnreadNotifications(prev => prev + 1);
+            });
+        }
+
         return () => {
             socketService.disconnect();
             if (notificationListener.current) pushNotificationService.removeNotificationSubscription(notificationListener.current);
@@ -72,9 +84,11 @@ export default function App() {
         }
     }, [user, expoPushToken]);
 
-    const handleLogin = (loggedInUser: UserType) => {
+    const handleLogin = async (loggedInUser: UserType) => {
         setUser(loggedInUser);
         socketService.connect(loggedInUser.id, loggedInUser.role);
+        const count = await notificationService.getUnreadCount(loggedInUser.id);
+        setUnreadNotifications(count);
         setCurrentView('dashboard');
     };
 
@@ -100,13 +114,14 @@ export default function App() {
         try {
             await jobService.claimJob(jobId, user.id);
             setClaimedJobs([...claimedJobs, jobId]);
+            // Refresh unread count if needed or just notifications
             setCurrentView('dashboard');
         } catch (error: any) {
             alert(error.message);
         }
     };
 
-    const unreadCount = 0; // Handled by sub-components or unified later
+    const unreadCount = unreadNotifications;
 
     return (
         <View style={styles.container}>
@@ -127,13 +142,14 @@ export default function App() {
                     onNavigateToProfile={() => setCurrentView('profile')}
                     onNavigateToEarnings={() => setCurrentView('earnings')}
                     onNavigateToNotifications={() => setCurrentView('notifications')}
-                    unreadCount={unreadCount}
+                    unreadCount={unreadNotifications}
                 />
             )}
 
             {currentView === 'job-details' && selectedJob && (
                 <JobDetails
                     job={selectedJob}
+                    user={user}
                     onBack={() => setCurrentView('dashboard')}
                     onCompleteJob={() => setCurrentView('job-completion')}
                     onClaimJob={handleClaimJob}
@@ -155,14 +171,22 @@ export default function App() {
                     currentView={currentView}
                     onNavigate={(view) => setCurrentView(view)}
                     user={user}
+                    unreadCount={unreadNotifications}
                 />
             )}
 
             {currentView === 'notifications' && (
                 <CleanerNotifications
                     currentView={currentView}
-                    onNavigate={(view) => setCurrentView(view)}
+                    onNavigate={(view) => {
+                        if (view === 'dashboard') {
+                            // Refresh unread count when returning to dashboard
+                            if (user) notificationService.getUnreadCount(user.id).then(setUnreadNotifications);
+                        }
+                        setCurrentView(view);
+                    }}
                     userId={user?.id}
+                    unreadCount={unreadNotifications}
                 />
             )}
 
@@ -172,6 +196,7 @@ export default function App() {
                     onNavigate={(view) => setCurrentView(view)}
                     user={user}
                     onUpdateUser={(u) => setUser(u)}
+                    unreadCount={unreadNotifications}
                 />
             )}
 
@@ -179,6 +204,7 @@ export default function App() {
                 <CleanerMessages
                     currentView={currentView}
                     onNavigate={(view) => setCurrentView(view)}
+                    unreadCount={unreadNotifications}
                 />
             )}
         </View>

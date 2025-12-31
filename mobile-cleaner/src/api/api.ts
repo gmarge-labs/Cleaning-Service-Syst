@@ -1,14 +1,18 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Use the local IP of the machine running the server
 // For Windows, find it with 'ipconfig' (e.g., 192.168.0.x)
-// For Mac/Linux, find it with 'ifconfig'
-export const BASE_URL = 'http://10.95.29.253:5000/api';
+// Note: In development on the same machine, 'localhost' is often more reliable for web.
+const SERVER_IP = '192.168.0.155';
+export const BASE_URL = Platform.OS === 'web'
+    ? 'http://localhost:5000/api'
+    : `http://${SERVER_IP}:5000/api`;
 
 const api = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
+    timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
     },

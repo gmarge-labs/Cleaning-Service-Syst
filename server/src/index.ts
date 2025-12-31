@@ -39,6 +39,10 @@ app.use('/api/cleaners', cleanerRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/support', supportRoutes);
 
+app.get('/', (req, res) => {
+  res.send('Welcome to Sparkleville API. Visit <a href="/api/health">/api/health</a> for server status.');
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
@@ -46,3 +50,4 @@ app.get('/api/health', (req, res) => {
 httpServer.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+ 

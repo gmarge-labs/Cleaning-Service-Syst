@@ -27,74 +27,6 @@ interface Application {
   createdAt: string;
 }
 
-// Mock data
-const cleaners = [
-  {
-    id: 1,
-    name: 'Maria Garcia',
-    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    rating: 4.9,
-    jobsCompleted: 234,
-    status: 'Active',
-    phone: '(555) 123-4567',
-    email: 'maria.garcia@example.com',
-    joinDate: new Date('2024-01-15'),
-    earnings: 12450,
-    specialties: ['Deep Cleaning', 'Move In/Out'],
-    address: '123 Main St, New York, NY 10001',
-    emergencyContact: '(555) 123-9999',
-    certifications: ['EPA Lead-Safe Certified', 'OSHA Safety Trained'],
-  },
-  {
-    id: 2,
-    name: 'John Smith',
-    photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-    rating: 4.8,
-    jobsCompleted: 189,
-    status: 'On Job',
-    phone: '(555) 234-5678',
-    email: 'john.smith@example.com',
-    joinDate: new Date('2024-03-20'),
-    earnings: 9870,
-    specialties: ['Standard Cleaning', 'Deep Cleaning'],
-    address: '456 Oak Ave, Los Angeles, CA 90001',
-    emergencyContact: '(555) 234-8888',
-    certifications: ['First Aid Certified'],
-  },
-  {
-    id: 3,
-    name: 'Emily Chen',
-    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-    rating: 4.95,
-    jobsCompleted: 312,
-    status: 'Active',
-    phone: '(555) 345-6789',
-    email: 'emily.chen@example.com',
-    joinDate: new Date('2023-11-10'),
-    earnings: 15230,
-    specialties: ['Move In/Out', 'Post-Construction'],
-    address: '789 Pine Rd, Chicago, IL 60601',
-    emergencyContact: '(555) 345-7777',
-    certifications: ['EPA Lead-Safe Certified', 'OSHA Safety Trained', 'Green Cleaning Certified'],
-  },
-  {
-    id: 4,
-    name: 'Carlos Rodriguez',
-    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-    rating: 4.7,
-    jobsCompleted: 156,
-    status: 'Off Duty',
-    phone: '(555) 456-7890',
-    email: 'carlos.rodriguez@example.com',
-    joinDate: new Date('2024-06-05'),
-    earnings: 7820,
-    specialties: ['Standard Cleaning', 'Post-Construction'],
-    address: '321 Elm St, Houston, TX 77001',
-    emergencyContact: '(555) 456-6666',
-    certifications: ['OSHA Safety Trained'],
-  },
-];
-
 const statusColors = {
   'Active': 'bg-green-100 text-green-700',
   'On Job': 'bg-secondary-100 text-secondary-700',
@@ -105,7 +37,9 @@ const statusColors = {
 export function CleanersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedCleaner, setSelectedCleaner] = useState<typeof cleaners[0] | null>(null);
+  const [cleaners, setCleaners] = useState<any[]>([]);
+  const [isLoadingCleaners, setIsLoadingCleaners] = useState(true);
+  const [selectedCleaner, setSelectedCleaner] = useState<any | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -116,13 +50,48 @@ export function CleanersPage() {
   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 8;
 
   useEffect(() => {
-    if (activeTab === 'applications') {
+    if (activeTab === 'active') {
+      fetchCleaners();
+    } else if (activeTab === 'applications') {
       fetchApplications();
     }
   }, [activeTab]);
+
+  const fetchCleaners = async () => {
+    setIsLoadingCleaners(true);
+    try {
+      const response = await fetch('/api/users?role=CLEANER');
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+
+        // Map backend user to cleaner UI format
+        const mappedCleaners = data.map((u: any) => ({
+          ...u,
+          photo: u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random`,
+          rating: u.rating || 5.0,
+          jobsCompleted: u.bookings?.filter((b: any) => b.status === 'COMPLETED').length || 0,
+          status: u.status === 'active' ? 'Active' : 'Off Duty',
+          joinDate: new Date(u.createdAt),
+          earnings: u.bookings?.filter((b: any) => b.status === 'COMPLETED')
+            .reduce((sum: number, b: any) => sum + Number(b.totalAmount), 0) || 0,
+          specialties: ['General Cleaning'], // Default or from metadata if available
+          emergencyContact: u.emergencyPhone || 'Not provided',
+          certifications: [],
+        }));
+
+        setCleaners(mappedCleaners);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cleaners:', error);
+      toast.error('Failed to load cleaners');
+    } finally {
+      setIsLoadingCleaners(false);
+    }
+  };
 
   const fetchApplications = async () => {
     setIsLoadingApplications(true);
@@ -160,7 +129,7 @@ export function CleanersPage() {
 
   const filteredCleaners = cleaners.filter((cleaner) => {
     const matchesSearch = cleaner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         cleaner.email.toLowerCase().includes(searchTerm.toLowerCase());
+      cleaner.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || cleaner.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -175,7 +144,7 @@ export function CleanersPage() {
 
   const handleCompleteOnboarding = () => {
     setShowOnboarding(false);
-    // In a real app, would refresh the cleaners list
+    fetchCleaners();
   };
 
   // Cleaner Detail Modal
@@ -183,11 +152,11 @@ export function CleanersPage() {
     if (!selectedCleaner) return null;
 
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
         onClick={() => setSelectedCleaner(null)}
       >
-        <div 
+        <div
           className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
@@ -252,10 +221,10 @@ export function CleanersPage() {
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Join Date</span>
                       <span className="font-medium text-neutral-900">
-                        {selectedCleaner.joinDate.toLocaleDateString('en-US', { 
-                          month: 'long', 
-                          day: 'numeric', 
-                          year: 'numeric' 
+                        {selectedCleaner.joinDate.toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
                         })}
                       </span>
                     </div>
@@ -444,11 +413,11 @@ export function CleanersPage() {
     };
 
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
         onClick={() => setShowSchedule(false)}
       >
-        <div 
+        <div
           className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
@@ -474,8 +443,8 @@ export function CleanersPage() {
                 const isToday = day === new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
                 return (
-                  <div 
-                    key={day} 
+                  <div
+                    key={day}
                     className={`border rounded-lg p-4 ${isToday ? 'border-secondary-500 bg-secondary-50' : 'border-neutral-200'}`}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -524,11 +493,11 @@ export function CleanersPage() {
     };
 
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
         onClick={() => setShowMessage(false)}
       >
-        <div 
+        <div
           className="bg-white rounded-xl max-w-2xl w-full"
           onClick={(e) => e.stopPropagation()}
         >
@@ -576,14 +545,14 @@ export function CleanersPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setShowMessage(false)}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="flex-1 bg-secondary-500 hover:bg-secondary-600"
                 onClick={handleSendMessage}
                 disabled={!messageText.trim()}
@@ -632,18 +601,20 @@ export function CleanersPage() {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <div className="text-2xl font-bold text-neutral-900">{cleaners.length}</div>
+              <div className="text-2xl font-bold text-neutral-900">
+                {isLoadingCleaners ? '...' : cleaners.length}
+              </div>
               <div className="text-sm text-neutral-600">Total Cleaners</div>
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-4">
               <div className="text-2xl font-bold text-green-600">
-                {cleaners.filter(c => c.status === 'Active').length}
+                {isLoadingCleaners ? '...' : cleaners.filter(c => c.status === 'Active').length}
               </div>
               <div className="text-sm text-neutral-600">Active</div>
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-4">
               <div className="text-2xl font-bold text-secondary-500">
-                {cleaners.filter(c => c.status === 'On Job').length}
+                {isLoadingCleaners ? '...' : cleaners.filter(c => c.status === 'On Job').length}
               </div>
               <div className="text-sm text-neutral-600">On Job</div>
             </div>
@@ -714,69 +685,86 @@ export function CleanersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {paginatedCleaners.map((cleaner) => (
-                    <tr key={cleaner.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={cleaner.photo}
-                            alt={cleaner.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          <div>
-                            <div className="font-medium text-neutral-900">{cleaner.name}</div>
-                            <div className="text-xs text-neutral-500">
-                              Joined {cleaner.joinDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                            </div>
-                          </div>
+                  {isLoadingCleaners ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary-500"></div>
+                          <span className="text-sm text-neutral-500 font-medium">Loading cleaners...</span>
                         </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="text-sm">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <Phone className="w-3 h-3" />
-                            {cleaner.phone}
-                          </div>
-                          <div className="flex items-center gap-1 text-neutral-600 mt-1">
-                            <Mail className="w-3 h-3" />
-                            {cleaner.email}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-semibold text-neutral-900">{cleaner.jobsCompleted}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-1 text-neutral-900 font-semibold">
-                          <DollarSign className="w-4 h-4" />
-                          {cleaner.earnings.toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <Badge className={statusColors[cleaner.status as keyof typeof statusColors]}>
-                          {cleaner.status}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-6">
-                        <button
-                          className="inline-flex items-center gap-1 px-3 py-2 text-sm hover:bg-neutral-100 rounded-lg transition-colors"
-                          onClick={() => {
-                            console.log('View button clicked for:', cleaner.name);
-                            setSelectedCleaner(cleaner);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
                       </td>
                     </tr>
-                  ))}
+                  ) : paginatedCleaners.length > 0 ? (
+                    paginatedCleaners.map((cleaner) => (
+                      <tr key={cleaner.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={cleaner.photo}
+                              alt={cleaner.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-medium text-neutral-900">{cleaner.name}</div>
+                              <div className="text-xs text-neutral-500">
+                                Joined {cleaner.joinDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1 text-neutral-900">
+                              <Phone className="w-3 h-3" />
+                              {cleaner.phone || 'N/A'}
+                            </div>
+                            <div className="flex items-center gap-1 text-neutral-600 mt-1">
+                              <Mail className="w-3 h-3" />
+                              {cleaner.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="font-semibold text-neutral-900">{cleaner.rating}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="font-semibold text-neutral-900">{cleaner.jobsCompleted}</span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-1 text-neutral-900 font-semibold">
+                            <DollarSign className="w-4 h-4" />
+                            {cleaner.earnings.toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <Badge className={statusColors[cleaner.status as keyof typeof statusColors]}>
+                            {cleaner.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-6">
+                          <button
+                            className="inline-flex items-center gap-1 px-3 py-2 text-sm hover:bg-neutral-100 rounded-lg transition-colors"
+                            onClick={() => {
+                              console.log('View button clicked for:', cleaner.name);
+                              setSelectedCleaner(cleaner);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-neutral-500">
+                        {searchTerm || statusFilter !== 'all' ? 'No cleaners match your search criteria' : 'No cleaners onboarded yet'}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -856,9 +844,9 @@ export function CleanersPage() {
                         <td className="py-4 px-6">
                           <Badge className={
                             app.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                            app.status === 'REVIEWING' ? 'bg-blue-100 text-blue-700' :
-                            app.status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
-                            'bg-red-100 text-red-700'
+                              app.status === 'REVIEWING' ? 'bg-blue-100 text-blue-700' :
+                                app.status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+                                  'bg-red-100 text-red-700'
                           }>
                             {app.status}
                           </Badge>
@@ -912,7 +900,7 @@ export function CleanersPage() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -944,9 +932,9 @@ export function CleanersPage() {
                   {selectedApplication.idUrl ? (
                     <div className="mt-2">
                       {selectedApplication.idUrl.startsWith('data:image') ? (
-                        <img 
-                          src={selectedApplication.idUrl} 
-                          alt="ID" 
+                        <img
+                          src={selectedApplication.idUrl}
+                          alt="ID"
                           className="max-w-full h-auto rounded-lg border border-neutral-200 shadow-sm"
                           style={{ maxHeight: '300px' }}
                         />
@@ -955,9 +943,9 @@ export function CleanersPage() {
                           <FileText className="w-8 h-8 text-secondary-500" />
                           <div>
                             <p className="text-sm font-medium">Document Uploaded</p>
-                            <a 
-                              href={selectedApplication.idUrl} 
-                              target="_blank" 
+                            <a
+                              href={selectedApplication.idUrl}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-secondary-600 hover:underline"
                             >
@@ -974,13 +962,13 @@ export function CleanersPage() {
               </div>
 
               <div className="flex gap-3 pt-6 border-t">
-                <Button 
+                <Button
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'ACCEPTED')}
                 >
                   Accept Application
                 </Button>
-                <Button 
+                <Button
                   className="flex-1 bg-red-600 hover:bg-red-700"
                   onClick={() => handleUpdateApplicationStatus(selectedApplication.id, 'REJECTED')}
                 >

@@ -25,6 +25,7 @@ export interface Booking {
     paymentPerHour?: number;
     date: string;
     time: string;
+    tipAmount?: number;
     totalAmount: number;
     status: string;
     distance?: string;
@@ -50,8 +51,8 @@ export const jobService = {
     getAvailableJobs: async (): Promise<Booking[]> => {
         try {
             // Fetch jobs that are published (BOOKED, CONFIRMED, RESCHEDULED, or PENDING)
-            const response = await api.get('/bookings', { 
-                params: { status: 'BOOKED,CONFIRMED,RESCHEDULED,PENDING' } 
+            const response = await api.get('/bookings', {
+                params: { status: 'BOOKED,CONFIRMED,RESCHEDULED,PENDING' }
             });
             // The server already filters for jobs that need more cleaners
             return response.data;
@@ -98,4 +99,17 @@ export const jobService = {
             throw new Error(error.response?.data?.message || 'Failed to update job status');
         }
     }
+};
+
+/**
+ * Calculates the cleaner's actual earnings for a job.
+ * Formula: (Payment Per Hour * (Duration in Minutes / 60)) + Tip
+ */
+export const calculateEarnings = (job: Booking): number => {
+    const rate = job.paymentPerHour ? Number(job.paymentPerHour) : 20;
+    const duration = job.estimatedDuration || 120;
+    const hours = duration / 60;
+    const basePay = rate * hours;
+    const tip = job.tipAmount ? Number(job.tipAmount) : 0;
+    return basePay + tip;
 };

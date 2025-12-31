@@ -1,8 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import nodemailer from 'nodemailer';
-import { PrismaClient, Role } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role } from '@prisma/client';
+import prisma from './prisma';
 
 interface EmailOptions {
   to: string;
@@ -58,7 +57,7 @@ async function initializeEmailTransport() {
       const integrations = settings.integrations as any;
       if (integrations.sendgrid?.enabled && integrations.sendgrid?.apiKey) {
         const currentApiKey = integrations.sendgrid.apiKey;
-        
+
         // Reinitialize if API key has changed
         if (!isInitialized || lastApiKey !== currentApiKey) {
           sgMail.setApiKey(currentApiKey);
@@ -83,7 +82,7 @@ async function initializeEmailTransport() {
 // Get email template from database and replace variables
 function processTemplate(template: string, variables: Record<string, string>): string {
   let processed = template;
-  
+
   // Replace all {variable_name} and {{variable_name}} placeholders with actual values
   Object.keys(variables).forEach(key => {
     const value = variables[key] || '';
@@ -92,7 +91,7 @@ function processTemplate(template: string, variables: Record<string, string>): s
     // Handle {{key}}
     processed = processed.replace(new RegExp(`{{${key}}}`, 'g'), value);
   });
-  
+
   return processed;
 }
 
@@ -227,11 +226,11 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
       name: booking.guestName || 'Valued Customer',
       service_type: booking.serviceType,
       service: booking.serviceType,
-      date: new Date(booking.date).toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: new Date(booking.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }),
       time: booking.time,
       address: booking.address || 'Your specified location',
@@ -278,11 +277,11 @@ export async function sendBookingReminder(booking: any, customerEmail: string) {
     variables: {
       customer_name: booking.guestName || 'Valued Customer',
       service_type: booking.serviceType,
-      date: new Date(booking.date).toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: new Date(booking.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }),
       time: booking.time,
       address: booking.address || 'Your specified location',
@@ -300,11 +299,11 @@ export async function sendBookingCompletion(booking: any, customerEmail: string)
     variables: {
       customer_name: booking.guestName || 'Valued Customer',
       service_type: booking.serviceType,
-      date: new Date(booking.date).toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: new Date(booking.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }),
       booking_id: booking.id
     }
@@ -314,7 +313,7 @@ export async function sendBookingCompletion(booking: any, customerEmail: string)
 // Send invoice email to customer
 export async function sendInvoiceEmail(booking: any, email: string, total: number, balanceDue: number) {
   console.log('📧 Preparing to send invoice email to:', email);
-  
+
   const settings = await prisma.systemSettings.findUnique({
     where: { id: 'default' }
   });
@@ -329,11 +328,11 @@ export async function sendInvoiceEmail(booking: any, email: string, total: numbe
     variables: {
       customer_name: booking.guestName || 'Customer',
       service_type: booking.serviceType,
-      date: new Date(booking.date).toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: new Date(booking.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }),
       time: booking.time,
       total_amount: total.toFixed(2),
@@ -346,7 +345,7 @@ export async function sendInvoiceEmail(booking: any, email: string, total: numbe
 // Send welcome email to new user
 export async function sendWelcomeEmail(user: any, temporaryPassword?: string) {
   console.log('📧 Preparing to send welcome email to:', user.email);
-  
+
   const settings = await prisma.systemSettings.findUnique({
     where: { id: 'default' }
   });
@@ -383,15 +382,15 @@ The ${companyName} Team`;
       customer_name: user.name,
       name: user.name,
       service_type: 'Account Created',
-      date: new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }),
-      time: new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      time: new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
       })
     }
   });
@@ -400,7 +399,7 @@ The ${companyName} Team`;
 export async function sendBroadcastEmail(target: string, subject: string, message: string) {
   try {
     let users: any[] = [];
-    
+
     if (target === 'all') {
       users = await prisma.user.findMany({
         where: { email: { not: '' } },
@@ -418,9 +417,9 @@ export async function sendBroadcastEmail(target: string, subject: string, messag
       });
     } else if (target === 'staff') {
       users = await prisma.user.findMany({
-        where: { 
+        where: {
           role: { in: [Role.ADMIN, Role.SUPERVISOR, Role.SUPPORT] },
-          email: { not: '' } 
+          email: { not: '' }
         },
         select: { email: true, name: true }
       });

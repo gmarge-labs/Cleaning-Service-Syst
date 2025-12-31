@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../utils/notification';
 import { sendEmail } from '../utils/email.service';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export const createReview = async (req: Request, res: Response) => {
   try {
