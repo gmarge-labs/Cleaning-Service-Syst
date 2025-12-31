@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { generateUserId } from '../utils/idGenerator';
 import { sendWelcomeEmail } from '../utils/email.service';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export const getProfile = async (req: Request, res: Response) => {
   const { userId } = req.params;
@@ -31,6 +29,45 @@ export const getProfile = async (req: Request, res: Response) => {
     res.json(profile);
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getCleaningStats = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  try {
+    // Count completed bookings
+    const completedCount = await prisma.booking.count({
+      where: {
+        userId,
+        status: 'COMPLETED'
+      }
+    });
+
+    // Count bookings where free cleaning reward was used
+    const usedRewards = await prisma.booking.count({
+      where: {
+        userId,
+        paymentMethod: 'free-cleaning-reward'
+      }
+    });
+
+    const FREE_CLEANING_THRESHOLD = 5;
+    const earnedRewards = Math.floor(completedCount / FREE_CLEANING_THRESHOLD);
+    const availableRewards = Math.max(0, earnedRewards - usedRewards);
+    const progressToNext = completedCount % FREE_CLEANING_THRESHOLD;
+
+    res.json({
+      completedCount,
+      earnedRewards,
+      usedRewards,
+      availableRewards,
+      progressToNext,
+      threshold: FREE_CLEANING_THRESHOLD
+    });
+  } catch (error) {
+    console.error('Get cleaning stats error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

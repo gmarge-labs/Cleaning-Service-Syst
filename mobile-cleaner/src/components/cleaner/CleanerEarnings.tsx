@@ -6,7 +6,7 @@ import { Badge } from '../Badge';
 import { BottomNavigation } from './BottomNavigation';
 import { CleanerView } from './BottomNavigation';
 import { LinearGradient } from 'expo-linear-gradient';
-import { jobService, Booking } from '../../api/job.service';
+import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { authService, User as UserType } from '../../api/auth.service';
 import { RefreshControl } from 'react-native';
 
@@ -14,6 +14,7 @@ interface CleanerEarningsProps {
     currentView: CleanerView;
     onNavigate: (view: CleanerView) => void;
     user: UserType | null;
+    unreadCount?: number;
 }
 
 interface EarningRecord {
@@ -100,7 +101,7 @@ const earningsData: EarningRecord[] = [
     },
 ];
 
-export function CleanerEarnings({ currentView, onNavigate, user }: CleanerEarningsProps) {
+export function CleanerEarnings({ currentView, onNavigate, user, unreadCount }: CleanerEarningsProps) {
     const [earningsData, setEarningsData] = React.useState<Booking[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [refreshing, setRefreshing] = React.useState(false);
@@ -128,15 +129,22 @@ export function CleanerEarnings({ currentView, onNavigate, user }: CleanerEarnin
         fetchData();
     }, [user?.id]);
 
-    const totalEarnings = earningsData.reduce((sum, record) => sum + Number(record.totalAmount), 0);
+    const totalEarnings = earningsData.reduce((sum, record) => sum + calculateEarnings(record), 0);
     const weeklyEarnings = earningsData
         .filter(record => new Date(record.date).getTime() > Date.now() - 7 * 86400000)
-        .reduce((sum, record) => sum + Number(record.totalAmount), 0);
+        .reduce((sum, record) => sum + calculateEarnings(record), 0);
     const monthlyEarnings = earningsData
         .filter(record => new Date(record.date).getTime() > Date.now() - 30 * 86400000)
-        .reduce((sum, record) => sum + Number(record.totalAmount), 0);
+        .reduce((sum, record) => sum + calculateEarnings(record), 0);
 
     const totalJobs = earningsData.length;
+
+    // Professional Advancement Calculation (Last 6 Months)
+    const sixMonthsAgo = Date.now() - 180 * 24 * 60 * 60 * 1000;
+    const jobsInLast6Months = earningsData.filter(record => new Date(record.date).getTime() > sixMonthsAgo).length;
+    const targetJobs = 50;
+    const advancementProgress = Math.min((jobsInLast6Months / targetJobs) * 100, 100);
+
     const totalHours = earningsData.length * 3; // Placeholder until real duration is stored
     const averagePerJob = totalJobs > 0 ? totalEarnings / totalJobs : 0;
 
@@ -238,11 +246,11 @@ export function CleanerEarnings({ currentView, onNavigate, user }: CleanerEarnin
                         <Text style={styles.bonusTitle}>Professional Advancement</Text>
                         <Text style={styles.bonusSubtitle}>Level 1 (Entry) → Level 2 (Professional)</Text>
                         <View style={styles.progressBar}>
-                            <View style={[styles.progressFill, { width: '66%', backgroundColor: Colors.white }]} />
+                            <View style={[styles.progressFill, { width: `${advancementProgress}%`, backgroundColor: Colors.white }]} />
                         </View>
                         <View style={styles.progressText}>
-                            <Text style={styles.progressCount}>4 / 6 months worked</Text>
-                            <Text style={styles.progressPercent}>66%</Text>
+                            <Text style={styles.progressCount}>{jobsInLast6Months} / {targetJobs} cleanings (last 6 months)</Text>
+                            <Text style={styles.progressPercent}>{advancementProgress.toFixed(0)}%</Text>
                         </View>
                         <Text style={[styles.bonusSubtitle, { marginTop: 4, fontWeight: 'bold' }]}>
                             Next level: 15% hourly rate increase!
@@ -268,7 +276,7 @@ export function CleanerEarnings({ currentView, onNavigate, user }: CleanerEarnin
                                     </View>
                                     <View style={styles.amountContainer}>
                                         <DollarSign size={16} color={Colors.secondary} />
-                                        <Text style={styles.amountText}>{Number(record.totalAmount).toFixed(2)}</Text>
+                                        <Text style={styles.amountText}>{calculateEarnings(record).toFixed(2)}</Text>
                                     </View>
                                 </View>
 
@@ -303,6 +311,7 @@ export function CleanerEarnings({ currentView, onNavigate, user }: CleanerEarnin
             <BottomNavigation
                 currentView={currentView}
                 onNavigate={onNavigate}
+                unreadMessages={unreadCount}
             />
         </SafeAreaView >
     );

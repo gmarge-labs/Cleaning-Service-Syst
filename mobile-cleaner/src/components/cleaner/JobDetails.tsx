@@ -5,17 +5,18 @@ import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { jobService, Booking } from '../../api/job.service';
+import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface JobDetailsProps {
     job: Booking;
+    user: any; // Using any for simplicity as User type isn't exported here
     onBack: () => void;
     onCompleteJob: () => void;
     onClaimJob: (jobId: string) => void;
 }
 
-export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetailsProps) {
+export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: JobDetailsProps) {
     const [isClockedIn, setIsClockedIn] = useState(job.status === 'IN_PROGRESS');
     const [startTime, setStartTime] = useState<Date | null>(job.status === 'IN_PROGRESS' ? new Date() : null);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -25,7 +26,7 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
     const [completedTasks, setCompletedTasks] = useState<string[]>([]);
     const [elapsedTime, setElapsedTime] = useState('0:00');
 
-    const cleanerId = 'CLN-12845';
+    const cleanerId = user?.id || 'CLN-12845';
     const jobSecurityCode = '4738';
 
     const cleaningTasks = [
@@ -128,8 +129,8 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                         <Text style={styles.headerTitle}>Job Details</Text>
                         <Text style={styles.headerSubtitle}>{job.id}</Text>
                     </View>
-                    <Badge variant={isClockedIn ? 'success' : 'outline'} style={{ borderColor: Colors.white }}>
-                        {isClockedIn ? 'In Progress' : 'Not Started'}
+                    <Badge variant={job.status === 'COMPLETED' ? 'success' : isClockedIn ? 'info' : 'outline'} style={{ borderColor: Colors.white }}>
+                        {job.status === 'COMPLETED' ? 'Completed' : isClockedIn ? 'In Progress' : 'Not Started'}
                     </Badge>
                 </View>
 
@@ -188,7 +189,9 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                                 <Text style={styles.detailTitle}>Location</Text>
                             </View>
                             <Text style={styles.detailText}>{job.address}</Text>
-                            <Button title="Get Directions" onPress={handleGetDirections} variant="outline" style={styles.mapBtn} />
+                            {job.status !== 'COMPLETED' && (
+                                <Button title="Get Directions" onPress={handleGetDirections} variant="outline" style={styles.mapBtn} />
+                            )}
                         </View>
 
                         {/* Schedule */}
@@ -200,9 +203,9 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                             <View style={styles.scheduleGrid}>
                                 <View>
                                     <Text style={styles.label}>Scheduled Date</Text>
-                                    <Text style={styles.value}>{new Date(job.date).toLocaleDateString('en-US', { 
+                                    <Text style={styles.value}>{new Date(job.date).toLocaleDateString('en-US', {
                                         weekday: 'short',
-                                        month: 'short', 
+                                        month: 'short',
                                         day: 'numeric'
                                     })}</Text>
                                 </View>
@@ -246,7 +249,7 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={styles.label}>Additional Rooms:</Text>
                                     <View style={styles.badgeContainer}>
-                                        {Object.entries(job.rooms).map(([room, count]: [string, any]) => 
+                                        {Object.entries(job.rooms).map(([room, count]: [string, any]) =>
                                             count > 0 ? (
                                                 <Badge key={room} variant="outline">
                                                     {room.replace(/([A-Z])/g, ' $1').replace(/-/g, ' ')} x{count}
@@ -269,7 +272,7 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
                                 <View style={styles.row}>
                                     <DollarSign size={16} color={Colors.success} />
                                     <Text style={[styles.value, { color: Colors.success }]}>
-                                        {((job.paymentPerHour ? Number(job.paymentPerHour) : 20) * ((job.estimatedDuration || 120) / 60)).toFixed(2)}
+                                        {calculateEarnings(job).toFixed(2)}
                                     </Text>
                                 </View>
                             </View>
@@ -369,8 +372,12 @@ export function JobDetails({ job, onBack, onCompleteJob, onClaimJob }: JobDetail
             <View style={styles.footer}>
                 {!job.cleanerId ? (
                     <Button title="Claim Job" onPress={() => onClaimJob(job.id)} variant="gradient" />
+                ) : job.status === 'COMPLETED' ? (
+                    <View style={{ alignItems: 'center', padding: Spacing.sm }}>
+                        <Text style={{ color: Colors.success, fontWeight: 'bold' }}>Job Completed</Text>
+                    </View>
                 ) : !isClockedIn ? (
-                    <Button title="Arrive and Verify" onPress={handleArrival} variant="gradient" />
+                    <Button title="Start Job" onPress={handleArrival} variant="gradient" />
                 ) : (
                     <Button
                         title="Complete Job"

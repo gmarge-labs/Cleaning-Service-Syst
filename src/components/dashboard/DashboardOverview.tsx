@@ -12,9 +12,8 @@ interface DashboardOverviewProps {
   onRescheduleBooking?: (booking: any) => void;
 }
 
-// Mock data - Track completed cleanings for free cleaning rewards
-const COMPLETED_CLEANINGS = 3; // User has completed 3 cleanings
-const FREE_CLEANING_THRESHOLD = 5; // Free cleaning after 5 cleanings
+// Free cleaning after 5 cleanings
+const DEFAULT_FREE_CLEANING_THRESHOLD = 5;
 
 export function DashboardOverview({ onStartBooking, onRescheduleBooking }: DashboardOverviewProps) {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -22,6 +21,12 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [paymentBooking, setPaymentBooking] = useState<any | null>(null);
+  const [cleaningStats, setCleaningStats] = useState({
+    completedCount: 0,
+    progressToNext: 0,
+    availableRewards: 0,
+    threshold: DEFAULT_FREE_CLEANING_THRESHOLD
+  });
 
   const fetchBookings = async () => {
     if (!user?.id) {
@@ -44,12 +49,26 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     }
   };
 
+  const fetchCleaningStats = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setCleaningStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching cleaning stats:', error);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
+    fetchCleaningStats();
   }, [user?.id]);
 
-  const upcomingBookings = bookings.filter(b => 
-    new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
+  const upcomingBookings = bookings.filter(b =>
+    new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) &&
     b.status !== 'CANCELLED'
   );
 
@@ -64,7 +83,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     },
     {
       label: 'Completed Cleanings',
-      value: '12', // Mock value for now
+      value: cleaningStats.completedCount.toString(),
       icon: Star,
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
@@ -72,13 +91,13 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     },
     {
       label: 'Free Cleaning Progress',
-      value: `${COMPLETED_CLEANINGS}/${FREE_CLEANING_THRESHOLD}`,
+      value: `${cleaningStats.progressToNext}/${cleaningStats.threshold}`,
       icon: TrendingUp,
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600',
       isProgress: true,
-      progress: (COMPLETED_CLEANINGS / FREE_CLEANING_THRESHOLD) * 100,
+      progress: (cleaningStats.progressToNext / cleaningStats.threshold) * 100,
     },
   ];
 
@@ -286,9 +305,9 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
                     />
                   </div>
                   <p className="text-xs text-neutral-500">
-                    {COMPLETED_CLEANINGS >= FREE_CLEANING_THRESHOLD
-                      ? '🎉 Free cleaning unlocked! Apply at checkout'
-                      : `${FREE_CLEANING_THRESHOLD - COMPLETED_CLEANINGS} more cleaning${FREE_CLEANING_THRESHOLD - COMPLETED_CLEANINGS === 1 ? '' : 's'} to earn a free one!`
+                    {cleaningStats.availableRewards > 0
+                      ? `🎉 ${cleaningStats.availableRewards} free cleaning${cleaningStats.availableRewards > 1 ? 's' : ''} unlocked! Apply at checkout`
+                      : `${cleaningStats.threshold - cleaningStats.progressToNext} more cleaning${cleaningStats.threshold - cleaningStats.progressToNext === 1 ? '' : 's'} to earn a free one!`
                     }
                   </p>
                 </div>

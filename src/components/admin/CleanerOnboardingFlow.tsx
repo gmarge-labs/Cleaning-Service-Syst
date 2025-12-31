@@ -18,14 +18,14 @@ interface CleanerFormData {
   gender: string;
   profilePhoto: File | null;
   profilePhotoPreview: string;
-  
+
   // Step 2: Address & Location
   homeAddress: string;
   city: string;
   state: string;
   zipCode: string;
   workRadius: string;
-  
+
   // Step 3: Identity Verification
   idType: string;
   idNumber: string;
@@ -36,12 +36,12 @@ interface CleanerFormData {
   idBackPreview: string;
   ssn: string;
   backgroundCheckStatus: string;
-  
+
   // Step 4: Emergency Contact
   emergencyName: string;
   emergencyPhone: string;
   emergencyRelationship: string;
-  
+
   // Step 5: Employment Details
   cleanerType: string;
   availableDays: string[];
@@ -49,7 +49,7 @@ interface CleanerFormData {
   workPreferences: string[];
   yearsExperience: string;
   spokenLanguages: string[];
-  
+
   // Step 6: Payment Details
   paymentMethod: string;
   bankAccountNumber: string;
@@ -59,7 +59,7 @@ interface CleanerFormData {
   paypalEmail: string;
   cashappTag: string;
   venmoUsername: string;
-  
+
   // Step 7: Documents
   bgCheckCert: File | null;
   bgCheckCertName: string;
@@ -69,7 +69,7 @@ interface CleanerFormData {
   insuranceName: string;
   workPermit: File | null;
   workPermitName: string;
-  
+
   // Step 8: Tools & Materials
   assignedTools: string[];
   toolIssueDate: string;
@@ -79,12 +79,12 @@ interface CleanerFormData {
   uniformSerial: string;
   glovesSerial: string;
   idCardSerial: string;
-  
+
   // Step 9: System Access
   username: string;
   tempPassword: string;
   role: string;
-  
+
   // Step 10: Status
   activeStatus: string;
   approvalStatus: string;
@@ -258,13 +258,36 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
     }
   };
 
-  const handleComplete = () => {
-    toast.success('Cleaner onboarded successfully! Welcome to the team!', {
-      duration: 2000,
-    });
-    setTimeout(() => {
-      onComplete();
-    }, 1000);
+  const handleComplete = async () => {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.tempPassword || 'Clean!2024', // Fallback
+          role: 'CLEANER',
+          phone: formData.phoneNumber,
+          address: `${formData.homeAddress}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Cleaner onboarded successfully! Welcome to the team!', {
+          duration: 2000,
+        });
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to onboard cleaner. Please check the information and try again.');
+      }
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      toast.error('An error occurred during onboarding. Please try again.');
+    }
   };
 
   const renderStepContent = () => {
@@ -613,7 +636,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
 
           <div className="border-t border-neutral-200 pt-6 mt-6">
             <h3 className="font-semibold text-neutral-900 mb-4">Optional Information</h3>
-            
+
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -888,7 +911,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
           {formData.paymentMethod === 'bank' && (
             <div className="space-y-6 border border-neutral-200 rounded-lg p-6 bg-neutral-50">
               <h3 className="font-semibold text-neutral-900">Bank Account Information</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Bank Name <span className="text-red-500">*</span>
@@ -950,7 +973,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
           {formData.paymentMethod === 'digital' && (
             <div className="space-y-6 border border-neutral-200 rounded-lg p-6 bg-neutral-50">
               <h3 className="font-semibold text-neutral-900">Digital Payment Information</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   PayPal Email
@@ -1496,7 +1519,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
             </button>
           </div>
         </div>
-        
+
         <ProgressIndicator currentStep={currentStep} steps={STEPS} />
       </div>
 

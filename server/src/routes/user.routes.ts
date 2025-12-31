@@ -10,6 +10,7 @@ import {
   getAllUsers,
   createUser,
   updatePushToken,
+  getCleaningStats,
 } from '../controllers/user.controller';
 
 const router = Router();
@@ -17,6 +18,7 @@ const router = Router();
 router.get('/', getAllUsers);
 router.post('/', createUser);
 router.get('/:userId', getProfile);
+router.get('/:userId/cleaning-stats', getCleaningStats);
 router.patch('/:userId', updateProfile);
 router.patch('/:userId/push-token', updatePushToken);
 router.post('/:userId/password', changePassword);

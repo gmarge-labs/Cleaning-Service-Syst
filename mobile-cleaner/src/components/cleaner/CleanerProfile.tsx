@@ -15,6 +15,7 @@ interface CleanerProfileProps {
     onNavigate: (view: CleanerView) => void;
     user: UserType | null;
     onUpdateUser: (user: UserType) => void;
+    unreadCount?: number;
 }
 
 interface ProfileData {
@@ -34,7 +35,7 @@ interface ProfileData {
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const shifts = ['Morning (6 AM - 12 PM)', 'Afternoon (12 PM - 6 PM)', 'Evening (6 PM - 12 AM)', 'Flexible'];
 
-export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser }: CleanerProfileProps) {
+export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, unreadCount }: CleanerProfileProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -349,6 +350,7 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser }: 
             <BottomNavigation
                 currentView={currentView}
                 onNavigate={onNavigate}
+                unreadMessages={unreadCount}
             />
         </SafeAreaView>
     );

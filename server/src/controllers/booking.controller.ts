@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notification';
 import { sendBookingConfirmation, sendInvoiceEmail } from '../utils/email.service';
-
-const prisma = new PrismaClient() as any;
 
 export const sendInvoice = async (req: Request, res: Response) => {
   try {
@@ -245,9 +243,14 @@ export const getBookings = async (req: Request, res: Response) => {
       where: {
         AND: [
           userId ? { userId: String(userId) } : {},
-          cleanerId ? { cleanerId: String(cleanerId) } : {},
+          cleanerId ? {
+            OR: [
+              { cleanerId: String(cleanerId) },
+              { claimedBy: { some: { id: String(cleanerId) } } }
+            ]
+          } : {},
           status ? (
-            typeof status === 'string' && status.includes(',') 
+            typeof status === 'string' && status.includes(',')
               ? { status: { in: status.split(',') } }
               : Array.isArray(status)
                 ? { status: { in: status } }
@@ -437,6 +440,8 @@ export const claimJob = async (req: Request, res: Response) => {
         claimedBy: {
           connect: { id: cleanerId }
         },
+        // For compatibility with single-cleaner views, set cleanerId if it's not already set
+        cleanerId: (booking as any).cleanerId || cleanerId,
         // If this was the last required cleaner, mark as CONFIRMED
         status: ((booking as any).claimedBy.length + 1 >= requiredCleaners) ? 'CONFIRMED' : (booking as any).status
       },

@@ -1,9 +1,8 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { sendBroadcastEmail } from './email.service';
-import { PrismaClient } from '@prisma/client';
+import prisma from './prisma';
 
-const prisma = new PrismaClient() as any;
 let io: Server;
 
 export const initSocket = (server: HttpServer) => {
@@ -21,7 +20,7 @@ export const initSocket = (server: HttpServer) => {
     socket.on('join', (data: string | { userId: string, role?: string }) => {
       const userId = typeof data === 'string' ? data : data.userId;
       const role = typeof data === 'string' ? null : data.role;
-      
+
       socket.join(userId);
       if (role) {
         socket.join(role);
@@ -32,11 +31,11 @@ export const initSocket = (server: HttpServer) => {
     });
 
     // Handle chat messages
-    socket.on('send_message', async (data: { 
-      senderId: string, 
-      receiverId: string, 
+    socket.on('send_message', async (data: {
+      senderId: string,
+      receiverId: string,
       text: string,
-      timestamp: string 
+      timestamp: string
     }) => {
       console.log(`Socket: Message from ${data.senderId} to ${data.receiverId}: ${data.text}`);
       try {
@@ -57,7 +56,7 @@ export const initSocket = (server: HttpServer) => {
           createdAt: message.createdAt
         });
         console.log(`Socket: Emitted receive_message to room ${data.receiverId}`);
-        
+
         // Also emit back to sender for confirmation
         socket.emit('message_sent', {
           ...data,
@@ -89,8 +88,8 @@ export const initSocket = (server: HttpServer) => {
       // Also send via Email for customers (or everyone if target is 'all')
       if (data.target === 'customers' || data.target === 'all') {
         await sendBroadcastEmail(
-          data.target, 
-          data.subject || 'Important Announcement from Sparkleville', 
+          data.target,
+          data.subject || 'Important Announcement from Sparkleville',
           data.text
         );
       }

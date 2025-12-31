@@ -14,9 +14,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface CleanerMessagesProps {
     currentView: CleanerView;
     onNavigate: (view: CleanerView) => void;
+    unreadCount?: number;
 }
 
-export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProps) {
+export function CleanerMessages({ currentView, onNavigate, unreadCount }: CleanerMessagesProps) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -96,7 +97,7 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
         try {
             const sentMessage = await messageService.sendMessage(selectedConversation.id, messageText);
             setMessages(prev => [...prev, sentMessage]);
-            
+
             if (socket && isConnected) {
                 socket.emit('send_message', {
                     senderId: user.id,
@@ -104,7 +105,7 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
                     text: messageText,
                 });
             }
-            
+
             loadConversations();
         } catch (error) {
             console.error('Error sending message:', error);
@@ -270,7 +271,7 @@ export function CleanerMessages({ currentView, onNavigate }: CleanerMessagesProp
             <BottomNavigation
                 currentView={currentView}
                 onNavigate={onNavigate}
-                unreadMessages={totalUnread}
+                unreadMessages={unreadCount}
             />
         </SafeAreaView>
     );

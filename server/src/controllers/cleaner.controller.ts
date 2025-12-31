@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { sendApplicationAccepted, sendApplicationRejected } from '../utils/email.service';
-
-const prisma = new PrismaClient();
 
 export const submitApplication = async (req: Request, res: Response) => {
   try {
@@ -36,7 +34,7 @@ export const submitApplication = async (req: Request, res: Response) => {
       agreedToBackgroundCheck,
       agreedToTerms
     } = req.body;
-    
+
     // Using any cast for cleanerApplication as the editor's TS server might not have picked up the generated types yet
     const application = await (prisma as any).cleanerApplication.create({
       data: {
@@ -98,7 +96,7 @@ export const submitApplication = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Submit application error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error'
     });

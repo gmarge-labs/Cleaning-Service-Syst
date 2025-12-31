@@ -23,12 +23,14 @@ interface CleanerNotificationsProps {
     currentView: CleanerView;
     onNavigate: (view: CleanerView) => void;
     userId: string | undefined;
+    unreadCount?: number;
 }
 
 export function CleanerNotifications({
     currentView,
     onNavigate,
     userId,
+    unreadCount
 }: CleanerNotificationsProps) {
     const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -96,7 +98,7 @@ export function CleanerNotifications({
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const localUnreadCount = notifications.filter(n => !n.isRead).length;
 
     const formatTime = (date: Date) => {
         const now = new Date();
@@ -155,11 +157,11 @@ export function CleanerNotifications({
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerTitle}>Notifications</Text>
-                        {unreadCount > 0 && (
-                            <Text style={styles.headerSubtitle}>{unreadCount} unread</Text>
+                        {localUnreadCount > 0 && (
+                            <Text style={styles.headerSubtitle}>{localUnreadCount} unread</Text>
                         )}
                     </View>
-                    {notifications.length > 0 && unreadCount > 0 && (
+                    {notifications.length > 0 && localUnreadCount > 0 && (
                         <TouchableOpacity style={styles.markAllBtn} onPress={onMarkAllAsRead}>
                             <Check size={16} color={Colors.white} />
                             <Text style={styles.markAllText}>Mark all read</Text>
@@ -235,6 +237,7 @@ export function CleanerNotifications({
             <BottomNavigation
                 currentView={currentView}
                 onNavigate={onNavigate}
+                unreadMessages={unreadCount}
             />
         </SafeAreaView>
     );

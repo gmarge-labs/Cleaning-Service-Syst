@@ -1,11 +1,10 @@
 
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { generateUserId } from '../utils/idGenerator';
 import { notifyAdmins } from '../utils/notification';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export const signup = async (req: Request, res: Response) => {
   try {
@@ -92,7 +91,7 @@ export const login = async (req: Request, res: Response) => {
     // Find user
     const emailLower = email.toLowerCase();
     console.log(`Attempting login for: ${emailLower}`);
-    
+
     const user = await prisma.user.findUnique({
       where: { email: emailLower },
     });

@@ -1,15 +1,14 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp } from 'react-native';
 import { Colors, Spacing } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface ButtonProps {
     title: string;
-    onPress: () => void;
+    onPress?: () => void;
     variant?: 'primary' | 'secondary' | 'outline' | 'gradient';
     loading?: boolean;
     disabled?: boolean;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
 }
 
 export const Button = ({ title, onPress, variant = 'primary', loading, disabled, style }: ButtonProps) => {

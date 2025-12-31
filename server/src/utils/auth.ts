@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role } from '@prisma/client';
+import prisma from './prisma';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,7 +14,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     // For now, we'll expect the userId in the 'x-user-id' header
     // In a real app, this would be a JWT token
     const userId = req.headers['x-user-id'] as string;
-    
+
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
