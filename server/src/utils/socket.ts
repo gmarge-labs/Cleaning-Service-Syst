@@ -95,6 +95,126 @@ export const initSocket = (server: HttpServer) => {
       }
     });
 
+    // Handle admin-to-cleaner messages
+    socket.on('admin-to-cleaner-message', async (data: {
+      cleanerId: string,
+      adminId: string,
+      adminName: string,
+      message: string,
+      timestamp: string
+    }) => {
+      console.log(`[Socket] Message from admin ${data.adminId} to cleaner ${data.cleanerId}: ${data.message}`);
+      try {
+        // Persist message to database
+        const message = await prisma.message.create({
+          data: {
+            senderId: data.adminId,
+            receiverId: data.cleanerId,
+            text: data.message
+          }
+        });
+        console.log(`[Socket] Message saved to DB with ID ${message.id}`);
+
+        // Emit to the cleaner's room
+        io.to(data.cleanerId).emit('cleaner-to-admin-message', {
+          ...data,
+          id: message.id,
+          createdAt: message.createdAt
+        });
+        console.log(`[Socket] Emitted message to cleaner room ${data.cleanerId}`);
+
+        // Also emit back to admin for confirmation
+        socket.emit('message_sent', {
+          ...data,
+          id: message.id,
+          createdAt: message.createdAt
+        });
+        console.log(`[Socket] Emitted message_sent confirmation to admin ${data.adminId}`);
+      } catch (error) {
+        console.error('[Socket] admin-to-cleaner-message error:', error);
+        socket.emit('error', { message: 'Failed to send message' });
+      }
+    });
+
+    // Handle cleaner active job request
+    socket.on('get-cleaner-active-job', async (data: { cleanerId: string }) => {
+      console.log(`[Socket] Admin requesting active job for cleaner ${data.cleanerId}`);
+      try {
+        // Get the cleaner's active job (status IN_PROGRESS)
+        const activeJob = await prisma.booking.findFirst({
+          where: {
+            status: 'IN_PROGRESS',
+            claimedBy: {
+              some: {
+                id: data.cleanerId
+              }
+            }
+          },
+          select: {
+            id: true,
+            serviceType: true,
+            address: true,
+            status: true,
+            startTime: true,
+            estimatedDuration: true
+          }
+        });
+
+        // Emit to the admin's room
+        io.to(socket.id).emit('cleaner-active-job', {
+          cleanerId: data.cleanerId,
+          job: activeJob || null
+        });
+        console.log(`[Socket] Sent active job for cleaner ${data.cleanerId}`);
+      } catch (error) {
+        console.error('[Socket] get-cleaner-active-job error:', error);
+        socket.emit('error', { message: 'Failed to fetch active job' });
+      }
+    });
+
+    // Handle cleaner claimed jobs request
+    socket.on('get-cleaner-claimed-jobs', async (data: { cleanerId: string }) => {
+      console.log(`[Socket] Admin requesting claimed jobs for cleaner ${data.cleanerId}`);
+      try {
+        // Get all claimed jobs for the cleaner that are not completed
+        const claimedJobs = await prisma.booking.findMany({
+          where: {
+            claimedBy: {
+              some: {
+                id: data.cleanerId
+              }
+            },
+            status: {
+              notIn: ['COMPLETED', 'CANCELLED']
+            }
+          },
+          select: {
+            id: true,
+            serviceType: true,
+            address: true,
+            status: true,
+            date: true,
+            time: true,
+            estimatedDuration: true,
+            guestName: true
+          },
+          orderBy: {
+            date: 'asc'
+          }
+        });
+
+        // Emit to the admin's room
+        io.to(socket.id).emit('cleaner-claimed-jobs', {
+          cleanerId: data.cleanerId,
+          jobs: claimedJobs || []
+        });
+        console.log(`[Socket] Sent ${claimedJobs.length} claimed jobs for cleaner ${data.cleanerId}`);
+      } catch (error) {
+        console.error('[Socket] get-cleaner-claimed-jobs error:', error);
+        socket.emit('error', { message: 'Failed to fetch claimed jobs' });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
     });

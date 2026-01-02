@@ -14,20 +14,55 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendEmail = sendEmail;
 exports.sendBookingConfirmation = sendBookingConfirmation;
+exports.sendApplicationAccepted = sendApplicationAccepted;
+exports.sendApplicationRejected = sendApplicationRejected;
 exports.sendBookingReminder = sendBookingReminder;
 exports.sendBookingCompletion = sendBookingCompletion;
+exports.sendInvoiceEmail = sendInvoiceEmail;
 exports.sendWelcomeEmail = sendWelcomeEmail;
+exports.sendBroadcastEmail = sendBroadcastEmail;
 const mail_1 = __importDefault(require("@sendgrid/mail"));
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = __importDefault(require("./prisma"));
 // Initialize SendGrid with API key from settings
 let isInitialized = false;
 let lastApiKey = '';
-function initializeSendGrid() {
+let mailtrapTransporter = null;
+function initializeEmailTransport() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
         try {
-            const settings = yield prisma.systemSettings.findUnique({
+            // Check for Mailtrap first (as requested by user)
+            const mailtrapUser = process.env.MAILTRAP_USER;
+            const mailtrapPass = process.env.MAILTRAP_PASS;
+            if (mailtrapUser && mailtrapPass) {
+                if (!mailtrapTransporter) {
+                    mailtrapTransporter = nodemailer_1.default.createTransport({
+                        host: "sandbox.smtp.mailtrap.io",
+                        port: 2525,
+                        auth: {
+                            user: mailtrapUser,
+                            pass: mailtrapPass
+                        }
+                    });
+                    console.log('✅ Mailtrap transporter initialized');
+                }
+                isInitialized = true;
+                return;
+            }
+            // Fallback to SendGrid
+            const envApiKey = process.env.SENDGRID_API_KEY;
+            if (envApiKey && envApiKey !== 'your_sendgrid_api_key') {
+                if (!isInitialized || lastApiKey !== envApiKey) {
+                    mail_1.default.setApiKey(envApiKey);
+                    lastApiKey = envApiKey;
+                    isInitialized = true;
+                    console.log('✅ SendGrid initialized with API key from environment variable');
+                }
+                return;
+            }
+            const settings = yield prisma_1.default.systemSettings.findUnique({
                 where: { id: 'default' }
             });
             if (settings && settings.integrations) {
@@ -39,7 +74,7 @@ function initializeSendGrid() {
                         mail_1.default.setApiKey(currentApiKey);
                         lastApiKey = currentApiKey;
                         isInitialized = true;
-                        console.log('✅ SendGrid initialized successfully with API key:', currentApiKey.substring(0, 10) + '...');
+                        console.log('✅ SendGrid initialized successfully with API key from settings:', currentApiKey.substring(0, 10) + '...');
                     }
                 }
                 else {
@@ -61,10 +96,13 @@ function initializeSendGrid() {
 // Get email template from database and replace variables
 function processTemplate(template, variables) {
     let processed = template;
-    // Replace all {variable_name} placeholders with actual values
+    // Replace all {variable_name} and {{variable_name}} placeholders with actual values
     Object.keys(variables).forEach(key => {
-        const placeholder = `{${key}}`;
-        processed = processed.replace(new RegExp(placeholder, 'g'), variables[key]);
+        const value = variables[key] || '';
+        // Handle {key}
+        processed = processed.replace(new RegExp(`{${key}}`, 'g'), value);
+        // Handle {{key}}
+        processed = processed.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
     return processed;
 }
@@ -73,14 +111,14 @@ function sendEmail(options) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             console.log('📧 Attempting to send email to:', options.to);
-            // Initialize SendGrid if not already done
-            yield initializeSendGrid();
+            // Initialize email transport if not already done
+            yield initializeEmailTransport();
             if (!isInitialized) {
-                console.warn('⚠️ SendGrid not initialized, skipping email send');
+                console.warn('⚠️ Email transport not initialized, skipping email send');
                 return false;
             }
             // Get notification templates from settings
-            const settings = yield prisma.systemSettings.findUnique({
+            const settings = yield prisma_1.default.systemSettings.findUnique({
                 where: { id: 'default' }
             });
             if (!settings || !settings.notifications) {
@@ -88,10 +126,15 @@ function sendEmail(options) {
                 return false;
             }
             const templates = settings.notifications;
-            const template = templates[options.templateType];
+            let template = templates[options.templateType];
             if (!template) {
-                console.error(`Template ${options.templateType} not found`);
-                return false;
+                if (options.templateType === 'broadcast') {
+                    template = "Hello {name},\n\n{message}\n\nBest regards,\nThe Sparkleville Team";
+                }
+                else {
+                    console.error(`Template ${options.templateType} not found`);
+                    return false;
+                }
             }
             // Process template with variables
             const emailContent = processTemplate(template, options.variables);
@@ -99,6 +142,9 @@ function sendEmail(options) {
             const general = settings.general;
             const fromEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@Sparkleville.com';
             const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'Sparkleville';
+            const companyAddress = (general === null || general === void 0 ? void 0 : general.address) || '';
+            const companyPhone = (general === null || general === void 0 ? void 0 : general.phone) || '';
+            console.log(`📤 Sending email from: ${fromEmail} (${companyName}) to: ${options.to}`);
             // Send email
             const msg = {
                 to: options.to,
@@ -109,22 +155,54 @@ function sendEmail(options) {
                 subject: options.subject,
                 text: emailContent,
                 html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">${companyName}</h1>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
-            <div style="white-space: pre-wrap; line-height: 1.6; color: #374151;">
-              ${emailContent.replace(/\n/g, '<br>')}
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            .email-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; }
+            .header { background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0; }
+            .content { background: white; padding: 40px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; line-height: 1.6; color: #374151; }
+            .footer { margin-top: 30px; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #7C3AED; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
+            .info-box { background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="header">
+              <h1 style="color: white; margin: 0; font-size: 28px; letter-spacing: -0.025em;">${companyName}</h1>
             </div>
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px;">
-              <p>Need help? Contact us at ${fromEmail}</p>
+            <div class="content">
+              <div style="white-space: pre-wrap;">${emailContent.replace(/\n/g, '<br>')}</div>
+              
+              <div style="margin-top: 30px; text-align: center;">
+                <a href="https://Sparkleville.com/login" class="button">View Your Dashboard</a>
+              </div>
+            </div>
+            <div class="footer">
+              <p><strong>${companyName}</strong></p>
+              ${companyAddress ? `<p>${companyAddress}</p>` : ''}
+              ${companyPhone ? `<p>${companyPhone}</p>` : ''}
+              <p>You received this email because you have an account with ${companyName}.</p>
               <p style="margin-top: 10px;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
             </div>
           </div>
-        </div>
+        </body>
+        </html>
       `
             };
+            if (mailtrapTransporter) {
+                yield mailtrapTransporter.sendMail({
+                    from: `"${companyName}" <${fromEmail}>`,
+                    to: options.to,
+                    subject: options.subject,
+                    text: msg.text,
+                    html: msg.html,
+                });
+                console.log(`✅ Email sent successfully via Mailtrap to ${options.to}`);
+                return true;
+            }
             yield mail_1.default.send(msg);
             console.log(`✅ Email sent successfully to ${options.to}`);
             return true;
@@ -147,7 +225,9 @@ function sendBookingConfirmation(booking, customerEmail) {
             templateType: 'confirmation',
             variables: {
                 customer_name: booking.guestName || 'Valued Customer',
+                name: booking.guestName || 'Valued Customer',
                 service_type: booking.serviceType,
+                service: booking.serviceType,
                 date: new Date(booking.date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
@@ -157,7 +237,37 @@ function sendBookingConfirmation(booking, customerEmail) {
                 time: booking.time,
                 address: booking.address || 'Your specified location',
                 booking_id: booking.id,
-                total_amount: `$${booking.totalAmount.toFixed(2)}`
+                total_amount: `$${Number(booking.totalAmount).toFixed(2)}`
+            }
+        });
+    });
+}
+// Send application accepted email
+function sendApplicationAccepted(application) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return sendEmail({
+            to: application.email,
+            subject: 'Congratulations! Your Cleaner Application has been Accepted',
+            templateType: 'application_accepted',
+            variables: {
+                name: `${application.firstName} ${application.lastName}`,
+                first_name: application.firstName,
+                last_name: application.lastName
+            }
+        });
+    });
+}
+// Send application rejected email
+function sendApplicationRejected(application) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return sendEmail({
+            to: application.email,
+            subject: 'Update regarding your Cleaner Application',
+            templateType: 'application_rejected',
+            variables: {
+                name: `${application.firstName} ${application.lastName}`,
+                first_name: application.firstName,
+                last_name: application.lastName
             }
         });
     });
@@ -206,11 +316,41 @@ function sendBookingCompletion(booking, customerEmail) {
         });
     });
 }
+// Send invoice email to customer
+function sendInvoiceEmail(booking, email, total, balanceDue) {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log('📧 Preparing to send invoice email to:', email);
+        const settings = yield prisma_1.default.systemSettings.findUnique({
+            where: { id: 'default' }
+        });
+        const general = settings === null || settings === void 0 ? void 0 : settings.general;
+        const companyName = (general === null || general === void 0 ? void 0 : general.companyName) || 'Sparkleville';
+        return sendEmail({
+            to: email,
+            subject: `Invoice for your ${booking.serviceType} - ${companyName}`,
+            templateType: 'confirmation', // Reusing confirmation template for now, or could add 'invoice'
+            variables: {
+                customer_name: booking.guestName || 'Customer',
+                service_type: booking.serviceType,
+                date: new Date(booking.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                time: booking.time,
+                total_amount: total.toFixed(2),
+                balance_due: balanceDue.toFixed(2),
+                booking_id: booking.id
+            }
+        });
+    });
+}
 // Send welcome email to new user
 function sendWelcomeEmail(user, temporaryPassword) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log('📧 Preparing to send welcome email to:', user.email);
-        const settings = yield prisma.systemSettings.findUnique({
+        const settings = yield prisma_1.default.systemSettings.findUnique({
             where: { id: 'default' }
         });
         const general = settings === null || settings === void 0 ? void 0 : settings.general;
@@ -239,6 +379,7 @@ The ${companyName} Team`;
             templateType: 'welcome',
             variables: {
                 customer_name: user.name,
+                name: user.name,
                 service_type: 'Account Created',
                 date: new Date().toLocaleDateString('en-US', {
                     weekday: 'long',
@@ -252,5 +393,56 @@ The ${companyName} Team`;
                 })
             }
         });
+    });
+}
+function sendBroadcastEmail(target, subject, message) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let users = [];
+            if (target === 'all') {
+                users = yield prisma_1.default.user.findMany({
+                    where: { email: { not: '' } },
+                    select: { email: true, name: true }
+                });
+            }
+            else if (target === 'cleaners') {
+                users = yield prisma_1.default.user.findMany({
+                    where: { role: client_1.Role.CLEANER, email: { not: '' } },
+                    select: { email: true, name: true }
+                });
+            }
+            else if (target === 'customers') {
+                users = yield prisma_1.default.user.findMany({
+                    where: { role: client_1.Role.CUSTOMER, email: { not: '' } },
+                    select: { email: true, name: true }
+                });
+            }
+            else if (target === 'staff') {
+                users = yield prisma_1.default.user.findMany({
+                    where: {
+                        role: { in: [client_1.Role.ADMIN, client_1.Role.SUPERVISOR, client_1.Role.SUPPORT] },
+                        email: { not: '' }
+                    },
+                    select: { email: true, name: true }
+                });
+            }
+            console.log(`📢 Broadcasting email to ${users.length} ${target} users`);
+            for (const user of users) {
+                yield sendEmail({
+                    to: user.email,
+                    subject: subject,
+                    templateType: 'broadcast',
+                    variables: {
+                        name: user.name,
+                        message: message
+                    }
+                });
+            }
+            return true;
+        }
+        catch (error) {
+            console.error('Error sending broadcast email:', error);
+            return false;
+        }
     });
 }

@@ -10,6 +10,10 @@ export interface User {
     address?: string;
     profileImage?: string;
     createdAt?: string;
+    bankAccountName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
 }
 
 export const authService = {

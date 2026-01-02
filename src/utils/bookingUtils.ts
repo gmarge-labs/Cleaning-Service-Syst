@@ -197,15 +197,12 @@ export function formatDisplayHours(estimatedHours: number, cleanerCount: number,
     return estimatedHours;
   }
 
+  // Calculate hours per cleaner (each cleaner can handle up to 4 hours)
   const hoursPerCleaner = estimatedHours / cleanerCount;
-  const wholeHours = Math.floor(hoursPerCleaner);
-  const minutes = Math.round((hoursPerCleaner - wholeHours) * 60);
   
-  if (minutes === 0) {
-    return wholeHours;
-  } else if (minutes < 30) {
-    return wholeHours + 0.5;
-  } else {
-    return wholeHours + 1.0;
-  }
+  // Round to nearest 0.5 hour
+  // 0-0.24 rounds to 0, 0.25-0.74 rounds to 0.5, 0.75+ rounds to next whole number
+  const roundedHours = Math.round(hoursPerCleaner * 2) / 2;
+  
+  return roundedHours;
 }

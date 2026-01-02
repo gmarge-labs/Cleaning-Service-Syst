@@ -3,6 +3,8 @@ import prisma from '../utils/prisma';
 import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notification';
 import { sendBookingConfirmation, sendInvoiceEmail, sendEmail } from '../utils/email.service';
 import { calculateBookingDuration } from '../utils/booking';
+import { emitToUser } from '../utils/socket';
+// import { uploadBase64Image } from '../utils/googleDrive'; // TODO: Google Drive uploads disabled
 
 export const sendInvoice = async (req: Request, res: Response) => {
   try {
@@ -137,7 +139,7 @@ export const createBooking = async (req: Request, res: Response) => {
         estimatedDuration,
         cleanerCount,
         paymentPerHour,
-        status: (status as any) || 'CONFIRMED',
+        status: (status as any) || 'PENDING',
         securityCode: Math.floor(1000 + Math.random() * 9000).toString(),
       } as any,
     });
@@ -161,7 +163,7 @@ export const createBooking = async (req: Request, res: Response) => {
     await notifyCleaners({
       type: 'BOOKING_CREATED',
       title: 'New Job Alert! 🔔',
-      message: `${guestName || 'A customer'} just posted a new ${serviceType} job in ${address || 'your area'}. Claim it now!`,
+      message: `A new ${serviceType} job is available in ${address || 'your area'}. Claim it now!`,
       data: {
         bookingId: customId,
         serviceType,
@@ -286,17 +288,90 @@ export const updateBooking = async (req: Request, res: Response) => {
       cleanerCount = result.cleanerCount;
     }
 
+    // TODO: Google Drive uploads disabled for now - storing photos directly in database
+    // Handle Google Drive Uploads for Completion Photos
+    // let drivePhotoLinks = updateData.completionPhotos;
+    // if (updateData.completionPhotos && Array.isArray(updateData.completionPhotos)) {
+    //   const now = new Date();
+    //   const year = now.getFullYear().toString();
+    //   const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    //   const day = now.getDate().toString().padStart(2, '0');
+    //   
+    //   const folderPath = [year, month, day, `Booking_${id}`, 'Completion'];
+    //   
+    //   const uploadPromises = updateData.completionPhotos.map(async (base64: string, index: number) => {
+    //     // Only upload if it's a base64 string (starts with data:image)
+    //     if (base64.startsWith('data:image')) {
+    //       const timestamp = new Date().getTime();
+    //       return await uploadBase64Image(base64, `Completion_${timestamp}_${index + 1}.jpg`, folderPath);
+    //     }
+    //     return base64; // Already a link
+    //   });
+    //   
+    //   drivePhotoLinks = await Promise.all(uploadPromises);
+    // }
+
+    // Handle Google Drive Uploads for Revision Photos
+    // let revisionPhotoLinks = updateData.revisionPhotos;
+    // if (updateData.revisionPhotos && Array.isArray(updateData.revisionPhotos)) {
+    //   const now = new Date();
+    //   const year = now.getFullYear().toString();
+    //   const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    //   const day = now.getDate().toString().padStart(2, '0');
+    //   
+    //   const folderPath = [year, month, day, `Booking_${id}`, 'Revision'];
+    //   
+    //   const uploadPromises = updateData.revisionPhotos.map(async (base64: string, index: number) => {
+    //     if (base64.startsWith('data:image')) {
+    //       const timestamp = new Date().getTime();
+    //       return await uploadBase64Image(base64, `Revision_${timestamp}_${index + 1}.jpg`, folderPath);
+    //     }
+    //     return base64;
+    //   });
+    //   
+    //   revisionPhotoLinks = await Promise.all(uploadPromises);
+    // }
+
+    // Store photos directly in database (base64 format)
+    const completionPhotos = updateData.completionPhotos;
+    const revisionPhotos = updateData.revisionPhotos;
+
     const booking = await prisma.booking.update({
       where: { id },
       data: {
         ...dataWithoutId,
+        completionPhotos: completionPhotos,
+        revisionPhotos: revisionPhotos,
         date: updateData.date ? new Date(updateData.date) : undefined,
         estimatedDuration,
         cleanerCount,
         startTime: updateData.status === 'IN_PROGRESS' ? new Date() : undefined,
         endTime: updateData.status === 'COMPLETED' ? new Date() : undefined,
       },
+      include: {
+        claimedBy: true
+      }
     });
+
+    // Notify cleaner if job is started or revision requested
+    if (updateData.status === 'IN_PROGRESS') {
+      (booking as any).claimedBy.forEach((cleaner: any) => {
+        emitToUser(cleaner.id, 'job_started', { bookingId: id });
+      });
+    }
+
+    if (updateData.status === 'REVISION_REQUESTED') {
+      (booking as any).claimedBy.forEach((cleaner: any) => {
+        createNotification({
+          userId: cleaner.id,
+          type: 'REVISION_REQUESTED',
+          title: 'Revision Requested',
+          message: `A revision has been requested for job ${id}. Please check the details.`,
+          data: { bookingId: id }
+        });
+        emitToUser(cleaner.id, 'revision_requested', { bookingId: id });
+      });
+    }
 
     // Handle Cancellation
     if (updateData.status === 'CANCELLED' && existingBooking.status !== 'CANCELLED') {
@@ -430,7 +505,7 @@ export const claimJob = async (req: Request, res: Response) => {
         // For compatibility with single-cleaner views, set cleanerId if it's not already set
         cleanerId: (booking as any).cleanerId || cleanerId,
         // If this was the last required cleaner, mark as CONFIRMED
-        status: ((booking as any).claimedBy.length + 1 >= requiredCleaners) ? 'CONFIRMED' : (booking as any).status
+        status: ((booking as any).claimedBy.length + 1 >= requiredCleaners) ? 'CONFIRMED' : 'PENDING'
       },
       include: {
         user: true,
@@ -462,7 +537,7 @@ export const claimJob = async (req: Request, res: Response) => {
 export const notifyArrival = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { cleanerId } = req.body;
+    const { cleanerId, securityCode } = req.body;
 
     const booking = await prisma.booking.findUnique({
       where: { id },
@@ -483,24 +558,28 @@ export const notifyArrival = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Cleaner not found or not assigned to this job' });
     }
 
+    // Update booking status to ARRIVED and store the code provided by the cleaner
+    await (prisma.booking as any).update({
+      where: { id },
+      data: { 
+        status: 'ARRIVED',
+        cleanerProvidedCode: securityCode || null
+      }
+    });
+
     // Send notification to customer
     if (booking.user?.id) {
-      // Update booking status to ARRIVED
-      await (prisma.booking as any).update({
-        where: { id },
-        data: { status: 'ARRIVED' }
-      });
-
       await createNotification({
         userId: booking.user.id,
         type: 'CLEANER_ARRIVED',
         title: 'Cleaner Arrived!',
-        message: `${cleaner.name} has arrived at your location. Please verify their ID: ${cleaner.id}`,
+        message: `${cleaner.name} has arrived at your location. Please verify their credentials in your dashboard.`,
         data: { 
           bookingId: booking.id,
           cleanerName: cleaner.name,
           cleanerId: cleaner.id,
-          cleanerImage: (cleaner as any).profileImage
+          cleanerImage: (cleaner as any).profileImage,
+          providedCode: securityCode
         }
       });
     }

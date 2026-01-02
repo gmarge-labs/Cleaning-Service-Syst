@@ -69,7 +69,8 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
 
   const upcomingBookings = bookings.filter(b =>
     new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) &&
-    b.status !== 'CANCELLED'
+    b.status !== 'CANCELLED' &&
+    b.status !== 'COMPLETED'
   );
 
   const stats = [
@@ -228,16 +229,18 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
                   Pay Now
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setSelectedBooking(null);
-                  onRescheduleBooking?.(selectedBooking);
-                }}
-              >
-                Reschedule
-              </Button>
+              {selectedBooking.status !== 'COMPLETED' && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedBooking(null);
+                    onRescheduleBooking?.(selectedBooking);
+                  }}
+                >
+                  Reschedule
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="flex-1"

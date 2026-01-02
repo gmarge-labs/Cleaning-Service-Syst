@@ -31,6 +31,12 @@ export interface Booking {
     distance?: string;
     cleanerId?: string;
     securityCode?: string;
+    cleanerProvidedCode?: string;
+    completionNotes?: string;
+    completionIssues?: string;
+    completionPhotos?: string[];
+    revisionReason?: string;
+    revisionPhotos?: string[];
     claimedBy?: Array<{
         id: string;
         name: string;
@@ -92,18 +98,21 @@ export const jobService = {
         }
     },
 
-    updateJobStatus: async (jobId: string, status: string) => {
+    updateJobStatus: async (jobId: string, status: string, completionData?: any) => {
         try {
-            const response = await api.patch(`/bookings/${jobId}`, { status });
+            const response = await api.patch(`/bookings/${jobId}`, { 
+                status,
+                ...completionData
+            });
             return response.data;
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to update job status');
         }
     },
 
-    notifyArrival: async (jobId: string, cleanerId: string) => {
+    notifyArrival: async (jobId: string, cleanerId: string, securityCode?: string) => {
         try {
-            const response = await api.post(`/bookings/${jobId}/arrive`, { cleanerId });
+            const response = await api.post(`/bookings/${jobId}/arrive`, { cleanerId, securityCode });
             return response.data;
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to notify arrival');
@@ -113,24 +122,22 @@ export const jobService = {
 
 /**
  * Formats the duration for display to the cleaner/customer.
- * Rounds to the nearest 0.5 or 1.0 hour per cleaner.
+ * Rounds to the nearest 0.5 hour per cleaner.
+ * Each cleaner handles up to 4 hours of work.
  */
 export function formatDisplayHours(estimatedHours: number, cleanerCount: number) {
     if (cleanerCount <= 0) {
         return estimatedHours;
     }
 
+    // Calculate hours per cleaner (each cleaner can handle up to 4 hours)
     const hoursPerCleaner = estimatedHours / cleanerCount;
-    const wholeHours = Math.floor(hoursPerCleaner);
-    const minutes = Math.round((hoursPerCleaner - wholeHours) * 60);
-
-    if (minutes === 0) {
-        return wholeHours;
-    } else if (minutes < 30) {
-        return wholeHours + 0.5;
-    } else {
-        return wholeHours + 1.0;
-    }
+    
+    // Round to nearest 0.5 hour
+    // 0-0.24 rounds to 0, 0.25-0.74 rounds to 0.5, 0.75+ rounds to next whole number
+    const roundedHours = Math.round(hoursPerCleaner * 2) / 2;
+    
+    return roundedHours;
 }
 
 /**

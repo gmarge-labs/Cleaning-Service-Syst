@@ -8,10 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateUserId = generateUserId;
 const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = __importDefault(require("./prisma"));
 const PREFIXES = {
     [client_1.Role.CUSTOMER]: 'user',
     [client_1.Role.ADMIN]: 'adm',
@@ -24,7 +27,7 @@ function generateUserId(role) {
         const prefix = PREFIXES[role];
         // Find the last user with this role, ordered by ID descending
         // We need to filter by ID starting with the prefix to be safe
-        const lastUser = yield prisma.user.findFirst({
+        const lastUser = yield prisma_1.default.user.findFirst({
             where: {
                 role: role,
                 id: {

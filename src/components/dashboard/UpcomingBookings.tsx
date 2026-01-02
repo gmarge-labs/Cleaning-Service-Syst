@@ -31,10 +31,11 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
       const response = await fetch(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
-        // Filter for upcoming bookings (today or future) and not cancelled
+        // Filter for upcoming bookings (today or future) and not cancelled or completed
         const upcoming = data.filter((b: any) => 
           new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
-          b.status !== 'CANCELLED'
+          b.status !== 'CANCELLED' &&
+          b.status !== 'COMPLETED'
         );
         setBookingsList(upcoming);
       } else {
@@ -500,16 +501,18 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
                   Pay Now
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setSelectedBookingForDetails(null);
-                  onReschedule?.(selectedBookingForDetails);
-                }}
-              >
-                Reschedule
-              </Button>
+              {selectedBookingForDetails.status !== 'COMPLETED' && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedBookingForDetails(null);
+                    onReschedule?.(selectedBookingForDetails);
+                  }}
+                >
+                  Reschedule
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="flex-1"

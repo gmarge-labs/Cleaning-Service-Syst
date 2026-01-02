@@ -156,6 +156,13 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
         phone: formData.phoneNumber,
         address: `${formData.streetAddress}${formData.apartmentUnit ? ' ' + formData.apartmentUnit : ''}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
         role: 'CUSTOMER',
+        notificationSettings: {
+          email: formData.emailNotifications,
+          sms: formData.smsNotifications,
+          preferredMethod: formData.preferredContactMethod,
+        },
+        customerType: formData.customerType,
+        dateOfBirth: formData.dateOfBirth,
       };
 
       // Send to backend
@@ -169,7 +176,7 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create customer');
+        throw new Error(errorData.error || errorData.message || 'Failed to create customer');
       }
 
       await response.json(); // Consume the response

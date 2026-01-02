@@ -33,6 +33,11 @@ model User {
   receivedMessages    Message[]       @relation("ReceivedMessages")
   pushToken           String?         // Expo push token
   profileImage        String?         // Profile picture URL
+  isActive            Boolean         @default(true) // Cleaner availability status
+  bankAccountName     String?         // Bank account holder name
+  bankName            String?         // Bank name
+  accountNumber       String?         // Bank account number
+  routingNumber       String?         // Bank routing number
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 }
@@ -131,9 +136,19 @@ model Booking {
   
   status              BookingStatus @default(PENDING)
   securityCode        String?       // 4-digit verification code
+  cleanerProvidedCode String?       // Code provided by cleaner for verification
   startTime           DateTime?     // Actual start time
   endTime             DateTime?     // Actual end time
   isAccepted          Boolean       @default(false) // Customer accepted the work
+  
+  // Completion details
+  completionNotes     String?
+  completionIssues    String?
+  completionPhotos    String[]      @default([])
+  
+  // Revision details
+  revisionReason      String?
+  revisionPhotos      String[]      @default([])
   
   reviews             Review[]
   
@@ -170,6 +185,7 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   RESCHEDULED
+  REVISION_REQUESTED
 }
 
 enum Role {

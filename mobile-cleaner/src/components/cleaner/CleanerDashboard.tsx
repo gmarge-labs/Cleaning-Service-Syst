@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Calendar, Clock, DollarSign, MapPin, ChevronRight, User, LogOut, Bell, Users, Star } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { Calendar, Clock, DollarSign, MapPin, ChevronRight, User, LogOut, Bell, Users, Star, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
 import { Button } from '../Button';
@@ -23,6 +23,7 @@ interface CleanerDashboardProps {
     onNavigateToEarnings: () => void;
     onNavigateToNotifications: () => void;
     unreadCount?: number;
+    unreadMessages?: number;
 }
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,7 +41,8 @@ export function CleanerDashboard({
     onNavigateToProfile,
     onNavigateToEarnings,
     onNavigateToNotifications,
-    unreadCount = 0
+    unreadCount = 0,
+    unreadMessages = 0
 }: CleanerDashboardProps) {
     const [availableJobs, setAvailableJobs] = useState<Booking[]>([]);
     const [myJobs, setMyJobs] = useState<Booking[]>([]);
@@ -65,7 +67,12 @@ export function CleanerDashboard({
                 return !isAlreadyClaimedByMe && needsMoreCleaners;
             });
 
-            setAvailableJobs(filteredAvailable);
+            // Sort available jobs by date (most recent first)
+            const sortedAvailable = filteredAvailable.sort((a, b) => {
+                return new Date(b.date).getTime() - new Date(a.date).getTime();
+            });
+
+            setAvailableJobs(sortedAvailable);
             setMyJobs(assigned);
 
             // Also fetch history if on completed tab, or just fetch it here
@@ -108,7 +115,11 @@ export function CleanerDashboard({
                 <View style={styles.headerTop}>
                     <TouchableOpacity style={styles.profileInfo} onPress={onNavigateToProfile}>
                         <View style={styles.avatar}>
-                            <User size={24} color={Colors.white} />
+                            {user?.profileImage ? (
+                                <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
+                            ) : (
+                                <User size={24} color={Colors.white} />
+                            )}
                         </View>
                         <View>
                             <Text style={styles.userName}>{user?.name || 'Cleaner'}</Text>
@@ -207,7 +218,8 @@ export function CleanerDashboard({
                     else if (view === 'earnings') onNavigateToEarnings();
                     else if (view === 'notifications') onNavigateToNotifications();
                 }}
-                unreadMessages={unreadCount}
+                unreadNotifications={unreadCount}
+                unreadMessages={unreadMessages}
             />
         </SafeAreaView>
     );
@@ -241,8 +253,8 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                     <Text style={styles.jobId}>{job.id}</Text>
                     <Text style={styles.serviceType}>{job.serviceType}</Text>
                 </View>
-                <Badge variant={isCompleted ? 'success' : 'secondary'}>
-                    {isCompleted ? 'Completed' : job.status === 'IN_PROGRESS' ? 'In Progress' : 'Upcoming'}
+                <Badge variant={isCompleted ? 'success' : job.status === 'REVISION_REQUESTED' ? 'error' : job.status === 'IN_PROGRESS' ? 'info' : 'secondary'}>
+                    {isCompleted ? 'Completed' : job.status === 'REVISION_REQUESTED' ? 'Revision' : job.status === 'IN_PROGRESS' ? 'In Progress' : 'Upcoming'}
                 </Badge>
             </View>
             <View style={styles.cardContent}>
@@ -274,7 +286,7 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                         )}
                         {showStartButton && !isCompleted && (
                             <Button 
-                                title={job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'} 
+                                title={job.status === 'REVISION_REQUESTED' ? 'Fix Issues' : job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'} 
                                 onPress={() => onStart(job)} 
                                 variant="gradient" 
                                 style={styles.startBtn} 
@@ -321,7 +333,7 @@ const AvailableJobCard = ({ job, onViewDetails, onClaim }: any) => {
                         ${calculateEarnings(job).toFixed(2)}
                     </Text>
                     <View style={styles.actions}>
-                        <Button title="Start" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
+                        <Button title="Claim" onPress={() => onClaim(job.id)} variant="gradient" style={styles.startBtn} />
                         <TouchableOpacity onPress={() => onViewDetails(job)} style={styles.detailsBtn}>
                             <Text style={styles.detailsText}>Details</Text>
                             <ChevronRight size={16} color={Colors.gray} />
@@ -363,6 +375,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.md,
+    },
+    avatarImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
     userName: {
         fontSize: 18,

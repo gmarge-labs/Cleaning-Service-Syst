@@ -31,6 +31,10 @@ interface ProfileData {
     joinDate: string;
     rating: number;
     completedJobs: number;
+    bankAccountName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
 }
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -52,6 +56,10 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
         joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
         rating: 4.8,
         completedJobs: 0,
+        bankAccountName: user?.bankAccountName || '',
+        bankName: user?.bankName || '',
+        accountNumber: user?.accountNumber || '',
+        routingNumber: user?.routingNumber || '',
     });
 
     const [editedProfile, setEditedProfile] = useState<ProfileData>(profile);
@@ -98,7 +106,11 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
                 email: editedProfile.email,
                 phone: editedProfile.phone,
                 address: editedProfile.address,
-                profileImage: profileImage || undefined
+                profileImage: profileImage || undefined,
+                bankAccountName: editedProfile.bankAccountName,
+                bankName: editedProfile.bankName,
+                accountNumber: editedProfile.accountNumber,
+                routingNumber: editedProfile.routingNumber,
             });
             
             setProfile(editedProfile);
@@ -296,7 +308,75 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
                     </View>
                 </View>
 
-                {/* Work preferences */}
+                {/* Bank Account Information */}
+                <View style={styles.card}>
+                    <Text style={styles.cardSectionTitle}>Bank Account Details</Text>
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <Text style={styles.inputLabel}>Account Holder Name</Text>
+                        </View>
+                        {isEditing ? (
+                            <TextInput
+                                style={styles.textInput}
+                                value={editedProfile.bankAccountName || ''}
+                                onChangeText={(text) => setEditedProfile({ ...editedProfile, bankAccountName: text })}
+                                placeholder="Name on account"
+                            />
+                        ) : (
+                            <Text style={styles.valueText}>{profile.bankAccountName || 'Not provided'}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <Text style={styles.inputLabel}>Bank Name</Text>
+                        </View>
+                        {isEditing ? (
+                            <TextInput
+                                style={styles.textInput}
+                                value={editedProfile.bankName || ''}
+                                onChangeText={(text) => setEditedProfile({ ...editedProfile, bankName: text })}
+                                placeholder="Your bank name"
+                            />
+                        ) : (
+                            <Text style={styles.valueText}>{profile.bankName || 'Not provided'}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <Text style={styles.inputLabel}>Account Number</Text>
+                        </View>
+                        {isEditing ? (
+                            <TextInput
+                                style={styles.textInput}
+                                value={editedProfile.accountNumber || ''}
+                                onChangeText={(text) => setEditedProfile({ ...editedProfile, accountNumber: text })}
+                                placeholder="Account number"
+                            />
+                        ) : (
+                            <Text style={styles.valueText}>{profile.accountNumber ? '••••' + profile.accountNumber.slice(-4) : 'Not provided'}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <Text style={styles.inputLabel}>Routing Number</Text>
+                        </View>
+                        {isEditing ? (
+                            <TextInput
+                                style={styles.textInput}
+                                value={editedProfile.routingNumber || ''}
+                                onChangeText={(text) => setEditedProfile({ ...editedProfile, routingNumber: text })}
+                                placeholder="Routing number"
+                            />
+                        ) : (
+                            <Text style={styles.valueText}>{profile.routingNumber ? '••••' + profile.routingNumber.slice(-4) : 'Not provided'}</Text>
+                        )}
+                    </View>
+                </View>
+
+                {/* Work Preferences */}
                 <View style={styles.card}>
                     <Text style={styles.cardSectionTitle}>Work Preferences</Text>
                     <View style={styles.inputGroup}>

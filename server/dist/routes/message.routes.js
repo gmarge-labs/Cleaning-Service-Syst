@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const message_controller_1 = require("../controllers/message.controller");
+const auth_1 = require("../utils/auth");
+const router = (0, express_1.Router)();
+router.use(auth_1.authenticate);
+router.get('/conversations', message_controller_1.getConversations);
+router.get('/contacts', message_controller_1.getAvailableContacts);
+router.get('/:partnerId', message_controller_1.getMessages);
+router.post('/', message_controller_1.sendMessage);
+exports.default = router;

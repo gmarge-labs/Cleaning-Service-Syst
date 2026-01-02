@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const cleaner_controller_1 = require("../controllers/cleaner.controller");
+const router = (0, express_1.Router)();
+router.get('/', cleaner_controller_1.getCleaners);
+router.post('/apply', cleaner_controller_1.submitApplication);
+router.get('/applications', cleaner_controller_1.getApplications);
+router.patch('/applications/:id/status', cleaner_controller_1.updateApplicationStatus);
+exports.default = router;

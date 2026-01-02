@@ -8,10 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUnreadCountsByType = exports.createNotification = exports.deleteNotification = exports.markAllAsRead = exports.markAsRead = exports.getUnreadCount = exports.getUserNotifications = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = __importDefault(require("../utils/prisma"));
 // Get all notifications for a user
 const getUserNotifications = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
@@ -26,9 +28,9 @@ const getUserNotifications = (req, res) => __awaiter(void 0, void 0, void 0, fun
             where.isRead = isRead === 'true';
         }
         // Get total count
-        const totalCount = yield prisma.notification.count({ where });
+        const totalCount = yield prisma_1.default.notification.count({ where });
         // Fetch notifications
-        const notifications = yield prisma.notification.findMany({
+        const notifications = yield prisma_1.default.notification.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             skip,
@@ -57,7 +59,7 @@ exports.getUserNotifications = getUserNotifications;
 const getUnreadCount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     try {
-        const unreadCount = yield prisma.notification.count({
+        const unreadCount = yield prisma_1.default.notification.count({
             where: {
                 userId,
                 isRead: false,
@@ -75,7 +77,7 @@ exports.getUnreadCount = getUnreadCount;
 const markAsRead = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { notificationId } = req.params;
     try {
-        const notification = yield prisma.notification.update({
+        const notification = yield prisma_1.default.notification.update({
             where: { id: notificationId },
             data: { isRead: true },
         });
@@ -91,7 +93,7 @@ exports.markAsRead = markAsRead;
 const markAllAsRead = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     try {
-        yield prisma.notification.updateMany({
+        yield prisma_1.default.notification.updateMany({
             where: { userId, isRead: false },
             data: { isRead: true },
         });
@@ -107,7 +109,7 @@ exports.markAllAsRead = markAllAsRead;
 const deleteNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { notificationId } = req.params;
     try {
-        yield prisma.notification.delete({
+        yield prisma_1.default.notification.delete({
             where: { id: notificationId },
         });
         res.json({ message: 'Notification deleted' });
@@ -121,7 +123,7 @@ exports.deleteNotification = deleteNotification;
 // Create notification (internal use)
 const createNotification = (userId, type, title, message, data) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const notification = yield prisma.notification.create({
+        const notification = yield prisma_1.default.notification.create({
             data: {
                 userId,
                 type,
@@ -141,21 +143,21 @@ exports.createNotification = createNotification;
 const getUnreadCountsByType = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     try {
-        const bookingCount = yield prisma.notification.count({
+        const bookingCount = yield prisma_1.default.notification.count({
             where: {
                 userId,
                 isRead: false,
                 type: 'BOOKING_CREATED'
             },
         });
-        const reviewCount = yield prisma.notification.count({
+        const reviewCount = yield prisma_1.default.notification.count({
             where: {
                 userId,
                 isRead: false,
                 type: 'REVIEW_RECEIVED'
             },
         });
-        const messageCount = yield prisma.notification.count({
+        const messageCount = yield prisma_1.default.notification.count({
             where: {
                 userId,
                 isRead: false,

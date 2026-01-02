@@ -16,7 +16,7 @@ interface JobCompletionProps {
 }
 
 export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
-    const [photos, setPhotos] = useState<string[]>([]);
+    const [photos, setPhotos] = useState<{uri: string, base64: string}[]>([]);
     const [notes, setNotes] = useState('');
     const [issues, setIssues] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,11 +33,15 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
         const result = await ImagePicker.launchCameraAsync({
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.7,
+            quality: 0.5, // Reduced quality for faster upload
+            base64: true,
         });
 
-        if (!result.canceled) {
-            setPhotos([...photos, result.assets[0].uri]);
+        if (!result.canceled && result.assets[0].base64) {
+            setPhotos([...photos, { 
+                uri: result.assets[0].uri, 
+                base64: `data:image/jpeg;base64,${result.assets[0].base64}` 
+            }]);
         }
     };
 
@@ -48,7 +52,18 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            await jobService.updateJobStatus(job.id, 'COMPLETED');
+            const photoData = photos.map(p => p.base64);
+            
+            // If this is a revision, we might want to use different fields or just overwrite
+            // For now, we'll overwrite completionPhotos but also support the backend's expectation
+            const updateData: any = {
+                completionNotes: notes,
+                completionIssues: issues,
+                completionPhotos: photoData
+            };
+
+            // If the job was in revision, we still set it to COMPLETED to trigger customer review
+            await jobService.updateJobStatus(job.id, 'COMPLETED', updateData);
             onSubmit();
         } catch (error: any) {
             alert(error.message);
@@ -95,7 +110,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
                         <View style={styles.photoGrid}>
                             {photos.map((photo, index) => (
                                 <View key={index} style={styles.photoWrapper}>
-                                    <Image source={{ uri: photo }} style={styles.photo} />
+                                    <Image source={{ uri: photo.uri }} style={styles.photo} />
                                     <TouchableOpacity onPress={() => removePhoto(index)} style={styles.removePhotoBtn}>
                                         <X size={12} color={Colors.white} />
                                     </TouchableOpacity>

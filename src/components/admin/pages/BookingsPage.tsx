@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, DollarSign, Search, Eye, X, CheckCircle, Users, Wrench, FileText, User, Star, Phone, Mail, Send, Download } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { Calendar, Clock, MapPin, DollarSign, Search, Eye, X, CheckCircle, Users, Wrench, FileText, User, Star, Phone, Mail, Send, Download, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -11,8 +12,10 @@ import html2canvas from 'html2canvas';
 import { formatDisplayHours } from '../../../utils/bookingUtils';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { socketService } from '../../../api/socket.service';
+import { MessageModal } from '../modals/MessageModal';
 
-type Tab = 'unclaimed' | 'claimed';
+type Tab = 'unclaimed' | 'claimed' | 'completed';
 
 export function BookingsPage() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -27,13 +30,16 @@ export function BookingsPage() {
   const [selectedCleanerProfile, setSelectedCleanerProfile] = useState<any>(null);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
-  const [messageText, setMessageText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [cleanerActiveJob, setCleanerActiveJob] = useState<any>(null);
+  const [cleanerClaimedJobs, setCleanerClaimedJobs] = useState<any[]>([]);
 
   // Pagination state
   const [unclaimedPage, setUnclaimedPage] = useState(1);
   const [claimedPage, setClaimedPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
   const itemsPerPage = 10;
 
   const [bookings, setBookings] = useState<any[]>([]);
@@ -42,7 +48,27 @@ export function BookingsPage() {
   useEffect(() => {
     fetchBookings();
     fetchSettings();
-  }, []);
+    
+    // Initialize socket connection
+    if (user?.id) {
+      socketService.connect(user.id, 'admin');
+      
+      // Listen for cleaner's active job
+      socketService.onCleanerActiveJob((data: any) => {
+        setCleanerActiveJob(data);
+      });
+      
+      // Listen for cleaner's claimed jobs
+      socketService.onCleanerClaimedJobs((data: any) => {
+        setCleanerClaimedJobs(data.jobs || []);
+      });
+    }
+    
+    return () => {
+      // Cleanup on unmount
+      socketService.disconnect();
+    };
+  }, [user?.id]);
 
   const fetchSettings = async () => {
     try {
@@ -83,10 +109,11 @@ export function BookingsPage() {
       total: parseFloat(b.totalAmount),
       requiredCleaners: b.cleanerCount || 1,
       claimedCount: b.claimedBy?.length || 0,
+      customerAccepted: b.isAccepted,
     }));
 
   const claimedJobs = bookings
-    .filter(b => (b.claimedBy?.length || 0) >= (b.cleanerCount || 1) || b.status === 'COMPLETED')
+    .filter(b => ((b.claimedBy?.length || 0) >= (b.cleanerCount || 1) || b.status === 'CONFIRMED' || b.status === 'ARRIVED' || b.status === 'IN_PROGRESS') && b.status !== 'COMPLETED')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .map(b => ({
       ...b,
@@ -96,6 +123,21 @@ export function BookingsPage() {
       total: parseFloat(b.totalAmount),
       requiredCleaners: b.cleanerCount || 1,
       claimedCount: b.claimedBy?.length || 0,
+      customerAccepted: b.isAccepted,
+    }));
+
+  const completedBookings = bookings
+    .filter(b => b.status === 'COMPLETED')
+    .sort((a, b) => new Date(b.endTime || b.updatedAt).getTime() - new Date(a.endTime || a.updatedAt).getTime())
+    .map(b => ({
+      ...b,
+      customer: b.guestName || 'Unknown Customer',
+      service: b.serviceType,
+      date: new Date(b.date),
+      total: parseFloat(b.totalAmount),
+      requiredCleaners: b.cleanerCount || 1,
+      claimedCount: b.claimedBy?.length || 0,
+      customerAccepted: b.isAccepted,
     }));
 
   const filteredUnclaimedBookings = unclaimedBookings.filter((booking) =>
@@ -106,6 +148,11 @@ export function BookingsPage() {
   const filteredClaimedJobs = claimedJobs.filter((job) =>
     job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCompletedBookings = completedBookings.filter((booking) =>
+    booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    booking.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Paginated data
@@ -119,8 +166,14 @@ export function BookingsPage() {
     claimedPage * itemsPerPage
   );
 
+  const paginatedCompleted = filteredCompletedBookings.slice(
+    (completedPage - 1) * itemsPerPage,
+    completedPage * itemsPerPage
+  );
+
   const unclaimedTotalPages = Math.ceil(filteredUnclaimedBookings.length / itemsPerPage);
   const claimedTotalPages = Math.ceil(filteredClaimedJobs.length / itemsPerPage);
+  const completedTotalPages = Math.ceil(filteredCompletedBookings.length / itemsPerPage);
 
   const handleCompleteBooking = () => {
     setShowManualBooking(false);
@@ -308,7 +361,7 @@ export function BookingsPage() {
 
     return (
       <div 
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
         onClick={() => setViewDetailsModal(null)}
       >
         <div 
@@ -343,6 +396,40 @@ export function BookingsPage() {
 
           {/* Content */}
           <div id="booking-details-content" className="p-6 space-y-6">
+            {/* Verification Codes (Only for Arrived/In Progress) */}
+            {(viewDetailsModal.status === 'ARRIVED' || viewDetailsModal.status === 'IN_PROGRESS') && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  Identity Verification
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-3 rounded-lg border border-blue-100">
+                    <span className="text-xs text-neutral-500 block mb-1">Expected Code</span>
+                    <span className="text-xl font-bold text-secondary-500 tracking-wider">
+                      {viewDetailsModal.securityCode || '----'}
+                    </span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-blue-100">
+                    <span className="text-xs text-neutral-500 block mb-1">Cleaner Provided</span>
+                    <span className={`text-xl font-bold tracking-wider ${
+                      viewDetailsModal.cleanerProvidedCode === viewDetailsModal.securityCode 
+                        ? 'text-green-600' 
+                        : 'text-orange-600'
+                    }`}>
+                      {viewDetailsModal.cleanerProvidedCode || 'Waiting...'}
+                    </span>
+                  </div>
+                </div>
+                {viewDetailsModal.cleanerProvidedCode && viewDetailsModal.cleanerProvidedCode !== viewDetailsModal.securityCode && (
+                  <p className="text-xs text-orange-600 mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Warning: Provided code does not match expected code.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Customer Info */}
             <div>
               <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
@@ -613,6 +700,94 @@ export function BookingsPage() {
               </div>
             )}
 
+            {/* Job Completion Details */}
+            {viewDetailsModal.status === 'COMPLETED' && (
+              <div className="border-t border-neutral-200 pt-6 space-y-4">
+                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  Job Completion Details
+                </h4>
+                <div className="bg-green-50 rounded-lg p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-neutral-600 block">Arrival Time:</span>
+                      <span className="font-medium text-neutral-900">
+                        {viewDetailsModal.startTime ? new Date(viewDetailsModal.startTime).toLocaleString() : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600 block">Completion Time:</span>
+                      <span className="font-medium text-neutral-900">
+                        {viewDetailsModal.endTime ? new Date(viewDetailsModal.endTime).toLocaleString() : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600 block">Actual Duration:</span>
+                      <span className="font-medium text-neutral-900">
+                        {(() => {
+                          if (!viewDetailsModal.startTime || !viewDetailsModal.endTime) return 'N/A';
+                          const start = new Date(viewDetailsModal.startTime);
+                          const end = new Date(viewDetailsModal.endTime);
+                          const diffMs = end.getTime() - start.getTime();
+                          const diffHrs = Math.floor(diffMs / 3600000);
+                          const diffMins = Math.round((diffMs % 3600000) / 60000);
+                          return `${diffHrs}h ${diffMins}m`;
+                        })()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600 block">Customer Acceptance:</span>
+                      <span className={`font-medium ${viewDetailsModal.customerAccepted ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {viewDetailsModal.customerAccepted ? 'Accepted' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {viewDetailsModal.completionNotes && (
+                    <div>
+                      <span className="text-neutral-600 block text-sm mb-1">Completion Notes:</span>
+                      <p className="text-neutral-900 bg-white p-3 rounded border border-green-200 text-sm italic">
+                        "{viewDetailsModal.completionNotes}"
+                      </p>
+                    </div>
+                  )}
+
+                  {viewDetailsModal.completionIssues && (
+                    <div>
+                      <span className="text-neutral-600 block text-sm mb-1 text-red-600">Reported Issues:</span>
+                      <p className="text-neutral-900 bg-white p-3 rounded border border-red-200 text-sm italic">
+                        "{viewDetailsModal.completionIssues}"
+                      </p>
+                    </div>
+                  )}
+
+                  {viewDetailsModal.completionPhotos && viewDetailsModal.completionPhotos.length > 0 && (
+                    <div>
+                      <span className="text-neutral-600 block text-sm mb-2">Completion Photos:</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {viewDetailsModal.completionPhotos.map((photo: string, i: number) => (
+                          <div 
+                            key={i} 
+                            className="aspect-square rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100 cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => setSelectedPhoto(photo)}
+                          >
+                            <img 
+                              src={photo} 
+                              alt={`Completion ${i + 1}`} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Photo+Error';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Pricing & Status */}
             <div className="border-t border-neutral-200 pt-6 space-y-4">
               {isAdmin && (
@@ -660,7 +835,7 @@ export function BookingsPage() {
 
     return (
       <div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
         onClick={() => setEditJobModal(null)}
       >
         <div
@@ -802,7 +977,7 @@ export function BookingsPage() {
 
     return (
       <div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
         onClick={() => setViewCleanersModal(null)}
       >
         <div
@@ -877,6 +1052,14 @@ export function BookingsPage() {
   const CleanerProfileModal = () => {
     if (!selectedCleanerProfile) return null;
 
+    // Fetch cleaner's schedule when profile is opened
+    useEffect(() => {
+      if (selectedCleanerProfile?.id && showSchedule) {
+        socketService.getCleanerClaimedJobs(selectedCleanerProfile.id);
+        socketService.getCleanerActiveJob(selectedCleanerProfile.id);
+      }
+    }, [showSchedule, selectedCleanerProfile?.id]);
+
     return (
       <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
@@ -905,19 +1088,20 @@ export function BookingsPage() {
             {/* Profile Header */}
             <div className="flex items-center gap-6 p-6 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg">
               <img
-                src={selectedCleanerProfile.photo}
+                src={selectedCleanerProfile.profileImage || selectedCleanerProfile.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedCleanerProfile.name)}&background=random`}
                 alt={selectedCleanerProfile.name}
                 className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
               />
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-neutral-900">{selectedCleanerProfile.name}</h3>
+                <p className="text-sm text-neutral-600 mt-1">ID: {selectedCleanerProfile.id}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex items-center gap-1">
                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                    <span className="font-semibold">{selectedCleanerProfile.rating}</span>
+                    <span className="font-semibold">{selectedCleanerProfile.rating || '0.0'}</span>
                   </div>
                   <span className="text-neutral-600">•</span>
-                  <span className="text-neutral-600">{selectedCleanerProfile.completedJobs} jobs completed</span>
+                  <span className="text-neutral-600">{selectedCleanerProfile.completedJobs || 0} jobs completed</span>
                 </div>
               </div>
             </div>
@@ -925,16 +1109,17 @@ export function BookingsPage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
-                <div className="text-3xl font-bold text-green-700">{selectedCleanerProfile.completedJobs}</div>
+                <div className="text-3xl font-bold text-green-700">{selectedCleanerProfile.completedJobs || 0}</div>
                 <div className="text-sm text-green-600 mt-1">Jobs Completed</div>
               </div>
               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4">
-                <div className="text-3xl font-bold text-yellow-700">{selectedCleanerProfile.rating}</div>
+                <div className="text-3xl font-bold text-yellow-700">{selectedCleanerProfile.rating || '0.0'}</div>
                 <div className="text-sm text-yellow-600 mt-1">Average Rating</div>
               </div>
               <div className="bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-lg p-4">
-                <div className="text-3xl font-bold text-secondary-700">98%</div>
-                <div className="text-sm text-secondary-600 mt-1">On-Time Rate</div>
+                <div className="text-3xl font-bold text-secondary-700">{selectedCleanerProfile.hourlyRate || '$0'}
+/hr</div>
+                <div className="text-sm text-secondary-600 mt-1">Hourly Rate</div>
               </div>
             </div>
 
@@ -946,41 +1131,39 @@ export function BookingsPage() {
                   <Phone className="w-5 h-5 text-secondary-500" />
                   <div className="flex-1">
                     <div className="text-xs text-neutral-600">Phone Number</div>
-                    <div className="font-medium text-neutral-900">(555) 123-4567</div>
+                    <div className="font-medium text-neutral-900">{selectedCleanerProfile.phone || 'N/A'}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-secondary-500" />
                   <div className="flex-1">
                     <div className="text-xs text-neutral-600">Email Address</div>
-                    <div className="font-medium text-neutral-900">{selectedCleanerProfile.name.toLowerCase().replace(' ', '.')}@example.com</div>
+                    <div className="font-medium text-neutral-900">{selectedCleanerProfile.email || 'N/A'}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-secondary-500" />
                   <div className="flex-1">
                     <div className="text-xs text-neutral-600">Address</div>
-                    <div className="font-medium text-neutral-900">123 Main St, New York, NY 10001</div>
+                    <div className="font-medium text-neutral-900">{selectedCleanerProfile.address || 'N/A'}</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Specialties */}
-            <div>
-              <h4 className="font-semibold text-neutral-900 mb-3">Specialties</h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className="bg-secondary-100 text-secondary-700">
-                  Deep Cleaning
-                </Badge>
-                <Badge variant="secondary" className="bg-secondary-100 text-secondary-700">
-                  Standard Cleaning
-                </Badge>
-                <Badge variant="secondary" className="bg-secondary-100 text-secondary-700">
-                  Move In/Out
-                </Badge>
+            {selectedCleanerProfile.specialties && selectedCleanerProfile.specialties.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-3">Specialties</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCleanerProfile.specialties.map((specialty: string) => (
+                    <Badge key={specialty} variant="secondary" className="bg-secondary-100 text-secondary-700">
+                      {specialty}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t border-neutral-200">
@@ -1003,17 +1186,6 @@ export function BookingsPage() {
   const ScheduleModal = () => {
     if (!showSchedule || !selectedCleanerProfile) return null;
 
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const schedule = {
-      Monday: [{ time: '9:00 AM - 12:00 PM', job: 'Deep Cleaning - 123 Main St' }, { time: '2:00 PM - 5:00 PM', job: 'Standard Cleaning - 456 Oak Ave' }],
-      Tuesday: [{ time: '10:00 AM - 1:00 PM', job: 'Move In/Out - 789 Pine Rd' }],
-      Wednesday: [{ time: '9:00 AM - 12:00 PM', job: 'Post-Construction - 321 Elm St' }],
-      Thursday: [{ time: '1:00 PM - 4:00 PM', job: 'Deep Cleaning - 555 Maple Dr' }],
-      Friday: [{ time: '9:00 AM - 3:00 PM', job: 'Standard Cleaning - 888 Cedar Ln' }],
-      Saturday: [],
-      Sunday: [],
-    };
-
     return (
       <div
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4"
@@ -1026,8 +1198,8 @@ export function BookingsPage() {
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-neutral-200 p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900">Weekly Schedule</h2>
-              <p className="text-sm text-neutral-600">{selectedCleanerProfile.name}'s work schedule</p>
+              <h2 className="text-2xl font-bold text-neutral-900">Cleaner Schedule</h2>
+              <p className="text-sm text-neutral-600">{selectedCleanerProfile.name}'s jobs and availability</p>
             </div>
             <button
               onClick={() => setShowSchedule(false)}
@@ -1038,43 +1210,62 @@ export function BookingsPage() {
           </div>
 
           {/* Content */}
-          <div className="p-6">
-            <div className="space-y-4">
-              {weekDays.map((day) => {
-                const daySchedule = schedule[day as keyof typeof schedule];
-                const isToday = day === new Date().toLocaleDateString('en-US', { weekday: 'long' });
-
-                return (
-                  <div
-                    key={day}
-                    className={`border rounded-lg p-4 ${isToday ? 'border-secondary-500 bg-secondary-50' : 'border-neutral-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className={`font-semibold ${isToday ? 'text-secondary-700' : 'text-neutral-900'}`}>
-                        {day}
-                        {isToday && <span className="ml-2 text-xs bg-secondary-500 text-white px-2 py-1 rounded-full">Today</span>}
-                      </h3>
-                      <span className="text-sm text-neutral-600">{daySchedule.length} {daySchedule.length === 1 ? 'job' : 'jobs'}</span>
-                    </div>
-
-                    {daySchedule.length === 0 ? (
-                      <div className="text-sm text-neutral-500 italic">No jobs scheduled</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {daySchedule.map((item, index) => (
-                          <div key={index} className="bg-white rounded-lg p-3 border border-neutral-200">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Clock className="w-4 h-4 text-secondary-500" />
-                              <span className="font-medium text-neutral-900">{item.time}</span>
-                            </div>
-                            <div className="text-sm text-neutral-600 mt-1 ml-6">{item.job}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+          <div className="p-6 space-y-6">
+            {/* Active Job Section */}
+            {cleanerActiveJob && (
+              <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4">
+                <h3 className="font-semibold text-orange-900 mb-3">Currently Active</h3>
+                <div className="bg-white rounded-lg p-3 border border-orange-200">
+                  <div className="text-sm font-medium text-neutral-900">{cleanerActiveJob.serviceType || 'Job'}</div>
+                  <div className="text-sm text-neutral-600 mt-1 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-secondary-500" />
+                    Status: <span className="font-medium text-orange-600">IN PROGRESS</span>
                   </div>
-                );
-              })}
+                  <div className="text-sm text-neutral-600 mt-1 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-secondary-500" />
+                    {cleanerActiveJob.address}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Claimed Jobs Section */}
+            <div>
+              <h3 className="font-semibold text-neutral-900 mb-3">Claimed Jobs ({cleanerClaimedJobs.length})</h3>
+              {cleanerClaimedJobs.length === 0 ? (
+                <div className="text-sm text-neutral-500 italic bg-neutral-50 p-4 rounded-lg">
+                  No claimed jobs scheduled
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cleanerClaimedJobs.map((job: any) => (
+                    <div key={job.id} className="bg-white rounded-lg p-4 border border-neutral-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="font-medium text-neutral-900">{job.serviceType}</div>
+                          <div className="text-sm text-neutral-600 mt-1">{job.guestName} - {job.address}</div>
+                        </div>
+                        <Badge className={`${
+                          job.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                          job.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' :
+                          job.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {job.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-neutral-600 flex items-center gap-2 mt-2">
+                        <Calendar className="w-4 h-4 text-secondary-500" />
+                        {new Date(job.date).toLocaleDateString()} at {job.time}
+                      </div>
+                      <div className="text-sm text-neutral-600 flex items-center gap-2 mt-1">
+                        <Clock className="w-4 h-4 text-secondary-500" />
+                        Estimated: {job.estimatedDuration || 2} hours
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1083,91 +1274,9 @@ export function BookingsPage() {
   };
 
   // Message Modal
-  const MessageModal = () => {
-    if (!showMessage || !selectedCleanerProfile) return null;
-
-    const handleSendMessage = () => {
-      if (messageText.trim()) {
-        toast.success(`Message sent to ${selectedCleanerProfile.name}!`);
-        setMessageText('');
-        setShowMessage(false);
-      }
-    };
-
-    return (
-      <div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4"
-        onClick={() => setShowMessage(false)}
-      >
-        <div
-          className="bg-white rounded-xl max-w-2xl w-full"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="border-b border-neutral-200 p-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-neutral-900">Send Message</h2>
-              <p className="text-sm text-neutral-600">Send a direct message to {selectedCleanerProfile.name}</p>
-            </div>
-            <button
-              onClick={() => setShowMessage(false)}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <X className="w-6 h-6 text-neutral-600" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            {/* Recipient Info */}
-            <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg mb-4">
-              <img
-                src={selectedCleanerProfile.photo}
-                alt={selectedCleanerProfile.name}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <div className="font-medium text-neutral-900">{selectedCleanerProfile.name}</div>
-                <div className="text-sm text-neutral-600">{selectedCleanerProfile.name.toLowerCase().replace(' ', '.')}@example.com</div>
-              </div>
-            </div>
-
-            {/* Message Input */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Message
-              </label>
-              <textarea
-                className="w-full border border-neutral-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary-500 min-h-[150px]"
-                placeholder="Type your message here..."
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowMessage(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 bg-secondary-500 hover:bg-secondary-600"
-                onClick={handleSendMessage}
-                disabled={!messageText.trim()}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Send Message
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const handleCloseMessage = useCallback(() => {
+    setShowMessage(false);
+  }, []);
 
   if (showManualBooking) {
     return (
@@ -1228,6 +1337,15 @@ export function BookingsPage() {
             >
               Claimed ({claimedJobs.length})
             </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`flex-1 py-4 px-6 font-medium transition-colors ${activeTab === 'completed'
+                ? 'text-secondary-500 border-b-2 border-secondary-500 bg-secondary-50/50'
+                : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
+                }`}
+            >
+              Completed ({completedBookings.length})
+            </button>
           </div>
         </div>
 
@@ -1257,14 +1375,25 @@ export function BookingsPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Booking ID</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Customer</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Service</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
-                    {activeTab === 'claimed' ? 'Duration (per cleaner)' : 'Duration'}
-                  </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
-                    Cleaner pay (per person)
-                  </th>
+                  {activeTab === 'completed' ? (
+                    <>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Arrival/Completion</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Duration</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Photos</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Acceptance</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Date</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
+                        {activeTab === 'claimed' ? 'Duration (per cleaner)' : 'Duration'}
+                      </th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">Cleaners</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-neutral-900">
+                        Cleaner pay (per person)
+                      </th>
+                    </>
+                  )}
                   
                   {isAdmin && (
                     <>
@@ -1281,7 +1410,8 @@ export function BookingsPage() {
                 {(() => {
                   const currentData = 
                     activeTab === 'unclaimed' ? paginatedUnclaimed :
-                    paginatedClaimed;
+                    activeTab === 'claimed' ? paginatedClaimed :
+                    paginatedCompleted;
                   
                   if (currentData.length === 0) {
                     return (
@@ -1304,59 +1434,108 @@ export function BookingsPage() {
                       <td className="py-4 px-6">
                         <span className="text-sm text-neutral-900">{booking.service}</span>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="text-sm">
-                          <div className="flex items-center gap-1 text-neutral-900">
-                            <Calendar className="w-4 h-4" />
-                            {booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </div>
-                          <div className="flex items-center gap-1 text-neutral-600">
-                            <Clock className="w-4 h-4" />
-                            {booking.time}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="text-sm text-neutral-600">
-                          {activeTab === 'claimed' 
-                            ? `${formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h`
-                            : (
-                              <div className="flex flex-col">
-                                <span>{Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m</span>
-                                <span className="text-xs text-secondary-500 font-medium">
-                                  ({formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h clock time)
-                                </span>
-                              </div>
-                            )
-                          }
-                        </div>
-                      </td>
                       
-                      <td className="py-4 px-6">
-                        <div className="flex flex-col">
-                          <span className={`font-semibold ${booking.claimedCount >= booking.requiredCleaners
-                            ? 'text-green-600'
-                            : booking.claimedCount > 0
-                              ? 'text-orange-600'
-                              : 'text-red-600'
+                      {activeTab === 'completed' ? (
+                        <>
+                          <td className="py-4 px-6">
+                            <div className="text-xs space-y-1">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <span className="font-semibold w-8">Arr:</span>
+                                {booking.startTime ? new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                              </div>
+                              <div className="flex items-center gap-1 text-neutral-600">
+                                <span className="font-semibold w-8">End:</span>
+                                {booking.endTime ? new Date(booking.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="text-sm font-medium text-neutral-900">
+                              {(() => {
+                                if (!booking.startTime || !booking.endTime) return 'N/A';
+                                const start = new Date(booking.startTime);
+                                const end = new Date(booking.endTime);
+                                const diffMs = end.getTime() - start.getTime();
+                                const diffHrs = Math.floor(diffMs / 3600000);
+                                const diffMins = Math.round((diffMs % 3600000) / 60000);
+                                return `${diffHrs}h ${diffMins}m`;
+                              })()}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-1">
+                              <div className="bg-neutral-100 px-2 py-1 rounded text-xs font-medium text-neutral-600">
+                                {booking.completionPhotos?.length || 0} photos
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              booking.customerAccepted 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                            {booking.claimedCount}/{booking.requiredCleaners}
-                          </span>
-                          <span className="text-xs text-neutral-600">claimed</span>
-                        </div>
-                      </td>
+                              {booking.customerAccepted ? 'Accepted' : 'Pending'}
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-4 px-6">
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1 text-neutral-900">
+                                <Calendar className="w-4 h-4" />
+                                {booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                              <div className="flex items-center gap-1 text-neutral-600">
+                                <Clock className="w-4 h-4" />
+                                {booking.time}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="text-sm text-neutral-600">
+                              {activeTab === 'claimed' 
+                                ? `${formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h`
+                                : (
+                                  <div className="flex flex-col">
+                                    <span>{Math.floor((booking.estimatedDuration || 0) / 60)}h {(booking.estimatedDuration || 0) % 60}m</span>
+                                    <span className="text-xs text-secondary-500 font-medium">
+                                      ({formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false)}h clock time)
+                                    </span>
+                                  </div>
+                                )
+                              }
+                            </div>
+                          </td>
+                          
+                          <td className="py-4 px-6">
+                            <div className="flex flex-col">
+                              <span className={`font-semibold ${booking.claimedCount >= booking.requiredCleaners
+                                ? 'text-green-600'
+                                : booking.claimedCount > 0
+                                  ? 'text-orange-600'
+                                  : 'text-red-600'
+                                }`}>
+                                {booking.claimedCount}/{booking.requiredCleaners}
+                              </span>
+                              <span className="text-xs text-neutral-600">claimed</span>
+                            </div>
+                          </td>
 
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-1 text-neutral-900">
-                          <DollarSign className="w-4 h-4" />
-                          {(() => {
-                            const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
-                            const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
-                            // Always show pay per person as requested
-                            return (hoursPerCleaner * rate).toFixed(2);
-                          })()}
-                        </div>
-                      </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-1 text-neutral-900">
+                              <DollarSign className="w-4 h-4" />
+                              {(() => {
+                                const hoursPerCleaner = formatDisplayHours((booking.estimatedDuration || 0) / 60, booking.cleanerCount || 1, false);
+                                const rate = booking.paymentPerHour || settings?.cleanerPay?.level1 || 18;
+                                // Always show pay per person as requested
+                                return (hoursPerCleaner * rate).toFixed(2);
+                              })()}
+                            </div>
+                          </td>
+                        </>
+                      )}
                       
                       {isAdmin && (
                         <>
@@ -1418,20 +1597,24 @@ export function BookingsPage() {
             <Pagination
               currentPage={
                 activeTab === 'unclaimed' ? unclaimedPage :
-                claimedPage
+                activeTab === 'claimed' ? claimedPage :
+                completedPage
               }
               totalPages={
                 activeTab === 'unclaimed' ? unclaimedTotalPages :
-                claimedTotalPages
+                activeTab === 'claimed' ? claimedTotalPages :
+                completedTotalPages
               }
               onPageChange={
                 activeTab === 'unclaimed' ? setUnclaimedPage :
-                setClaimedPage
+                activeTab === 'claimed' ? setClaimedPage :
+                setCompletedPage
               }
               itemsPerPage={itemsPerPage}
               totalItems={
                 activeTab === 'unclaimed' ? filteredUnclaimedBookings.length :
-                filteredClaimedJobs.length
+                activeTab === 'claimed' ? filteredClaimedJobs.length :
+                filteredCompletedBookings.length
               }
             />
           </div>
@@ -1444,7 +1627,34 @@ export function BookingsPage() {
       {viewCleanersModal && <ViewCleanersModal />}
       {selectedCleanerProfile && <CleanerProfileModal />}
       {showSchedule && <ScheduleModal />}
-      {showMessage && <MessageModal />}
+      <MessageModal 
+        isOpen={showMessage} 
+        cleaner={selectedCleanerProfile} 
+        user={user}
+        onClose={handleCloseMessage}
+      />
+
+      {/* Photo Viewer Modal - Using Portal to render outside of modal hierarchy */}
+      {selectedPhoto && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <X className="w-8 h-8 text-white" />
+          </button>
+          <img 
+            src={selectedPhoto} 
+            alt="Full size" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>,
+        document.getElementById('modal-root') || document.body
+      )}
     </div>
   );
 }

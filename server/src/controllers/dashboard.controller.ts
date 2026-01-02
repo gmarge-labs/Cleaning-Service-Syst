@@ -236,6 +236,53 @@ export const getSupportStats = async (req: Request, res: Response) => {
   }
 };
 
+export const getActiveJob = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // Find active job for customer - look for completed jobs without reviews or accepted status
+    const activeJob = await prisma.booking.findFirst({
+      where: {
+        userId,
+        status: {
+          in: [BookingStatus.COMPLETED, BookingStatus.IN_PROGRESS, BookingStatus.ARRIVED, BookingStatus.CONFIRMED]
+        }
+      },
+      include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true,
+            email: true,
+            phone: true
+          }
+        },
+        reviews: true,
+        user: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 1
+    });
+
+    if (!activeJob) {
+      return res.status(404).json({ message: 'No active job found' });
+    }
+
+    // Return the job with all details needed by frontend
+    res.json(activeJob);
+  } catch (error) {
+    console.error('Get active job error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 function formatTimeAgo(date: Date) {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);

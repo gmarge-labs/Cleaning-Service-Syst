@@ -143,7 +143,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
         </div>
 
         {/* Role Switcher (Demo Only) */}
-        {isOpen && (
+        {/* {isOpen && (
           <div className="mt-3 space-y-1">
             <div className="text-xs text-neutral-500 mb-2">Switch Role (Demo)</div>
             <div className="flex flex-wrap gap-1">
@@ -162,7 +162,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
               ))}
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Navigation */}

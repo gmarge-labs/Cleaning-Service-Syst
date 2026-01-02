@@ -29,9 +29,7 @@ interface Application {
 
 const statusColors = {
   'Active': 'bg-green-100 text-green-700',
-  'On Job': 'bg-secondary-100 text-secondary-700',
-  'Off Duty': 'bg-neutral-100 text-neutral-700',
-  'Inactive': 'bg-red-100 text-red-700',
+  'Inactive': 'bg-neutral-100 text-neutral-700',
 };
 
 export function CleanersPage() {
@@ -71,16 +69,20 @@ export function CleanersPage() {
         // Map backend user to cleaner UI format
         const mappedCleaners = data.map((u: any) => ({
           ...u,
-          photo: u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random`,
+          photo: u.photo || u.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random`,
           rating: u.rating || 5.0,
           jobsCompleted: u.bookings?.filter((b: any) => b.status === 'COMPLETED').length || 0,
-          status: u.status === 'active' ? 'Active' : 'Off Duty',
+          status: u.isActive ? 'Active' : 'Inactive',
           joinDate: new Date(u.createdAt),
           earnings: u.bookings?.filter((b: any) => b.status === 'COMPLETED')
             .reduce((sum: number, b: any) => sum + Number(b.totalAmount), 0) || 0,
           specialties: ['General Cleaning'], // Default or from metadata if available
           emergencyContact: u.emergencyPhone || 'Not provided',
           certifications: [],
+          bankAccountName: u.bankAccountName || '',
+          bankName: u.bankName || '',
+          accountNumber: u.accountNumber || '',
+          routingNumber: u.routingNumber || '',
         }));
 
         setCleaners(mappedCleaners);
@@ -364,6 +366,39 @@ export function CleanersPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bank Account Details */}
+                {(selectedCleaner.bankAccountName || selectedCleaner.bankName || selectedCleaner.accountNumber) && (
+                  <div>
+                    <h4 className="font-semibold text-neutral-900 mb-3">Bank Account Details</h4>
+                    <div className="bg-blue-50 rounded-lg p-4 space-y-3 border border-blue-200">
+                      {selectedCleaner.bankAccountName && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-600">Account Holder Name</span>
+                          <span className="font-medium text-neutral-900">{selectedCleaner.bankAccountName}</span>
+                        </div>
+                      )}
+                      {selectedCleaner.bankName && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-600">Bank Name</span>
+                          <span className="font-medium text-neutral-900">{selectedCleaner.bankName}</span>
+                        </div>
+                      )}
+                      {selectedCleaner.accountNumber && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-600">Account Number</span>
+                          <span className="font-medium text-neutral-900">••••{selectedCleaner.accountNumber.slice(-4)}</span>
+                        </div>
+                      )}
+                      {selectedCleaner.routingNumber && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-600">Routing Number</span>
+                          <span className="font-medium text-neutral-900">••••{selectedCleaner.routingNumber.slice(-4)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
 

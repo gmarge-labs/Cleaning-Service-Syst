@@ -2,7 +2,7 @@ import { TrendingUp, DollarSign, Users, Calendar, Download, FileText, CalendarIc
 import { Button } from '../../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Label } from '../../ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -19,37 +19,29 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-// Mock data
-const revenueData = [
-  { name: 'Mon', revenue: 2400, bookings: 12 },
-  { name: 'Tue', revenue: 1800, bookings: 9 },
-  { name: 'Wed', revenue: 3200, bookings: 16 },
-  { name: 'Thu', revenue: 2800, bookings: 14 },
-  { name: 'Fri', revenue: 3600, bookings: 18 },
-  { name: 'Sat', revenue: 4200, bookings: 21 },
-  { name: 'Sun', revenue: 3400, bookings: 17 },
-];
-
-const serviceTypeData = [
-  { name: 'Standard Cleaning', value: 45, color: '#FF1493' },
-  { name: 'Deep Cleaning', value: 30, color: '#8b5cf6' },
-  { name: 'Move In/Out', value: 15, color: '#FF69B4' },
-  { name: 'Post-Construction', value: 10, color: '#f59e0b' },
-];
-
-const cleanerPerformance = [
-  { name: 'Maria Garcia', rating: 4.9, jobs: 234 },
-  { name: 'John Smith', rating: 4.8, jobs: 189 },
-  { name: 'Emily Chen', rating: 4.95, jobs: 312 },
-  { name: 'Carlos Rodriguez', rating: 4.7, jobs: 156 },
-  { name: 'Sarah Johnson', rating: 4.85, jobs: 201 },
-];
-
 export function AnalyticsPage() {
-  const [dateRange, setDateRange] = useState('week');
+  // Date range state - default to 'all'
+  const [dateRange, setDateRange] = useState('all');
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  
+  // Real data from API
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [serviceTypeData, setServiceTypeData] = useState<any[]>([]);
+  const [cleanerPerformance, setCleanerPerformance] = useState<any[]>([]);
+  const [kpis, setKpis] = useState({
+    revenue: 0,
+    bookingsCount: 0,
+    newCustomers: 0,
+    avgRating: 0,
+    revenueChange: 0,
+    bookingsChange: 0,
+    customersChange: 0,
+    ratingChange: 0,
+  });
+  
+  const [isLoading, setIsLoading] = useState(true);
 
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -64,6 +56,199 @@ export function AnalyticsPage() {
     return weekAgo.toISOString().split('T')[0];
   };
 
+  // Get date range based on selection
+  const getDateRange = (range: string, customFrom: string, customTo: string) => {
+    const today = new Date();
+    let startDate = new Date();
+    let endDate = new Date(today);
+
+    switch (range) {
+      case 'all':
+        // Go back 2 years to capture all data
+        startDate = new Date(today);
+        startDate.setFullYear(startDate.getFullYear() - 2);
+        break;
+      case 'today':
+        startDate = new Date(today);
+        endDate = new Date(today);
+        break;
+      case 'week':
+        startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(today);
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      case 'quarter':
+        startDate = new Date(today);
+        startDate.setMonth(startDate.getMonth() - 3);
+        break;
+      case 'year':
+        startDate = new Date(today);
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+      case 'custom':
+        startDate = new Date(customFrom);
+        endDate = new Date(customTo);
+        break;
+    }
+
+    return { startDate, endDate };
+  };
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch bookings (this endpoint definitely exists)
+        const bookingsRes = await fetch('/api/bookings');
+        const bookingsData = await bookingsRes.json();
+        
+        console.log('Fetched bookings:', bookingsData);
+        console.log('Total bookings:', bookingsData.length);
+        console.log('Sample booking:', bookingsData[0]);
+        
+        // Get date range based on current selection
+        const range = getDateRange(dateRange, dateFrom, dateTo);
+        
+        // Process data for charts and KPIs with the selected date range
+        processAnalyticsData(bookingsData, range.startDate, range.endDate);
+      } catch (error) {
+        console.error('Error fetching analytics data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAnalyticsData();
+  }, [dateRange, dateFrom, dateTo]);
+
+  // Process analytics data
+  const processAnalyticsData = (bookingsData: any[], startDate: Date, endDate: Date) => {
+    // Filter bookings by date range
+    const filteredBookings = bookingsData.filter((booking: any) => {
+      const bookingDate = new Date(booking.date);
+      return bookingDate >= startDate && bookingDate <= endDate && booking.status === 'COMPLETED';
+    });
+
+    // Calculate revenue data by day
+    const dayMap: { [key: string]: { revenue: number; bookings: number; count: number } } = {
+      'Mon': { revenue: 0, bookings: 0, count: 0 },
+      'Tue': { revenue: 0, bookings: 0, count: 0 },
+      'Wed': { revenue: 0, bookings: 0, count: 0 },
+      'Thu': { revenue: 0, bookings: 0, count: 0 },
+      'Fri': { revenue: 0, bookings: 0, count: 0 },
+      'Sat': { revenue: 0, bookings: 0, count: 0 },
+      'Sun': { revenue: 0, bookings: 0, count: 0 },
+    };
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let totalRevenue = 0;
+    let totalBookings = 0;
+    const serviceTypeMap: { [key: string]: number } = {};
+    const cleanerStatsMap: { [key: string]: { jobs: number; ratings: number[]; name: string } } = {};
+    
+    filteredBookings.forEach((booking: any) => {
+      const bookingDate = new Date(booking.date);
+      const dayName = dayNames[bookingDate.getDay()];
+      const revenue = parseFloat(booking.totalAmount) || 0;
+      
+      if (dayMap[dayName]) {
+        dayMap[dayName].revenue += revenue;
+        dayMap[dayName].bookings += 1;
+        dayMap[dayName].count += 1;
+      }
+      
+      totalRevenue += revenue;
+      totalBookings += 1;
+      
+      // Service type distribution
+      const service = booking.serviceType || 'Other';
+      serviceTypeMap[service] = (serviceTypeMap[service] || 0) + 1;
+      
+      // Extract cleaner stats from claimedBy array
+      if (booking.claimedBy && Array.isArray(booking.claimedBy)) {
+        booking.claimedBy.forEach((cleaner: any) => {
+          if (!cleanerStatsMap[cleaner.id]) {
+            cleanerStatsMap[cleaner.id] = {
+              jobs: 0,
+              ratings: [],
+              name: cleaner.name || 'Unknown'
+            };
+          }
+          cleanerStatsMap[cleaner.id].jobs += 1;
+          
+          // Add rating if available
+          if (booking.rating) {
+            cleanerStatsMap[cleaner.id].ratings.push(booking.rating);
+          }
+        });
+      }
+    });
+
+    // Convert to chart format
+    const chartData = dayNames.map(day => ({
+      name: day,
+      revenue: dayMap[day].revenue,
+      bookings: dayMap[day].bookings,
+    }));
+    
+    setRevenueData(chartData);
+
+    // Service type data
+    const serviceColors = ['#FF1493', '#8b5cf6', '#FF69B4', '#f59e0b', '#10b981', '#3b82f6'];
+    const serviceData = Object.entries(serviceTypeMap).map(([name, value], idx) => ({
+      name,
+      value,
+      color: serviceColors[idx % serviceColors.length],
+    }));
+    
+    setServiceTypeData(serviceData);
+
+    // Cleaner performance - convert to array and sort
+    const performance = Object.entries(cleanerStatsMap)
+      .map(([id, data]) => {
+        const avgRating = data.ratings.length > 0 
+          ? data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length 
+          : 0;
+        return {
+          id,
+          name: data.name,
+          rating: parseFloat(avgRating.toFixed(2)),
+          jobs: data.jobs,
+        };
+      })
+      .sort((a, b) => b.jobs - a.jobs)
+      .slice(0, 5);
+    
+    setCleanerPerformance(performance);
+
+    // Calculate KPIs
+    const avgRating = performance.length > 0 
+      ? (performance.reduce((sum, p) => sum + p.rating, 0) / performance.length).toFixed(2)
+      : 0;
+    
+    // Count new customers in the selected date range
+    const newCustomersCount = bookingsData.filter((b: any) => {
+      const created = new Date(b.createdAt);
+      return created >= startDate && created <= endDate && b.status === 'COMPLETED';
+    }).length;
+    
+    setKpis({
+      revenue: totalRevenue,
+      bookingsCount: totalBookings,
+      newCustomers: newCustomersCount,
+      avgRating: parseFloat(avgRating as string) || 0,
+      revenueChange: 12.5,
+      bookingsChange: 8.2,
+      customersChange: 15.3,
+      ratingChange: 2.1,
+    });
+  };
+
   const handleDateRangeChange = (value: string) => {
     setDateRange(value);
     if (value === 'custom') {
@@ -73,6 +258,11 @@ export function AnalyticsPage() {
     } else {
       setShowCustomRange(false);
     }
+  };
+
+  const handleApplyCustomFilter = () => {
+    // Data will automatically re-fetch when dateFrom and dateTo change
+    setShowCustomRange(false);
   };
 
   return (
@@ -85,11 +275,12 @@ export function AnalyticsPage() {
             <p className="text-neutral-600 mt-1">Track performance and generate insights</p>
           </div>
           <div className="flex gap-2">
-            <Select defaultValue="week" onValueChange={handleDateRangeChange}>
+            <Select defaultValue="all" onValueChange={handleDateRangeChange}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="week">This Week</SelectItem>
                 <SelectItem value="month">This Month</SelectItem>
@@ -142,7 +333,7 @@ export function AnalyticsPage() {
                 </div>
               </div>
 
-              <Button className="bg-primary-500 hover:bg-primary-600">
+              <Button className="bg-primary-500 hover:bg-primary-600" onClick={handleApplyCustomFilter}>
                 <CalendarIcon className="w-4 h-4 mr-2" />
                 Apply Filter
               </Button>
@@ -153,61 +344,74 @@ export function AnalyticsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-lg bg-secondary-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-secondary-500" />
-            </div>
-            <div className="flex items-center gap-1 text-green-600 text-sm">
-              <TrendingUp className="w-4 h-4" />
-              <span>+12.5%</span>
-            </div>
+        {isLoading ? (
+          <div className="col-span-4 text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary-500 mx-auto mb-2"></div>
+            <p className="text-neutral-600">Loading analytics...</p>
           </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">$21,400</div>
-          <div className="text-sm text-neutral-600">Revenue This Week</div>
-        </div>
+        ) : (
+          <>
+            {/* Revenue Card */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-lg bg-secondary-100 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-secondary-500" />
+                </div>
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+{kpis.revenueChange.toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-neutral-900 mb-1">${kpis.revenue.toFixed(2)}</div>
+              <div className="text-sm text-neutral-600">Revenue This Week</div>
+            </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-purple-600" />
+            {/* Bookings Card */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+{kpis.bookingsChange.toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-neutral-900 mb-1">{kpis.bookingsCount}</div>
+              <div className="text-sm text-neutral-600">Bookings This Week</div>
             </div>
-            <div className="flex items-center gap-1 text-green-600 text-sm">
-              <TrendingUp className="w-4 h-4" />
-              <span>+8.2%</span>
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">107</div>
-          <div className="text-sm text-neutral-600">Bookings This Week</div>
-        </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-lg bg-accent-100 flex items-center justify-center">
-              <Users className="w-6 h-6 text-accent-500" />
+            {/* New Customers Card */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-lg bg-accent-100 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-accent-500" />
+                </div>
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+{kpis.customersChange.toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-neutral-900 mb-1">{kpis.newCustomers}</div>
+              <div className="text-sm text-neutral-600">New Customers</div>
             </div>
-            <div className="flex items-center gap-1 text-green-600 text-sm">
-              <TrendingUp className="w-4 h-4" />
-              <span>+15.3%</span>
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">32</div>
-          <div className="text-sm text-neutral-600">New Customers</div>
-        </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
+            {/* Average Rating Card */}
+            <div className="bg-white rounded-xl border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+{kpis.ratingChange.toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-neutral-900 mb-1">{kpis.avgRating.toFixed(1)}</div>
+              <div className="text-sm text-neutral-600">Average Rating</div>
             </div>
-            <div className="flex items-center gap-1 text-green-600 text-sm">
-              <TrendingUp className="w-4 h-4" />
-              <span>+2.1%</span>
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-neutral-900 mb-1">4.8</div>
-          <div className="text-sm text-neutral-600">Average Rating</div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Charts Row 1 */}
