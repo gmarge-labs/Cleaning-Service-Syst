@@ -3,6 +3,9 @@ import { Button } from '../../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Label } from '../../ui/label';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 import {
   LineChart,
   Line,
@@ -47,6 +50,62 @@ export function AnalyticsPage() {
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
+  };
+
+  const handleExportReport = () => {
+    try {
+      // Create a new workbook with multiple sheets
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: KPIs
+      const kpisData = [
+        ['Metric', 'Value', 'Change'],
+        ['Revenue', `$${kpis.revenue.toFixed(2)}`, `${kpis.revenueChange > 0 ? '+' : ''}${kpis.revenueChange}%`],
+        ['Total Bookings', kpis.bookingsCount, `${kpis.bookingsChange > 0 ? '+' : ''}${kpis.bookingsChange}%`],
+        ['New Customers', kpis.newCustomers, `${kpis.customersChange > 0 ? '+' : ''}${kpis.customersChange}%`],
+        ['Average Rating', kpis.avgRating.toFixed(1), `${kpis.ratingChange > 0 ? '+' : ''}${kpis.ratingChange}%`]
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(kpisData);
+      XLSX.utils.book_append_sheet(wb, ws1, 'KPIs');
+
+      // Sheet 2: Revenue Data
+      if (revenueData.length > 0) {
+        const revenueSheetData = [['Date', 'Revenue']].concat(
+          revenueData.map(item => [item.date || item.name || 'Unknown', item.value || item.revenue || 0])
+        );
+        const ws2 = XLSX.utils.aoa_to_sheet(revenueSheetData);
+        XLSX.utils.book_append_sheet(wb, ws2, 'Revenue');
+      }
+
+      // Sheet 3: Service Types
+      if (serviceTypeData.length > 0) {
+        const serviceSheetData = [['Service Type', 'Bookings', 'Revenue']].concat(
+          serviceTypeData.map(item => [item.name || 'Unknown', item.bookings || item.value || 0, item.revenue || 0])
+        );
+        const ws3 = XLSX.utils.aoa_to_sheet(serviceSheetData);
+        XLSX.utils.book_append_sheet(wb, ws3, 'Services');
+      }
+
+      // Sheet 4: Cleaner Performance
+      if (cleanerPerformance.length > 0) {
+        const cleanerSheetData = [['Cleaner Name', 'Completed Jobs', 'Rating', 'Revenue']].concat(
+          cleanerPerformance.map(item => [item.name || 'Unknown', item.jobs || 0, item.rating || 0, item.revenue || 0])
+        );
+        const ws4 = XLSX.utils.aoa_to_sheet(cleanerSheetData);
+        XLSX.utils.book_append_sheet(wb, ws4, 'Cleaners');
+      }
+
+      // Generate file name
+      const fileName = `analytics-report-${selectedRange}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Write file
+      XLSX.writeFile(wb, fileName);
+      
+      toast.success('Report exported successfully!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export report');
+    }
   };
 
   // Get date 7 days ago
@@ -198,7 +257,7 @@ export function AnalyticsPage() {
                 <SelectItem value="custom">Custom Range</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>

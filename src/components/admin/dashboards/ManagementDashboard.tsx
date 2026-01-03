@@ -4,6 +4,8 @@ import { Button } from '../../ui/button';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 
 export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'bookings' | 'cleaners' | 'analytics' | 'reviews') => void }) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -76,6 +78,47 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
       description: `${selectedReportType.charAt(0).toUpperCase() + selectedReportType.slice(1)} report is ready for download.`
     });
     setReportModalOpen(false);
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      const doc = new jsPDF();
+      const reportType = selectedReportType.charAt(0).toUpperCase() + selectedReportType.slice(1);
+      const date = new Date().toLocaleDateString();
+
+      // Title
+      doc.setFontSize(16);
+      doc.text(`${reportType} Report`, 14, 15);
+
+      // Date
+      doc.setFontSize(10);
+      doc.text(`Generated: ${date}`, 14, 25);
+
+      // Add data from dashboard
+      let yPosition = 40;
+      if (dashboardData) {
+        doc.text('Key Metrics:', 14, yPosition);
+        yPosition += 10;
+        doc.setFontSize(9);
+        doc.text(`Total Revenue: $${(dashboardData.stats?.totalRevenue || 0).toFixed(2)}`, 14, yPosition);
+        yPosition += 7;
+        doc.text(`Active Bookings: ${dashboardData.stats?.activeBookings || 0}`, 14, yPosition);
+        yPosition += 7;
+        doc.text(`Total Customers: ${dashboardData.stats?.totalCustomers || 0}`, 14, yPosition);
+        yPosition += 7;
+        doc.text(`Total Cleaners: ${dashboardData.stats?.totalCleaners || 0}`, 14, yPosition);
+        yPosition += 7;
+        doc.text(`Average Rating: ${(dashboardData.stats?.averageRating || 0).toFixed(1)}/5.0`, 14, yPosition);
+      }
+
+      // Save PDF
+      doc.save(`${selectedReportType}-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('Report downloaded successfully!');
+      setReportModalOpen(false);
+    } catch (error) {
+      console.error('Download report error:', error);
+      toast.error('Failed to download report');
+    }
   };
 
   const handleOnboardCleaner = () => {
@@ -154,7 +197,10 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
           <p className="text-neutral-600 mt-1">Overview of business performance and operations</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">Download Report</Button>
+          <Button variant="outline" onClick={handleDownloadReport}>
+            <Download className="w-4 h-4 mr-2" />
+            Download Report
+          </Button>
           <Button className="bg-secondary-500 hover:bg-secondary-600">+ Create Manual Booking</Button>
         </div>
       </div>
