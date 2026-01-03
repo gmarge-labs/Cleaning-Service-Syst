@@ -98,6 +98,15 @@ export const jobService = {
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to update job status');
         }
+    },
+
+    completeJob: async (jobId: string, data: { status: string, notes: string, issues: string, photos: string[] }) => {
+        try {
+            const response = await api.patch(`/bookings/${jobId}/complete`, data);
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Failed to complete job');
+        }
     }
 };
 

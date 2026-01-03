@@ -8,6 +8,7 @@ import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 interface JobCompletionProps {
     job: Booking;
@@ -48,7 +49,23 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            await jobService.updateJobStatus(job.id, 'COMPLETED');
+            // Convert photos to base64
+            const photoData = await Promise.all(
+                photos.map(async (uri) => {
+                    const base64 = await FileSystem.readAsStringAsync(uri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                    return `data:image/jpeg;base64,${base64}`;
+                })
+            );
+
+            await jobService.completeJob(job.id, {
+                status: 'COMPLETED',
+                notes,
+                issues,
+                photos: photoData
+            });
+
             onSubmit();
         } catch (error: any) {
             alert(error.message);

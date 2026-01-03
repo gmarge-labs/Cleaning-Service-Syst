@@ -81,11 +81,21 @@ const DEFAULT_SETTINGS = {
     postConstructionMultiplier: 2.5,
   },
   integrations: {
-    stripe: { enabled: true, apiKey: 'sk_test_***************' },
-    plivo: { enabled: true, apiKey: 'MA***************' },
-    sendgrid: { enabled: true, apiKey: 'SG.***************' },
+    stripe: { enabled: true, apiKey: process.env.STRIPE_API_KEY || '' },
+    plivo: { enabled: true, apiKey: '' },
+    sendgrid: { enabled: true, apiKey: process.env.SENDGRID_API_KEY || '' },
     quickbooks: { enabled: false, apiKey: '' },
-    googleCalendar: { enabled: true, apiKey: 'AIza***************' },
+    googleCalendar: {
+      enabled: true,
+      apiKey: process.env.GOOGLE_CALENDAR_API_KEY || '',
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
+    },
+    googleDrive: {
+      enabled: true,
+      apiKey: process.env.GOOGLE_CALENDAR_API_KEY || '',
+      folderId: '' // User will need to provide or we can create one
+    }
   },
   notifications: {
     confirmation: 'Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed...',

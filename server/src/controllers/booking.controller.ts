@@ -216,6 +216,16 @@ export const createBooking = async (req: Request, res: Response) => {
       console.warn('⚠️ No guestEmail found, skipping confirmation email');
     }
 
+    // Sync with Google Calendar if confirmed
+    if (booking.status === 'CONFIRMED' || booking.status === 'BOOKED') {
+      try {
+        const { createCalendarEvent } = await import('../utils/googleCalendar.utils');
+        await createCalendarEvent(booking);
+      } catch (calError) {
+        console.error('Google Calendar sync failed:', calError);
+      }
+    }
+
     res.status(201).json({
       message: 'Booking created successfully',
       booking,
@@ -314,6 +324,16 @@ export const updateBooking = async (req: Request, res: Response) => {
         date: updateData.date ? new Date(updateData.date) : undefined,
       },
     });
+
+    // Sync with Google Calendar if status changed to CONFIRMED
+    if (updateData.status === 'CONFIRMED' && existingBooking.status !== 'CONFIRMED') {
+      try {
+        const { createCalendarEvent } = await import('../utils/googleCalendar.utils');
+        await createCalendarEvent(booking);
+      } catch (calError) {
+        console.error('Google Calendar sync failed:', calError);
+      }
+    }
 
     // Handle Cancellation
     if (updateData.status === 'CANCELLED' && existingBooking.status !== 'CANCELLED') {
@@ -470,5 +490,92 @@ export const claimJob = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Claim job error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const completeJob = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, issues, photos } = req.body;
+
+    if (status !== 'COMPLETED') {
+      return res.status(400).json({ message: 'Invalid status for completion' });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      include: { user: true }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Process photos - upload to Google Drive if provided
+    const photoLinks = [];
+    if (photos && Array.isArray(photos)) {
+      const { uploadToDrive } = await import('../utils/googleDrive.utils');
+
+      for (let i = 0; i < photos.length; i++) {
+        const photoBase64 = photos[i];
+        // Handle base64 string (remove prefix if exists)
+        const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Use a temporary stream or buffer for upload
+        const fileName = `job_${id}_photo_${i + 1}.jpg`;
+        const uploadResult = await uploadToDrive(fileName, 'image/jpeg', buffer);
+        photoLinks.push(uploadResult.webViewLink);
+      }
+    }
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id },
+      data: {
+        status: 'COMPLETED',
+        // Store notes and photo links in a Json field if we add it, or just metadata
+        // For now, let's assume we'll use a dynamic field or just update status
+      }
+    });
+
+    // Notify Admins
+    await notifyAdmins({
+      type: 'BOOKING_COMPLETED',
+      title: 'Job Completed! ✅',
+      message: `Job ${id} has been marked as completed by the cleaner.`,
+      data: {
+        bookingId: id,
+        notes,
+        issues,
+        photoCount: photoLinks.length,
+        photoLinks
+      }
+    });
+
+    // Notify Customer
+    if (booking.userId) {
+      await createNotification({
+        userId: booking.userId,
+        type: 'BOOKING_COMPLETED',
+        title: 'Your cleaning is done! ✨',
+        message: `Great news! Your ${booking.serviceType} has been completed. Check your dashboard for details.`,
+        data: { bookingId: id }
+      });
+    }
+
+    // Send completion email
+    const { sendBookingCompletion } = await import('../utils/email.service');
+    if (booking.guestEmail) {
+      await sendBookingCompletion(booking, booking.guestEmail);
+    }
+
+    res.json({
+      message: 'Job completed successfully',
+      booking: updatedBooking,
+      photoLinks
+    });
+  } catch (error) {
+    console.error('Complete job error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error instanceof Error ? error.message : String(error) });
   }
 };
