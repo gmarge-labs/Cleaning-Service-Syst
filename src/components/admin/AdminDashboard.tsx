@@ -16,6 +16,7 @@ import { InventoryPage } from './pages/InventoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { ReviewsPage } from './pages/ReviewsPage';
+import { useEffect } from 'react';
 
 export type UserRole = 'management' | 'supervisor' | 'support';
 export type Page = 'dashboard' | 'bookings' | 'cleaners' | 'customers' | 'messaging' | 'analytics' | 'inventory' | 'settings' | 'users' | 'reviews';
@@ -30,6 +31,13 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Open profile modal if user status is pending
+  useEffect(() => {
+    if (user?.status === 'pending') {
+      setIsProfileModalOpen(true);
+    }
+  }, [user?.status]);
 
   const renderDashboard = () => {
     switch (currentRole) {

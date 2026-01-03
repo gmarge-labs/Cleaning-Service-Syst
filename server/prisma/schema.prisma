@@ -22,6 +22,7 @@ model User {
   phone               String?
   address             String?         // Legacy field, keeping for compatibility
   role                Role            @default(CUSTOMER)
+  status              UserStatus      @default(PENDING)
   notificationSettings Json?           // Store notification preferences
   addresses           Address[]
   paymentMethods      PaymentMethod[]
@@ -194,6 +195,12 @@ enum Role {
   SUPERVISOR
   SUPPORT
   CLEANER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
 }
 
 model CleanerApplication {

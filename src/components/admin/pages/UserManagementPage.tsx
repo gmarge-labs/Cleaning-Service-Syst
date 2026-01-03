@@ -3,6 +3,7 @@ import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
+import { Pagination } from '../../ui/pagination';
 import {
   Search,
   UserPlus,
@@ -14,8 +15,6 @@ import {
   Clock,
   MoreVertical,
   Key,
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   Phone,
   User as UserIcon
@@ -69,7 +68,7 @@ export function UserManagementPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 8;
+  const itemsPerPage = 8;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -96,7 +95,7 @@ export function UserManagementPage() {
         // Map users to include status and joined date
         const mappedUsers = users.map((u: any) => ({
           ...u,
-          status: u.status || 'active',
+          status: (u.status?.toLowerCase() || 'active') as 'active' | 'pending' | 'suspended',
           joinedDate: new Date(u.createdAt).toLocaleDateString(),
         }));
         setUsers(mappedUsers);
@@ -163,9 +162,9 @@ export function UserManagementPage() {
   });
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredUsers.length / recordsPerPage);
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const indexOfLastRecord = currentPage * itemsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - itemsPerPage;
   const currentRecords = filteredUsers.slice(indexOfFirstRecord, indexOfLastRecord);
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -350,51 +349,14 @@ export function UserManagementPage() {
                 </tbody>
               </table>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <div className="text-sm text-neutral-500">
-                    Showing <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
-                    <span className="font-medium">
-                      {Math.min(indexOfLastRecord, filteredUsers.length)}
-                    </span>{' '}
-                    of <span className="font-medium">{filteredUsers.length}</span> users
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => paginate(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-1" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                        <Button
-                          key={number}
-                          variant={currentPage === number ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => paginate(number)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {number}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => paginate(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={paginate}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredUsers.length}
+              />
             </>
           )}
         </div>

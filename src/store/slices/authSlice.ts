@@ -5,6 +5,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  status?: 'active' | 'pending' | 'suspended';
   phone?: string;
   address?: string;
 }

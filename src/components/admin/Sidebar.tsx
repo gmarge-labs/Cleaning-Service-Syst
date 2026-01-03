@@ -7,6 +7,9 @@ import logo from '../../images/logo/Sparkleville1(2).png';
 interface User {
   id: string;
   name: string;
+  email?: string;
+  role?: string;
+  status?: string;
 }
 
 interface NotificationCounts {
@@ -132,11 +135,11 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
       <div className="p-4 border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold">{user?.name ? getInitials(user.name) : 'JD'}</span>
+            <span className="text-white font-semibold">{user?.name ? getInitials(user.name) : (user?.email ? getInitials(user.email.split('@')[0]) : 'U')}</span>
           </div>
           {isOpen && (
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-white truncate">{user?.name || 'John Doe'}</div>
+              <div className="font-medium text-white truncate">{user?.name || user?.email?.split('@')[0] || 'User'}</div>
               <div className="text-xs text-neutral-400">{roleLabels[currentRole]}</div>
             </div>
           )}

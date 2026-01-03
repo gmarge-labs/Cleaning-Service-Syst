@@ -64,17 +64,24 @@ export function ActiveJob() {
     if (user?.id) {
       fetchActiveJob();
       
-      // Poll for updates every 10 seconds while there's an active job
+      // Poll for updates every 5 seconds (more frequent for real-time updates)
       // but skip polling while user is writing a review to prevent form from disappearing
       const interval = setInterval(() => {
         if (workflowStep !== 'review') {
           fetchActiveJob(false); // Pass false to avoid showing loader every time
         }
-      }, 10000);
+      }, 5000);
       
       return () => clearInterval(interval);
     }
-  }, [user?.id, workflowStep]);
+  }, [user?.id]);
+
+  // Also refetch when workflow step changes to ensure data is synced
+  useEffect(() => {
+    if (user?.id && workflowStep === 'job-details') {
+      fetchActiveJob(false);
+    }
+  }, [workflowStep]);
 
   const fetchActiveJob = async (showLoader = true) => {
     try {
@@ -393,13 +400,19 @@ export function ActiveJob() {
   }
 
   // Mock cleaner data if not present in activeJob
-  const cleaner = activeJob?.cleaner || {
+  const cleaner = activeJob?.claimedBy?.[0] || activeJob?.cleaner || {
     id: 'CLN-001',
-    name: 'Sarah Johnson',
-    photo: 'https://i.pravatar.cc/150?img=5',
+    name: 'Assigned Cleaner',
+    profileImage: null,
     rating: 4.8,
     totalReviews: 127,
     phone: '+1 (555) 123-4567'
+  };
+
+  // Get customer info for review section
+  const customer = activeJob?.user || {
+    name: 'Guest User',
+    profileImage: null
   };
 
   if (!activeJob) {
@@ -966,15 +979,17 @@ export function ActiveJob() {
             </div>
           </div>
 
-          {/* Cleaner Info */}
+          {/* Customer Info */}
           <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg mb-6">
-            <img 
-              src={cleaner.photo} 
-              alt={cleaner.name}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-            <div>
-              <h4 className="font-medium text-neutral-900">{cleaner.name}</h4>
+            {customer.profileImage && (
+              <img 
+                src={customer.profileImage} 
+                alt={customer.name}
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            )}
+            <div className={!customer.profileImage ? "flex-1" : ""}>
+              <h4 className="font-medium text-neutral-900">{customer.name}</h4>
               <p className="text-sm text-neutral-600">{displayJob.service || displayJob.serviceType}</p>
             </div>
           </div>

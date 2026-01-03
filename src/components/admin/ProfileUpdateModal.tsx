@@ -17,6 +17,9 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
   const user = useSelector((state: RootState) => state.auth.user);
   const token = useSelector((state: RootState) => state.auth.token);
   
+  // Determine if this is a required profile update (user status is pending)
+  const isPendingUser = user?.status === 'pending';
+  
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -96,14 +99,15 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
       
       const data = await response.json();
       
-      // Update user in Redux store
+      // Update user in Redux store including status
       dispatch(updateUser({
         name: data.name,
         phone: data.phone,
         address: data.address,
+        status: data.status || 'active',
       }));
       
-      toast.success('Profile updated successfully');
+      toast.success(isPendingUser ? 'Account activated successfully!' : 'Profile updated successfully');
       
       // Reset password fields
       setFormData({
@@ -127,15 +131,23 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-2xl font-bold text-neutral-900">Update Profile</h2>
-            <p className="text-sm text-neutral-600 mt-1">Update your personal information and password</p>
+            <h2 className="text-2xl font-bold text-neutral-900">
+              {isPendingUser ? 'Activate Your Account' : 'Update Profile'}
+            </h2>
+            <p className="text-sm text-neutral-600 mt-1">
+              {isPendingUser 
+                ? 'Complete your profile to activate your account and gain full access' 
+                : 'Update your personal information and password'}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {!isPendingUser && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -266,21 +278,23 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-neutral-200">
-            <Button
-              type="button"
-              onClick={onClose}
-              variant="outline"
-              className="flex-1"
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
+            {!isPendingUser && (
+              <Button
+                type="button"
+                onClick={onClose}
+                variant="outline"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+            )}
             <Button
               type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              className={`${isPendingUser ? 'w-full' : 'flex-1'} bg-green-600 hover:bg-green-700 text-white`}
               disabled={isLoading}
             >
-              {isLoading ? 'Updating...' : 'Update Profile'}
+              {isLoading ? (isPendingUser ? 'Activating...' : 'Updating...') : (isPendingUser ? 'Activate Account' : 'Update Profile')}
             </Button>
           </div>
         </form>

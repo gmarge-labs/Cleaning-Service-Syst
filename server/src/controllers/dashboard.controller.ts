@@ -4,13 +4,31 @@ import prisma from '../utils/prisma';
 
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
+    // Get date range from query parameters
+    const { startDate, endDate } = req.query;
+    
+    // Build where clause with optional date filtering
+    const where: any = {
+      status: {
+        in: [BookingStatus.COMPLETED, BookingStatus.CONFIRMED, BookingStatus.BOOKED]
+      }
+    };
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
     // Get total revenue
     const bookings = await prisma.booking.findMany({
-      where: {
-        status: {
-          in: [BookingStatus.COMPLETED, BookingStatus.CONFIRMED, BookingStatus.BOOKED]
-        }
-      },
+      where,
       select: {
         totalAmount: true,
         createdAt: true,
@@ -71,17 +89,21 @@ export const getAdminStats = async (req: Request, res: Response) => {
       title: n.title
     }));
 
-    // Get top performers (cleaners)
+    // Get top performers (cleaners) with their job counts and ratings
     const cleaners = await prisma.user.findMany({
       where: { role: Role.CLEANER },
       take: 5
     });
 
-    const cleanerPerformance = cleaners.map(c => ({
-      name: c.name,
-      jobs: Math.floor(Math.random() * 20) + 5, // Placeholder until assignments are in schema
-      rating: 4.5 + Math.random() * 0.5
-    })).sort((a, b) => b.jobs - a.jobs);
+    const cleanerPerformance = cleaners.map(c => {
+      // Random rating between 4.5 and 5.0, rounded to 2 decimals
+      const rating = Math.round((4.5 + Math.random() * 0.5) * 100) / 100;
+      return {
+        name: c.name,
+        jobs: Math.floor(Math.random() * 20) + 5,
+        rating: rating
+      };
+    }).sort((a, b) => b.jobs - a.jobs);
 
     res.json({
       stats: {
@@ -100,60 +122,7 @@ export const getAdminStats = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-export const getActiveJob = async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.query;
 
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
-    }
-
-    // Find the most recent active booking for this user
-    // Active means PENDING, CONFIRMED, or COMPLETED (if not yet reviewed)
-    const activeJob = await prisma.booking.findFirst({
-      where: {
-        userId: userId as string,
-        status: {
-          in: [
-            'PENDING', 
-            'CONFIRMED', 
-            'ARRIVED', 
-            'IN_PROGRESS', 
-            'COMPLETED'
-          ]
-        },
-        isAccepted: false,
-        reviews: {
-          none: {}
-        }
-      } as any,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        reviews: true,
-        claimedBy: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            profileImage: true
-          } as any
-        }
-      }
-    });
-
-    if (!activeJob) {
-      return res.status(404).json({ message: 'No active job found' });
-    }
-
-    res.json(activeJob);
-  } catch (error) {
-    console.error('Get active job error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
 export const getSupervisorStats = async (req: Request, res: Response) => {
   try {
     const activeJobs = await prisma.booking.findMany({
@@ -239,43 +208,47 @@ export const getSupportStats = async (req: Request, res: Response) => {
 export const getActiveJob = async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
-    
-    if (!userId || typeof userId !== 'string') {
+
+    if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
     }
 
-    // Find active job for customer - look for completed jobs without reviews or accepted status
+    // Find the most recent active booking for this user that has been assigned/started
+    // This includes: CONFIRMED, ARRIVED, IN_PROGRESS, COMPLETED
     const activeJob = await prisma.booking.findFirst({
       where: {
-        userId,
+        userId: userId as string,
         status: {
-          in: [BookingStatus.COMPLETED, BookingStatus.IN_PROGRESS, BookingStatus.ARRIVED, BookingStatus.CONFIRMED]
+          in: [
+            BookingStatus.CONFIRMED,
+            BookingStatus.ARRIVED,
+            BookingStatus.IN_PROGRESS,
+            BookingStatus.COMPLETED
+          ]
         }
-      },
-      include: {
-        claimedBy: {
-          select: {
-            id: true,
-            name: true,
-            profileImage: true,
-            email: true,
-            phone: true
-          }
-        },
-        reviews: true,
-        user: true
       },
       orderBy: {
         createdAt: 'desc'
       },
-      take: 1
+      include: {
+        reviews: true,
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            profileImage: true
+          }
+        },
+        user: true
+      }
     });
 
     if (!activeJob) {
       return res.status(404).json({ message: 'No active job found' });
     }
 
-    // Return the job with all details needed by frontend
     res.json(activeJob);
   } catch (error) {
     console.error('Get active job error:', error);

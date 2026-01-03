@@ -86,9 +86,15 @@ export function LoginModal({
 
       const role = data.user.role?.toLowerCase() || getRoleFromEmail(loginEmail);
 
+      // Normalize user status to lowercase for frontend consistency
+      const normalizedUser = {
+        ...data.user,
+        status: data.user.status?.toLowerCase() || 'active'
+      };
+
       // Dispatch to Redux
       dispatch(setCredentials({
-        user: data.user,
+        user: normalizedUser,
         token: data.token || 'dummy-token' // Ensure backend returns token or handle it
       }));
 
