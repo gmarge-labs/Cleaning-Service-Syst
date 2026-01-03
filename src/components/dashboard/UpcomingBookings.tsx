@@ -33,7 +33,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
         const data = await response.json();
         // Filter for upcoming bookings (today or future) and not cancelled or completed
         const upcoming = data.filter((b: any) => 
-          new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
+          parseDateFromDB(b.date) >= new Date(new Date().setHours(0, 0, 0, 0)) && 
           b.status !== 'CANCELLED' &&
           b.status !== 'COMPLETED'
         );

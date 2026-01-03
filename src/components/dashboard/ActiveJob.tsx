@@ -61,20 +61,20 @@ export function ActiveJob() {
   const [smsNotif, setSmsNotif] = useState(true);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && (workflowStep as string) !== 'review') {
       fetchActiveJob();
       
       // Poll for updates every 5 seconds (more frequent for real-time updates)
-      // but skip polling while user is writing a review to prevent form from disappearing
+      // but skip polling while user is writing a review or after review is submitted
       const interval = setInterval(() => {
-        if (workflowStep !== 'review') {
+        if ((workflowStep as string) !== 'review') {
           fetchActiveJob(false); // Pass false to avoid showing loader every time
         }
       }, 5000);
       
       return () => clearInterval(interval);
     }
-  }, [user?.id]);
+  }, [user?.id, workflowStep]);
 
   // Also refetch when workflow step changes to ensure data is synced
   useEffect(() => {
@@ -329,12 +329,13 @@ export function ActiveJob() {
 
       if (response.ok) {
         toast.success('Review submitted successfully!');
-        // Reset to overview or completed state
-        setWorkflowStep('job-details');
+        // Clear the active job from state so "No active job" message appears
+        setActiveJob(null);
+        // Reset form fields
         setRating(0);
         setReviewText('');
-        // Refresh active job (it should be gone now since it has a review)
-        fetchActiveJob();
+        // Don't reset workflowStep to prevent polling from re-fetching the job
+        // Keep it as 'review' to maintain the disabled polling state
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to submit review');

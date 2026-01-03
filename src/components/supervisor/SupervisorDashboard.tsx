@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../admin/Sidebar';
 import { TopBar } from '../admin/TopBar';
+import { ProfileUpdateModal } from '../admin/ProfileUpdateModal';
 import { SupervisorDashboard as SupervisorDashboardView } from '../admin/dashboards/SupervisorDashboard';
 import { BookingsPage } from '../admin/pages/BookingsPage';
 import { CleanersPage } from '../admin/pages/CleanersPage';
@@ -15,6 +16,7 @@ interface SupervisorDashboardProps {
 export function SupervisorDashboard({ onLogout }: SupervisorDashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -55,11 +57,18 @@ export function SupervisorDashboard({ onLogout }: SupervisorDashboardProps) {
           currentRole="supervisor"
           onLogout={onLogout}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onProfileUpdate={() => setIsProfileModalOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-6">
           {renderPage()}
         </main>
       </div>
+      
+      {/* Profile Update Modal */}
+      <ProfileUpdateModal 
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </div>
   );
 }
