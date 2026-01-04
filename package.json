@@ -67,6 +67,8 @@
             "dev": "vite",
             "server": "cd server && npm run dev",
             "dev:full": "concurrently \"npm run dev\" \"npm run server\"",
+            "dev:mobile": "cd mobile-cleaner && npm run web",
+            "dev:all": "concurrently \"npm run dev\" \"npm run server\" \"npm run dev:mobile\"",
             "build": "vite build"
       }
 }

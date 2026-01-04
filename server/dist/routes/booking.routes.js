@@ -6,4 +6,7 @@ const router = (0, express_1.Router)();
 router.post('/', booking_controller_1.createBooking);
 router.get('/', booking_controller_1.getBookings);
 router.patch('/:id', booking_controller_1.updateBooking);
+router.patch('/:id/claim', booking_controller_1.claimJob);
+router.patch('/:id/complete', booking_controller_1.completeJob);
+router.post('/send-invoice', booking_controller_1.sendInvoice);
 exports.default = router;

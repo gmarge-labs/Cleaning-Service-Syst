@@ -1,16 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Checkbox } from '../../ui/checkbox';
 import { BookingData, SystemSettings } from '../BookingFlow';
-import { CreditCard, Shield, AlertCircle, Tag } from 'lucide-react';
+import { CreditCard, Shield, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
-import { Badge } from '../../ui/badge';
 
 interface PaymentStepProps {
   data: BookingData;
@@ -18,6 +17,13 @@ interface PaymentStepProps {
   onNext: () => void;
   onBack: () => void;
   settings?: SystemSettings | null;
+}
+
+interface CleaningStats {
+  completedCount: number;
+  progressToNext: number;
+  availableRewards: number;
+  threshold: number;
 }
 
 export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: PaymentStepProps) {
@@ -30,13 +36,14 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
   const [emailNotif, setEmailNotif] = useState(true);
   const [smsNotif, setSmsNotif] = useState(true);
   const [applyFreeCleaning, setApplyFreeCleaning] = useState(false);
-  const [cleaningStats, setCleaningStats] = useState({
+  const [cleaningStats, setCleaningStats] = useState<CleaningStats>({
     completedCount: 0,
     progressToNext: 0,
     availableRewards: 0,
     threshold: 5
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -46,8 +53,8 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
       try {
         const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
         if (response.ok) {
-          const data = await response.json();
-          setCleaningStats(data);
+          const stats = await response.json();
+          setCleaningStats(stats);
         }
       } catch (error) {
         console.error('Error fetching cleaning stats:', error);
@@ -74,7 +81,24 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
   const freeCleaningDiscount = applyFreeCleaning && qualifiesForFreeCleaning ? calculatedTotal : 0;
   const totalAmount = calculatedTotal - freeCleaningDiscount;
 
-  // Remove unused handleFrequencyChange
+  // Format card inputs
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\s/g, '').slice(0, 16);
+    const formatted = value.replace(/(\d{4})/g, '$1 ').trim();
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2, 4);
+    }
+    setExpiryDate(value);
+  };
+
+  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCvv(e.target.value.replace(/\D/g, '').slice(0, 4));
+  };
 
   const isValid = () => {
     // If using free cleaning and total is $0, only need to agree to terms
@@ -82,25 +106,35 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
       return agreedToTerms;
     }
     // Otherwise, require full payment details
-    return cardNumber && expiryDate && cvv && cardName && agreedToTerms;
+    const cardNum = cardNumber.replace(/\s/g, '');
+    return cardNum.length === 16 && expiryDate.length === 5 && cvv.length >= 3 && cardName && agreedToTerms;
   };
 
   const handleSubmit = async (status: 'BOOKED' | 'DRAFT' = 'BOOKED') => {
+    setError(null);
     setIsLoading(true);
 
-    const bookingPayload = {
-      ...data,
-      userId: user?.id || null,
-      guestName: !user ? (data.name || null) : null,
-      guestEmail: !user ? (data.email || null) : null,
-      guestPhone: !user ? (data.phone || null) : null,
-      address: data.address || null,
-      totalAmount: totalAmount,
-      paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? null : paymentMethod),
-      status: status,
-    };
-
     try {
+      if (!user?.id && (!data.name || !data.email || !data.phone)) {
+        throw new Error('Please provide your contact information');
+      }
+
+      const bookingPayload = {
+        ...data,
+        userId: user?.id || null,
+        guestName: !user ? (data.name || null) : null,
+        guestEmail: !user ? (data.email || null) : null,
+        guestPhone: !user ? (data.phone || null) : null,
+        address: data.address || null,
+        totalAmount: totalAmount,
+        paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? null : paymentMethod),
+        status: status,
+        emailNotifications: emailNotif,
+        smsNotifications: smsNotif,
+      };
+
+      console.log('Submitting booking:', bookingPayload);
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
@@ -109,7 +143,10 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
         body: JSON.stringify(bookingPayload),
       });
 
+      console.log('Response status:', response.status);
+
       const result = await response.json();
+      console.log('Response data:', result);
 
       if (!response.ok) {
         throw new Error(result.error || result.message || 'Failed to create booking');
@@ -117,7 +154,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
 
       // Update booking data with the ID and response details
       onUpdate({
-        id: result.booking?.id,
+        id: result.booking?.id || result.id,
         totalAmount: totalAmount,
         paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? undefined : paymentMethod),
       });
@@ -125,8 +162,10 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
       toast.success(status === 'DRAFT' ? 'Booking saved as draft!' : 'Booking created successfully!');
       onNext();
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while creating your booking';
       console.error('Booking error:', error);
-      toast.error(error instanceof Error ? error.message : 'An error occurred while creating your booking');
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -140,6 +179,17 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
           <p className="text-neutral-600">Secure payment processing with end-to-end encryption</p>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-red-900">Payment Error</div>
+              <div className="text-sm text-red-700">{error}</div>
+            </div>
+          </div>
+        )}
+
         {/* Security Badge */}
         <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
           <Shield className="w-6 h-6 text-green-600" />
@@ -150,175 +200,122 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
         </div>
 
         {/* Payment Method Tabs */}
-        <Tabs value={paymentMethod} onValueChange={setPaymentMethod} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="credit-card">Credit Card</TabsTrigger>
-            <TabsTrigger value="debit-card">Debit Card</TabsTrigger>
-          </TabsList>
+        {totalAmount > 0 && (
+          <Tabs value={paymentMethod} onValueChange={setPaymentMethod} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="credit-card">Credit Card</TabsTrigger>
+              <TabsTrigger value="debit-card">Debit Card</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="credit-card" className="space-y-4 mt-6">
-            <div>
-              <Label htmlFor="card-number">Card Number *</Label>
-              <div className="relative mt-1.5">
-                <Input
-                  id="card-number"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  className="pl-10"
-                />
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <TabsContent value="credit-card" className="space-y-4 mt-6">
               <div>
-                <Label htmlFor="expiry">Expiry Date *</Label>
-                <Input
-                  id="expiry"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cvv">CVV *</Label>
-                <Input
-                  id="cvv"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                  placeholder="123"
-                  maxLength={4}
-                  type="password"
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="card-name">Cardholder Name *</Label>
-              <Input
-                id="card-name"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="John Doe"
-                className="mt-1.5"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="debit-card" className="space-y-4 mt-6">
-            <div>
-              <Label htmlFor="debit-card-number">Card Number *</Label>
-              <div className="relative mt-1.5">
-                <Input
-                  id="debit-card-number"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  className="pl-10"
-                />
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="debit-expiry">Expiry Date *</Label>
-                <Input
-                  id="debit-expiry"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="debit-cvv">CVV *</Label>
-                <Input
-                  id="debit-cvv"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                  placeholder="123"
-                  maxLength={4}
-                  type="password"
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="debit-card-name">Cardholder Name *</Label>
-              <Input
-                id="debit-card-name"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="John Doe"
-                className="mt-1.5"
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Free Cleaning Loyalty Program */}
-        {/* {qualifiesForFreeCleaning ? (
-          <div className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="text-3xl">🎉</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-orange-900 text-lg mb-1">
-                  Congratulations! Free Cleaning Available
-                </h3>
-                <p className="text-sm text-orange-800 mb-3">
-                  You have {cleaningStats.availableRewards} free cleaning reward{cleaningStats.availableRewards > 1 ? 's' : ''} available!
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="apply-free-cleaning"
-                    checked={applyFreeCleaning}
-                    onCheckedChange={(checked: boolean) => setApplyFreeCleaning(checked)}
+                <Label htmlFor="card-number">Card Number *</Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="card-number"
+                    value={cardNumber}
+                    onChange={handleCardNumberChange}
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                    className="pl-10"
                   />
-                  <Label
-                    htmlFor="apply-free-cleaning"
-                    className="text-sm font-semibold text-orange-900 cursor-pointer"
-                  >
-                    Apply my free cleaning to this booking
-                  </Label>
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                 </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="border border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-5">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="text-2xl">✨</div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-orange-900 mb-1">
-                  Earn a Free Cleaning!
-                </h4>
-                <p className="text-sm text-orange-800 mb-3">
-                  Complete {cleaningStats.threshold} cleanings and get your next one free. You're {cleaningStats.progressToNext} of {cleaningStats.threshold} there!
-                </p>
-                <div className="space-y-2">
-                  <div className="w-full bg-orange-200 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-orange-500 to-orange-600 transition-all duration-500"
-                      style={{ width: `${(cleaningStats.progressToNext / cleaningStats.threshold) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-orange-700">
-                    {cleaningStats.threshold - cleaningStats.progressToNext} more cleaning{cleaningStats.threshold - cleaningStats.progressToNext === 1 ? '' : 's'} to unlock your reward!
-                  </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="expiry">Expiry Date *</Label>
+                  <Input
+                    id="expiry"
+                    value={expiryDate}
+                    onChange={handleExpiryChange}
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cvv">CVV *</Label>
+                  <Input
+                    id="cvv"
+                    value={cvv}
+                    onChange={handleCvvChange}
+                    placeholder="123"
+                    maxLength={4}
+                    type="password"
+                    className="mt-1.5"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
-        )} */}
+
+              <div>
+                <Label htmlFor="card-name">Cardholder Name *</Label>
+                <Input
+                  id="card-name"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="John Doe"
+                  className="mt-1.5"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="debit-card" className="space-y-4 mt-6">
+              <div>
+                <Label htmlFor="debit-card-number">Card Number *</Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="debit-card-number"
+                    value={cardNumber}
+                    onChange={handleCardNumberChange}
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                    className="pl-10"
+                  />
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="debit-expiry">Expiry Date *</Label>
+                  <Input
+                    id="debit-expiry"
+                    value={expiryDate}
+                    onChange={handleExpiryChange}
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="debit-cvv">CVV *</Label>
+                  <Input
+                    id="debit-cvv"
+                    value={cvv}
+                    onChange={handleCvvChange}
+                    placeholder="123"
+                    maxLength={4}
+                    type="password"
+                    className="mt-1.5"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="debit-card-name">Cardholder Name *</Label>
+                <Input
+                  id="debit-card-name"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="John Doe"
+                  className="mt-1.5"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
 
         {/* Payment Breakdown */}
         <div className="border-t border-neutral-200 pt-6 space-y-3">

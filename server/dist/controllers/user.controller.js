@@ -23,16 +23,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createUser = exports.getAllUsers = exports.deletePaymentMethod = exports.addPaymentMethod = exports.deleteAddress = exports.addAddress = exports.changePassword = exports.updateProfile = exports.getProfile = void 0;
-const client_1 = require("@prisma/client");
+exports.updatePushToken = exports.createUser = exports.getAllUsers = exports.deletePaymentMethod = exports.addPaymentMethod = exports.deleteAddress = exports.addAddress = exports.changePassword = exports.updateProfile = exports.getCleaningStats = exports.getProfile = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const idGenerator_1 = require("../utils/idGenerator");
 const email_service_1 = require("../utils/email.service");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = __importDefault(require("../utils/prisma"));
 const getProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     try {
-        const user = yield prisma.user.findUnique({
+        const user = yield prisma_1.default.user.findUnique({
             where: { id: userId },
             include: {
                 addresses: {
@@ -56,13 +55,49 @@ const getProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.getProfile = getProfile;
+const getCleaningStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { userId } = req.params;
+    try {
+        // Count completed bookings
+        const completedCount = yield prisma_1.default.booking.count({
+            where: {
+                userId,
+                status: 'COMPLETED'
+            }
+        });
+        // Count bookings where free cleaning reward was used
+        const usedRewards = yield prisma_1.default.booking.count({
+            where: {
+                userId,
+                paymentMethod: 'free-cleaning-reward'
+            }
+        });
+        const FREE_CLEANING_THRESHOLD = 5;
+        const earnedRewards = Math.floor(completedCount / FREE_CLEANING_THRESHOLD);
+        const availableRewards = Math.max(0, earnedRewards - usedRewards);
+        const progressToNext = completedCount % FREE_CLEANING_THRESHOLD;
+        res.json({
+            completedCount,
+            earnedRewards,
+            usedRewards,
+            availableRewards,
+            progressToNext,
+            threshold: FREE_CLEANING_THRESHOLD
+        });
+    }
+    catch (error) {
+        console.error('Get cleaning stats error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.getCleaningStats = getCleaningStats;
 const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     const { name, phone, address, notificationSettings, currentPassword, newPassword } = req.body;
     try {
         // If password change is requested, validate current password first
         if (currentPassword && newPassword) {
-            const user = yield prisma.user.findUnique({ where: { id: userId } });
+            const user = yield prisma_1.default.user.findUnique({ where: { id: userId } });
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
@@ -73,7 +108,7 @@ const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             // Hash new password
             const hashedPassword = yield bcrypt_1.default.hash(newPassword, 10);
             // Update user with new password
-            const updatedUser = yield prisma.user.update({
+            const updatedUser = yield prisma_1.default.user.update({
                 where: { id: userId },
                 data: {
                     name,
@@ -87,7 +122,7 @@ const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             return res.json(profile);
         }
         // Update without password change
-        const updatedUser = yield prisma.user.update({
+        const updatedUser = yield prisma_1.default.user.update({
             where: { id: userId },
             data: {
                 name,
@@ -109,7 +144,7 @@ const changePassword = (req, res) => __awaiter(void 0, void 0, void 0, function*
     const { userId } = req.params;
     const { currentPassword, newPassword } = req.body;
     try {
-        const user = yield prisma.user.findUnique({ where: { id: userId } });
+        const user = yield prisma_1.default.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -118,7 +153,7 @@ const changePassword = (req, res) => __awaiter(void 0, void 0, void 0, function*
             return res.status(400).json({ error: 'Invalid current password' });
         }
         const hashedPassword = yield bcrypt_1.default.hash(newPassword, 10);
-        yield prisma.user.update({
+        yield prisma_1.default.user.update({
             where: { id: userId },
             data: { password: hashedPassword },
         });
@@ -136,12 +171,12 @@ const addAddress = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     const { label, street, city, state, zip, isDefault } = req.body;
     try {
         if (isDefault) {
-            yield prisma.address.updateMany({
+            yield prisma_1.default.address.updateMany({
                 where: { userId },
                 data: { isDefault: false },
             });
         }
-        const address = yield prisma.address.create({
+        const address = yield prisma_1.default.address.create({
             data: {
                 userId,
                 label,
@@ -163,7 +198,7 @@ exports.addAddress = addAddress;
 const deleteAddress = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { addressId } = req.params;
     try {
-        yield prisma.address.delete({
+        yield prisma_1.default.address.delete({
             where: { id: addressId },
         });
         res.json({ message: 'Address deleted successfully' });
@@ -180,12 +215,12 @@ const addPaymentMethod = (req, res) => __awaiter(void 0, void 0, void 0, functio
     const { type, last4, expiry, isDefault } = req.body;
     try {
         if (isDefault) {
-            yield prisma.paymentMethod.updateMany({
+            yield prisma_1.default.paymentMethod.updateMany({
                 where: { userId },
                 data: { isDefault: false },
             });
         }
-        const paymentMethod = yield prisma.paymentMethod.create({
+        const paymentMethod = yield prisma_1.default.paymentMethod.create({
             data: {
                 userId,
                 type,
@@ -205,7 +240,7 @@ exports.addPaymentMethod = addPaymentMethod;
 const deletePaymentMethod = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { paymentMethodId } = req.params;
     try {
-        yield prisma.paymentMethod.delete({
+        yield prisma_1.default.paymentMethod.delete({
             where: { id: paymentMethodId },
         });
         res.json({ message: 'Payment method deleted successfully' });
@@ -227,11 +262,11 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         // Build where clause based on role filter
         const whereClause = roleFilter ? { role: roleFilter } : {};
         // Get total count
-        const totalCount = yield prisma.user.count({
+        const totalCount = yield prisma_1.default.user.count({
             where: whereClause
         });
         // Fetch users with optional role filter
-        const users = yield prisma.user.findMany({
+        const users = yield prisma_1.default.user.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
             skip,
@@ -242,6 +277,7 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                         id: true,
                         totalAmount: true,
                         status: true,
+                        reviews: true,
                     }
                 },
                 addresses: {
@@ -286,7 +322,7 @@ exports.getAllUsers = getAllUsers;
 const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { name, email, password, role, phone, address } = req.body;
     try {
-        const existingUser = yield prisma.user.findUnique({
+        const existingUser = yield prisma_1.default.user.findUnique({
             where: { email: email.toLowerCase() },
         });
         if (existingUser) {
@@ -294,7 +330,7 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         const hashedPassword = yield bcrypt_1.default.hash(password, 10);
         const id = yield (0, idGenerator_1.generateUserId)(role || 'CUSTOMER');
-        const user = yield prisma.user.create({
+        const user = yield prisma_1.default.user.create({
             data: {
                 id,
                 name,
@@ -323,3 +359,19 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.createUser = createUser;
+const updatePushToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { userId } = req.params;
+    const { pushToken } = req.body;
+    try {
+        const user = yield prisma_1.default.user.update({
+            where: { id: userId },
+            data: { pushToken },
+        });
+        res.json({ message: 'Push token updated successfully' });
+    }
+    catch (error) {
+        console.error('Update push token error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.updatePushToken = updatePushToken;

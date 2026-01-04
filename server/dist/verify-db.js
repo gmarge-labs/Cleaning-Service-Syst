@@ -8,23 +8,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = __importDefault(require("./utils/prisma"));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             console.log('Connecting to database...');
-            const userCount = yield prisma.user.count();
+            const userCount = yield prisma_1.default.user.count();
             console.log(`Successfully connected! Current user count: ${userCount}`);
+            const users = yield prisma_1.default.user.findMany({
+                take: 10,
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true
+                }
+            });
+            console.log('Sample users:', JSON.stringify(users, null, 2));
         }
         catch (error) {
             console.error('Error connecting to database:', error);
             process.exit(1);
         }
         finally {
-            yield prisma.$disconnect();
+            yield prisma_1.default.$disconnect();
         }
     });
 }

@@ -6,7 +6,9 @@ const router = (0, express_1.Router)();
 router.get('/', user_controller_1.getAllUsers);
 router.post('/', user_controller_1.createUser);
 router.get('/:userId', user_controller_1.getProfile);
+router.get('/:userId/cleaning-stats', user_controller_1.getCleaningStats);
 router.patch('/:userId', user_controller_1.updateProfile);
+router.patch('/:userId/push-token', user_controller_1.updatePushToken);
 router.post('/:userId/password', user_controller_1.changePassword);
 // Address routes
 router.post('/:userId/addresses', user_controller_1.addAddress);

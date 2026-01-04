@@ -1,3 +1,4 @@
+console.log('--- Server starting ---');
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -48,4 +49,4 @@ app.get('/api/health', (req, res) => {
 httpServer.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
- 
+
