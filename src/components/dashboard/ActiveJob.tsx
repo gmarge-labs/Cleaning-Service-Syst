@@ -77,11 +77,11 @@ export function ActiveJob() {
   }, [user?.id, workflowStep]);
 
   // Also refetch when workflow step changes to ensure data is synced
-  useEffect(() => {
-    if (user?.id && workflowStep === 'job-details') {
-      fetchActiveJob(false);
-    }
-  }, [workflowStep]);
+  // useEffect(() => {
+  //   if (user?.id && workflowStep === 'job-details') {
+  //     fetchActiveJob(false);
+  //   }
+  // }, [workflowStep]);
 
   const fetchActiveJob = async (showLoader = true) => {
     try {

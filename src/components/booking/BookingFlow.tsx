@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 import { AccountStep } from './steps/AccountStep';
 import { ServiceStep } from './steps/ServiceStep';
 import { PropertyDetailsStep } from './steps/PropertyDetailsStep';
@@ -59,6 +61,7 @@ export interface SystemSettings {
   general: any;
   pricing: {
     depositPercentage: number;
+    topBookerEnabled: boolean;
     topBookerDiscount: number;
     topBookerCategory: string;
     cancellationFee: number;
@@ -113,9 +116,11 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
     steps = isAuthenticated ? STEPS_WITHOUT_ACCOUNT : STEPS;
   }
 
+  const { user } = useSelector((state: RootState) => state.auth);
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [userBookingCount, setUserBookingCount] = useState(0);
   const [bookingData, setBookingData] = useState<BookingData>(
     mode === 'reschedule' && rescheduleBooking ? {
       ...rescheduleBooking,
@@ -124,12 +129,25 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
   );
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${API_URL}/settings`);
-        if (response.ok) {
-          const data = await response.json();
+        const settingsResponse = await fetch(`${API_URL}/settings`);
+        if (settingsResponse.ok) {
+          const data = await settingsResponse.json();
           setSettings(data);
+        }
+
+        // Fetch user's booking count if authenticated
+        if (user?.id) {
+          try {
+            const statsResponse = await fetch(`${API_URL}/users/${user.id}/cleaning-stats`);
+            if (statsResponse.ok) {
+              const statsData = await statsResponse.json();
+              setUserBookingCount(statsData.completedCount || 0);
+            }
+          } catch (error) {
+            console.error('Error fetching cleaning stats:', error);
+          }
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
@@ -138,8 +156,8 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       }
     };
 
-    fetchSettings();
-  }, []);
+    fetchData();
+  }, [user?.id]);
 
   const updateBookingData = (data: Partial<BookingData>) => {
     setBookingData(prev => ({ ...prev, ...data }));
@@ -240,7 +258,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
           {/* Pricing Sidebar - Show after first step and before confirmation */}
           {currentStep > 0 && currentStep < totalSteps && (
             <div className="lg:col-span-1">
-              <PricingSidebar bookingData={bookingData} settings={settings} />
+              <PricingSidebar bookingData={bookingData} settings={settings} userBookingCount={userBookingCount} />
             </div>
           )}
         </div>

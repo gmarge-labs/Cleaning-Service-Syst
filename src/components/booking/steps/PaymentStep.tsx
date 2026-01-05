@@ -65,7 +65,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     topBookerDiscount,
     topBookerDiscountRate,
     total: calculatedTotal
-  } = calculateBookingPrice(data, settings);
+  } = calculateBookingPrice(data, settings, cleaningStats.completedCount);
 
   // Free cleaning loyalty program
   const qualifiesForFreeCleaning = cleaningStats.availableRewards > 0;

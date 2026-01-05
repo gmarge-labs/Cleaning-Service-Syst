@@ -18,7 +18,7 @@ export const parseDateFromDB = (dateStr: string | Date): Date => {
 
   const [datePart] = dateStr.split('T');
   const [year, month, day] = datePart.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
 };
 
 /**

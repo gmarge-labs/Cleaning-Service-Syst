@@ -7,9 +7,10 @@ interface PricingSidebarProps {
   bookingData: BookingData;
   settings?: SystemSettings | null;
   isAdmin?: boolean;
+  userBookingCount?: number;
 }
 
-export function PricingSidebar({ bookingData, settings, isAdmin = false }: PricingSidebarProps) {
+export function PricingSidebar({ bookingData, settings, isAdmin = false, userBookingCount = 0 }: PricingSidebarProps) {
   const { 
     basePrice,
     roomPrice,
@@ -19,7 +20,7 @@ export function PricingSidebar({ bookingData, settings, isAdmin = false }: Prici
     topBookerDiscount, 
     topBookerDiscountRate,
     total 
-  } = calculateBookingPrice(bookingData, settings);
+  } = calculateBookingPrice(bookingData, settings, userBookingCount);
 
   const roomCount = (bookingData.bedrooms || 0) + (bookingData.bathrooms || 0) + (bookingData.toilets || 0) + 
     (bookingData.rooms?.reduce((acc, r) => acc + (bookingData.roomQuantities?.[r] || 1), 0) || 0);

@@ -88,7 +88,7 @@ export function calculateBookingDuration(bookingData: BookingData, settings?: Sy
   return { estimatedHours, cleanerCount };
 }
 
-export function calculateBookingPrice(bookingData: BookingData, settings?: SystemSettings | null) {
+export function calculateBookingPrice(bookingData: BookingData, settings?: SystemSettings | null, userBookingCount: number = 0) {
   const DEFAULT_SERVICE_PRICES: Record<string, number> = {
     'Standard Cleaning': 89,
     'Deep Cleaning': 159,
@@ -168,8 +168,24 @@ export function calculateBookingPrice(bookingData: BookingData, settings?: Syste
 
   // Calculate top booker discount
   let topBookerDiscountRate = 0;
-  if (settings?.pricing?.topBookerDiscount) {
-    if (settings.pricing.topBookerCategory === 'all') {
+  if (settings?.pricing?.topBookerEnabled && settings.pricing.topBookerDiscount && userBookingCount > 0) {
+    const category = settings.pricing.topBookerCategory;
+    
+    // Check if user qualifies for this category
+    let qualifies = false;
+    if (category === 'all') {
+      qualifies = true;
+    } else if (category === '5-9') {
+      qualifies = userBookingCount >= 5 && userBookingCount <= 9;
+    } else if (category === '10-15') {
+      qualifies = userBookingCount >= 10 && userBookingCount <= 15;
+    } else if (category === '16-20') {
+      qualifies = userBookingCount >= 16 && userBookingCount <= 20;
+    } else if (category === '21+') {
+      qualifies = userBookingCount >= 21;
+    }
+    
+    if (qualifies) {
       topBookerDiscountRate = settings.pricing.topBookerDiscount / 100;
     }
   }

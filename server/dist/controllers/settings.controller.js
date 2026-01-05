@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
     },
     pricing: {
         depositPercentage: 20,
+        topBookerEnabled: true,
         topBookerDiscount: 15,
         topBookerCategory: 'all',
         cancellationFee: 50,

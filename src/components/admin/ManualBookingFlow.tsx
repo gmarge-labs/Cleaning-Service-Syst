@@ -681,6 +681,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
   const [currentStep, setCurrentStep] = useState(0);
   const [bookingData, setBookingData] = useState<AdminBookingData>({});
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [userBookingCount, setUserBookingCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -697,6 +698,30 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
     };
     fetchSettings();
   }, []);
+
+  // Fetch user booking count when customer info is updated
+  useEffect(() => {
+    const fetchUserBookingCount = async () => {
+      if (!bookingData.customerEmail) {
+        setUserBookingCount(0);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/users/by-email/${encodeURIComponent(bookingData.customerEmail)}/cleaning-stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserBookingCount(data.completedCount || 0);
+        } else {
+          setUserBookingCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching user booking count:', error);
+        setUserBookingCount(0);
+      }
+    };
+
+    fetchUserBookingCount();
+  }, [bookingData.customerEmail]);
 
   const updateBookingData = (data: Partial<AdminBookingData>) => {
     setBookingData(prev => ({ ...prev, ...data }));
@@ -867,7 +892,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
           {/* Pricing Sidebar - Show after first step and before confirmation */}
           {currentStep > 0 && currentStep < STEPS.length - 1 && (
             <div className="lg:col-span-1">
-              <PricingSidebar bookingData={bookingData} settings={settings} isAdmin={true} />
+              <PricingSidebar bookingData={bookingData} settings={settings} isAdmin={true} userBookingCount={userBookingCount} />
             </div>
           )}
         </div>

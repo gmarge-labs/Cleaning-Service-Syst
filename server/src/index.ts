@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { initSocket } from './utils/socket';
+import { initializeAPIConfigs } from './utils/api-initialization.service';
 
 dotenv.config();
 
@@ -48,7 +49,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-httpServer.listen(port, () => {
+httpServer.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
+  
+  // Initialize API configurations on startup
+  await initializeAPIConfigs();
 });
  

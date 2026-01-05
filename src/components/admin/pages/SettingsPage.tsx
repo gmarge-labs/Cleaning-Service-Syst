@@ -32,6 +32,7 @@ export function SettingsPage() {
 
   const [pricingSettings, setPricingSettings] = useState({
     depositPercentage: 20,
+    topBookerEnabled: true,
     topBookerDiscount: 15,
     topBookerCategory: 'all',
     cancellationFee: 50,
@@ -614,6 +615,20 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-6">
+              {/* Enable/Disable Toggle */}
+              <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
+                <div>
+                  <Label className="text-base font-semibold">Top Booker Discount Feature</Label>
+                  <p className="text-sm text-neutral-600 mt-1">Turn this feature on or off globally</p>
+                </div>
+                <Switch
+                  checked={pricingSettings.topBookerEnabled}
+                  onCheckedChange={(checked: boolean) => setPricingSettings({ ...pricingSettings, topBookerEnabled: checked })}
+                />
+              </div>
+
+              {/* Configuration Section - Only show if enabled */}
+              {pricingSettings.topBookerEnabled && (
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
                   <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
@@ -649,8 +664,10 @@ export function SettingsPage() {
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Preview Section */}
+              {/* Preview Section - Only show if enabled */}
+              {pricingSettings.topBookerEnabled && (
               <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
                 <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
                   <Tag className="w-4 h-4" />
@@ -684,6 +701,7 @@ export function SettingsPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               <div className="pt-6 border-t border-neutral-200">
                 <Label htmlFor="cancellation-fee" className="text-base font-semibold">Cancellation Fee</Label>

@@ -35,13 +35,25 @@ export const getProfile = async (req: Request, res: Response) => {
 };
 
 export const getCleaningStats = async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const { userId, email } = req.params;
+  let targetUserId = userId;
 
   try {
+    // If email is provided, get the user ID from email
+    if (email && !userId) {
+      const user = await prisma.user.findUnique({
+        where: { email: decodeURIComponent(email) }
+      });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      targetUserId = user.id;
+    }
+
     // Count completed bookings
     const completedCount = await prisma.booking.count({
       where: {
-        userId,
+        userId: targetUserId,
         status: 'COMPLETED'
       }
     });
@@ -49,7 +61,7 @@ export const getCleaningStats = async (req: Request, res: Response) => {
     // Count bookings where free cleaning reward was used
     const usedRewards = await prisma.booking.count({
       where: {
-        userId,
+        userId: targetUserId,
         paymentMethod: 'free-cleaning-reward'
       }
     });

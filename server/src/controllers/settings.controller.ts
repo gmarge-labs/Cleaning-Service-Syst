@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { APIConfigService } from '../utils/api-config.service';
 
 const DEFAULT_SETTINGS = {
   general: {
@@ -12,6 +13,7 @@ const DEFAULT_SETTINGS = {
   },
   pricing: {
     depositPercentage: 20,
+    topBookerEnabled: true,
     topBookerDiscount: 15,
     topBookerCategory: 'all',
     cancellationFee: 50,
@@ -188,5 +190,150 @@ export const getQualifiedUsersCount = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get qualified users count error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get all API configurations
+ * Admin endpoint
+ */
+export const getAPIConfigs = async (req: Request, res: Response) => {
+  try {
+    const configs = await APIConfigService.getConfigs();
+    
+    // Mask sensitive data before sending to client
+    const maskedConfigs = {
+      sendgrid: configs.sendgrid ? {
+        enabled: configs.sendgrid.enabled,
+        apiKey: configs.sendgrid.apiKey ? `${configs.sendgrid.apiKey.substring(0, 10)}...` : '',
+        fromEmail: configs.sendgrid.fromEmail,
+        configured: !!configs.sendgrid.apiKey
+      } : null,
+      payment: configs.payment ? {
+        enabled: configs.payment.enabled,
+        apiKey: configs.payment.apiKey ? `${configs.payment.apiKey.substring(0, 10)}...` : '',
+        provider: configs.payment.provider,
+        configured: !!configs.payment.apiKey
+      } : null,
+      googleCalendar: configs.googleCalendar ? {
+        enabled: configs.googleCalendar.enabled,
+        apiKey: configs.googleCalendar.apiKey ? `${configs.googleCalendar.apiKey.substring(0, 10)}...` : '',
+        calendarId: configs.googleCalendar.calendarId,
+        configured: !!configs.googleCalendar.apiKey
+      } : null
+    };
+
+    res.json(maskedConfigs);
+  } catch (error) {
+    console.error('Get API configs error:', error);
+    res.status(500).json({ message: 'Failed to retrieve API configurations' });
+  }
+};
+
+/**
+ * Get specific API configuration
+ * Admin endpoint
+ */
+export const getAPIConfig = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    
+    if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+      return res.status(400).json({ message: 'Invalid API name' });
+    }
+
+    const config = await APIConfigService.getConfig(name as any);
+    
+    if (!config) {
+      return res.json({ configured: false });
+    }
+
+    // Mask sensitive data
+    return res.json({
+      ...config,
+      apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
+      secretKey: config.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
+      configured: !!config.apiKey
+    });
+  } catch (error) {
+    console.error('Get API config error:', error);
+    res.status(500).json({ message: 'Failed to retrieve API configuration' });
+  }
+};
+
+/**
+ * Update API configuration
+ * Admin endpoint
+ */
+export const updateAPIConfig = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    const updates = req.body;
+
+    if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+      return res.status(400).json({ message: 'Invalid API name' });
+    }
+
+    const updated = await APIConfigService.updateConfig(name as any, updates);
+    
+    // Get the specific config for this service
+    const config = updated[name as keyof typeof updated];
+
+    // Mask sensitive data in response
+    const maskedResponse = {
+      ...config,
+      apiKey: config?.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
+      secretKey: config?.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
+      configured: !!config?.apiKey
+    };
+
+    res.json(maskedResponse);
+  } catch (error) {
+    console.error('Update API config error:', error);
+    res.status(500).json({ message: 'Failed to update API configuration' });
+  }
+};
+
+/**
+ * Test API configuration
+ * Admin endpoint - validates if API keys are working
+ */
+export const testAPIConfig = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+
+    if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+      return res.status(400).json({ message: 'Invalid API name' });
+    }
+
+    const isValid = await APIConfigService.validateConfig(name as any);
+
+    res.json({
+      service: name,
+      valid: isValid,
+      message: isValid ? `${name} configuration is valid` : `${name} configuration is invalid or incomplete`
+    });
+  } catch (error) {
+    console.error('Test API config error:', error);
+    res.status(500).json({ message: 'Failed to test API configuration' });
+  }
+};
+
+/**
+ * Get health status of all API integrations
+ * Admin endpoint
+ */
+export const getIntegrationHealth = async (req: Request, res: Response) => {
+  try {
+    const health = await APIConfigService.checkHealthStatus();
+    
+    res.json({
+      status: health.sendgrid && health.payment && health.googleCalendar ? 'healthy' : 'degraded',
+      services: health,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get integration health error:', error);
+    res.status(500).json({ message: 'Failed to check integration health' });
   }
 };
