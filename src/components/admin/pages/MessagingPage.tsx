@@ -35,8 +35,22 @@ export function MessagingPage() {
     if (user?.id) {
       fetchConversations();
       fetchContacts();
+      // Mark message notifications as read when page opens
+      markMessageNotificationsAsRead();
     }
   }, [user?.id]);
+
+  const markMessageNotificationsAsRead = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=MESSAGE_RECEIVED`, {
+        method: 'PATCH',
+      });
+    } catch (error) {
+      console.error('Failed to mark message notifications as read:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedConversation) {

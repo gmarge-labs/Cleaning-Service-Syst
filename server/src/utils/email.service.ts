@@ -135,14 +135,16 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     // Get company info for "from" address
     const general = settings.general as any;
-    const fromEmail = general?.email || 'hello@Sparkleville.com';
+    const fromEmail = general?.email || 'admin@sparkleville.co';
     const companyName = general?.companyName || 'Sparkleville';
     const companyAddress = general?.address || '';
     const companyPhone = general?.phone || '';
+    const logoUrl = options.variables.logo_url || 'https://sparkleville.co/logo.png';
+    const appUrl = options.variables.app_url || 'https://sparkleville.co';
 
     console.log(`📤 Sending email from: ${fromEmail} (${companyName}) to: ${options.to}`);
 
-    // Send email
+    // Send email with enhanced HTML styling and logo
     const msg = {
       to: options.to,
       from: {
@@ -153,41 +155,133 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       text: emailContent,
       html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            .email-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; }
-            .header { background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0; }
-            .content { background: white; padding: 40px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; line-height: 1.6; color: #374151; }
-            .footer { margin-top: 30px; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #7C3AED; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
-            .info-box { background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #374151; }
+            .email-wrapper { background-color: #f9fafb; padding: 20px 0; }
+            .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }
+            .logo { max-width: 200px; height: auto; margin: 0 auto 15px; display: block; }
+            .header-text { color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+            .tagline { color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 8px; font-weight: 500; }
+            .content { padding: 40px; }
+            .content p { margin-bottom: 16px; color: #374151; }
+            .content pre, .content-text { white-space: pre-wrap; word-wrap: break-word; }
+            .button-container { text-align: center; margin: 30px 0; }
+            .button { display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+            .button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4); }
+            .divider { height: 1px; background-color: #e5e7eb; margin: 30px 0; }
+            .footer { background-color: #f9fafb; padding: 30px 20px; text-align: center; border-top: 1px solid #e5e7eb; }
+            .footer-text { color: #6b7280; font-size: 12px; line-height: 1.8; }
+            .footer-link { color: #10b981; text-decoration: none; font-weight: 500; }
+            .footer-link:hover { text-decoration: underline; }
+            .social-links { margin-top: 15px; }
+            .social-links a { display: inline-block; margin: 0 8px; }
+            .info-box { background-color: #ecfdf5; padding: 20px; border-left: 4px solid #10b981; border-radius: 4px; margin: 20px 0; font-size: 13px; }
+            .credentials-box { background-color: #f0fdf4; padding: 20px; border: 1px solid #dcfce7; border-radius: 8px; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 13px; }
+            .credentials-label { color: #059669; font-weight: 600; margin-bottom: 8px; }
+            .credentials-item { padding: 10px; background-color: #ffffff; border: 1px solid #dcfce7; border-radius: 4px; margin-bottom: 10px; word-break: break-all; }
+            .credentials-item strong { color: #059669; }
+            .instruction-box { background-color: #ecfdf5; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+            .instruction-box ol { padding-left: 20px; }
+            .instruction-box li { margin: 10px 0; color: #374151; }
+            .warning-box { background-color: #fef3c7; padding: 16px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0; font-size: 13px; color: #92400e; }
           </style>
         </head>
         <body>
-          <div class="email-container">
-            <div class="header">
-              <h1 style="color: white; margin: 0; font-size: 28px; letter-spacing: -0.025em;">${companyName}</h1>
-            </div>
-            <div class="content">
-              <div style="white-space: pre-wrap;">${emailContent.replace(/\n/g, '<br>')}</div>
-              
-              <div style="margin-top: 30px; text-align: center;">
-                <a href="https://Sparkleville.com/login" class="button">View Your Dashboard</a>
+          <div class="email-wrapper">
+            <div class="email-container">
+              <!-- Header with Logo and Branding -->
+              <div class="header">
+                <img src="${logoUrl}" alt="${companyName}" class="logo" style="max-width: 180px;">
+                <h1 class="header-text">${companyName}</h1>
+                <p class="tagline">Professional Cleaning Services Platform</p>
               </div>
-            </div>
-            <div class="footer">
-              <p><strong>${companyName}</strong></p>
-              ${companyAddress ? `<p>${companyAddress}</p>` : ''}
-              ${companyPhone ? `<p>${companyPhone}</p>` : ''}
-              <p>You received this email because you have an account with ${companyName}.</p>
-              <p style="margin-top: 10px;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
+
+              <!-- Main Content -->
+              <div class="content">
+                <div class="content-text">${emailContent.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>
+
+                ${options.variables.email_type === 'welcome' ? `
+                  <!-- Login Credentials Section -->
+                  <div class="credentials-box">
+                    <div class="credentials-label">🔐 Your Login Credentials</div>
+                    <div class="credentials-item">
+                      <strong>Email:</strong> ${options.variables.email}
+                    </div>
+                    <div class="credentials-item">
+                      <strong>Temporary Password:</strong> ${options.variables.temp_password}
+                    </div>
+                    <div class="credentials-item">
+                      <strong>Your Role:</strong> ${options.variables.user_role}
+                    </div>
+                  </div>
+
+                  <!-- Instructions -->
+                  <div class="instruction-box">
+                    <div class="credentials-label">📋 Next Steps to Activate Your Account</div>
+                    <ol>
+                      <li><strong>Log in</strong> to your account using the credentials above</li>
+                      <li><strong>Update your profile</strong> with complete information</li>
+                      <li><strong>Change your password</strong> to something secure and unique</li>
+                      <li><strong>Complete account activation</strong> by verifying your email and phone</li>
+                    </ol>
+                  </div>
+
+                  <!-- Warning Box -->
+                  <div class="warning-box">
+                    <strong>⚠️ Security Notice:</strong> The temporary password above will expire in 24 hours. Please log in and change it immediately. Never share your password with anyone.
+                  </div>
+                ` : ''}
+
+                <div class="button-container">
+                  <a href="${appUrl}/login" class="button">Log In to Your Account</a>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="footer">
+                <p class="footer-text">
+                  <strong>${companyName}</strong><br>
+                  ${companyAddress ? `${companyAddress}<br>` : ''}
+                  ${companyPhone ? `📞 ${companyPhone}<br>` : ''}
+                  <a href="mailto:${fromEmail}" class="footer-link">${fromEmail}</a>
+                </p>
+
+                <div class="social-links">
+                  <a href="${appUrl}" style="color: #10b981; text-decoration: none;">Website</a> •
+                  <a href="mailto:${fromEmail}" style="color: #10b981; text-decoration: none;">Support</a>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                  <p class="footer-text">
+                    © ${new Date().getFullYear()} ${companyName}. All rights reserved.<br>
+                    You received this email because you have an account with ${companyName}.
+                  </p>
+                  <p class="footer-text" style="margin-top: 10px; font-size: 11px;">
+                    <a href="${appUrl}/unsubscribe" class="footer-link">Unsubscribe</a> • 
+                    <a href="${appUrl}/privacy" class="footer-link">Privacy Policy</a> •
+                    <a href="${appUrl}/terms" class="footer-link">Terms of Service</a>
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </body>
         </html>
-      `
+      `,
+      // Add headers to prevent spam filtering
+      headers: {
+        'X-Priority': '3' as any,
+        'X-MSMail-Priority': 'Normal' as any,
+        'X-Mailer': 'Sparkleville Mail Service' as any,
+        'List-Unsubscribe': `<${appUrl}/unsubscribe>` as any,
+        'List-Help': `<${appUrl}/help>` as any,
+      } as any
     };
 
     if (mailtrapTransporter) {
@@ -217,6 +311,77 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
 // Send booking confirmation email
 export async function sendBookingConfirmation(booking: any, customerEmail: string) {
+  // Format property details
+  let propertyDetails = '';
+  if (booking.bedrooms) propertyDetails += `Bedrooms: ${booking.bedrooms}, `;
+  if (booking.bathrooms) propertyDetails += `Bathrooms: ${booking.bathrooms}, `;
+  if (booking.toilets) propertyDetails += `Toilets: ${booking.toilets}`;
+  propertyDetails = propertyDetails.replace(/, $/, '');
+
+  // Format rooms if available
+  let roomsDetails = '';
+  if (booking.rooms && typeof booking.rooms === 'object') {
+    roomsDetails = Object.entries(booking.rooms)
+      .map(([room, quantity]: [string, any]) => `${room}: ${quantity}`)
+      .join(', ');
+  }
+
+  // Format add-ons
+  let addOnsDetails = '';
+  if (booking.addOns && Array.isArray(booking.addOns) && booking.addOns.length > 0) {
+    addOnsDetails = booking.addOns.join(', ');
+  }
+
+  // Format kitchen add-ons if available
+  let kitchenDetails = '';
+  if (booking.kitchenAddOns && typeof booking.kitchenAddOns === 'object') {
+    kitchenDetails = Object.entries(booking.kitchenAddOns)
+      .filter(([_, value]: [string, any]) => value)
+      .map(([key, _]: [string, any]) => key)
+      .join(', ');
+  }
+
+  // Format laundry details if available
+  let laundryDetails = '';
+  if (booking.laundryRoomDetails && typeof booking.laundryRoomDetails === 'object') {
+    const laundry = booking.laundryRoomDetails as any;
+    if (laundry.selected && laundry.selectedOptions && laundry.selectedOptions.length > 0) {
+      laundryDetails = laundry.selectedOptions.join(', ');
+    }
+  }
+
+  // Build booking details summary
+  let bookingDetails = `
+Booking ID: ${booking.id}
+Service Type: ${booking.serviceType}
+Date: ${new Date(booking.date).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })}
+Time: ${booking.time || 'Not specified'}
+Frequency: ${booking.frequency || 'One-time'}
+Location: ${booking.address || 'Your specified location'}
+`;
+
+  if (booking.propertyType) bookingDetails += `Property Type: ${booking.propertyType}\n`;
+  if (propertyDetails) bookingDetails += `Property Details: ${propertyDetails}\n`;
+  if (roomsDetails) bookingDetails += `Rooms: ${roomsDetails}\n`;
+  if (addOnsDetails) bookingDetails += `Add-ons: ${addOnsDetails}\n`;
+  if (kitchenDetails) bookingDetails += `Kitchen Services: ${kitchenDetails}\n`;
+  if (laundryDetails) bookingDetails += `Laundry Services: ${laundryDetails}\n`;
+  if (booking.hasPet) bookingDetails += `Pets: Yes (${booking.petDetails?.type || 'Pet'} - ${booking.petDetails?.description || ''})\n`;
+  if (booking.specialInstructions) bookingDetails += `Special Instructions: ${booking.specialInstructions}\n`;
+
+  bookingDetails += `
+Estimated Duration: ${booking.estimatedDuration || '0'} hours
+Cleaners Assigned: ${booking.cleanerCount || 1}
+Payment Method: ${booking.paymentMethod || 'To be determined'}
+Tip Amount: $${Number(booking.tipAmount || 0).toFixed(2)}
+Total Amount: $${Number(booking.totalAmount).toFixed(2)}
+`;
+
   return sendEmail({
     to: customerEmail,
     subject: 'Booking Confirmation - Your Service is Scheduled',
@@ -232,10 +397,11 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
         month: 'long',
         day: 'numeric'
       }),
-      time: booking.time,
+      time: booking.time || 'Not specified',
       address: booking.address || 'Your specified location',
       booking_id: booking.id,
-      total_amount: `$${Number(booking.totalAmount).toFixed(2)}`
+      total_amount: `$${Number(booking.totalAmount).toFixed(2)}`,
+      booking_details: bookingDetails
     }
   });
 }
@@ -352,46 +518,47 @@ export async function sendWelcomeEmail(user: any, temporaryPassword?: string) {
 
   const general = settings?.general as any;
   const companyName = general?.companyName || 'Sparkleville';
-  const supportEmail = general?.email || 'hello@Sparkleville.com';
+  const supportEmail = general?.email || 'admin@sparkleville.co';
+  const appUrl = process.env.VITE_API_URL || 'https://sparkleville.co';
+
+  // Map role to display name
+  const roleMap: { [key: string]: string } = {
+    'ADMIN': 'Administrator',
+    'SUPERVISOR': 'Supervisor',
+    'SUPPORT': 'Support Staff',
+    'CLEANER': 'Cleaner',
+    'CUSTOMER': 'Customer'
+  };
+  const roleDisplayName = roleMap[user.role as string] || user.role;
 
   let welcomeMessage = `Dear ${user.name},
 
-Welcome to ${companyName}! Your account has been successfully created.
+Welcome to ${companyName}! 🎉
 
-Account Details:
-- Name: ${user.name}
-- Email: ${user.email}
-- Role: ${user.role}`;
+Your account has been successfully created. You can now log in to access your dashboard and manage your profile.
 
-  if (temporaryPassword) {
-    welcomeMessage += `\n- Temporary Password: ${temporaryPassword}\n\n⚠️ Please change your password after your first login for security.`;
-  }
+Your Account Information:
+• Name: ${user.name}
+• Email: ${user.email}
+• Role: ${roleDisplayName}
+• Status: Account Activation Required
 
-  welcomeMessage += `\n\nYou can now log in to your account and start using our services.
-
-If you have any questions, feel free to reach out to us at ${supportEmail}.
-
-Best regards,
-The ${companyName} Team`;
+Please use the login credentials provided below to access your account.`;
 
   return sendEmail({
     to: user.email,
-    subject: `Welcome to ${companyName}!`,
+    subject: `Welcome to ${companyName}! Activate Your Account`,
     templateType: 'welcome',
     variables: {
       customer_name: user.name,
       name: user.name,
-      service_type: 'Account Created',
-      date: new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      time: new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      email: user.email,
+      temp_password: temporaryPassword || 'Check admin panel for credentials',
+      user_role: roleDisplayName,
+      email_type: 'welcome',
+      app_url: appUrl,
+      logo_url: 'https://sparkleville.co/logo.png',
+      service_type: 'Account Created'
     }
   });
 }

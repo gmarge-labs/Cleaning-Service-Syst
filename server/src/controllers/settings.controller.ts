@@ -6,8 +6,8 @@ const DEFAULT_SETTINGS = {
   general: {
     companyName: 'Sparkleville',
     email: 'hello@Sparkleville.com',
-    phone: '(555) 123-4567',
-    address: '123 Clean Street, Suite 100',
+    phone: '+12079007700',
+    address: 'City: Bangor, State: Maine, County: Penobscot county',
     businessHours: '8:00 AM - 8:00 PM',
     serviceArea: '10001, 10002, 10003',
   },
@@ -90,10 +90,27 @@ const DEFAULT_SETTINGS = {
     googleCalendar: { enabled: true, apiKey: 'AIza***************' },
   },
   notifications: {
-    confirmation: 'Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed...',
+    confirmation: `Dear {customer_name},
+
+Your booking has been successfully confirmed! Here are your booking details:
+
+BOOKING INFORMATION
+Booking ID: {booking_id}
+Service Type: {service_type}
+Date: {date}
+Time: {time}
+Location: {address}
+Total Amount: {total_amount}
+
+{booking_details}
+
+Thank you for choosing Sparkleville for your cleaning needs. Our team is committed to providing you with professional and reliable service. If you have any questions or need to make changes to your booking, please don't hesitate to contact us.
+
+Best regards,
+The Sparkleville Team`,
     reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
     completion: 'Hi {customer_name}, Your cleaning service has been completed. We hope you\'re satisfied with the results...',
-    welcome: 'Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services.',
+    welcome: 'Dear {customer_name}, Welcome to our Sparkleville! Your account has been created, kindly find your login details below.',
     application_accepted: 'Dear {name}, Congratulations! Your application to join the Sparkleville team has been accepted. We are excited to have you on board. Our team will contact you shortly with the next steps for onboarding.',
     application_rejected: 'Dear {name}, Thank you for your interest in joining Sparkleville. After carefully reviewing your application, we regret to inform you that we will not be moving forward with your application at this time. We wish you the best in your future endeavors.',
   }

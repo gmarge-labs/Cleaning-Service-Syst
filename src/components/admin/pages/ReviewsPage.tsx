@@ -17,6 +17,8 @@ import { Badge } from '../../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 
 interface Review {
   id: string;
@@ -57,6 +59,7 @@ const renderStars = (rating: number) => {
 };
 
 export function ReviewsPage() {
+  const { user } = useSelector((state: RootState) => state.auth);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,7 +72,24 @@ export function ReviewsPage() {
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+    
+    // Mark review notifications as read when page opens
+    if (user?.id) {
+      markReviewNotificationsAsRead();
+    }
+  }, [user?.id]);
+
+  const markReviewNotificationsAsRead = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=REVIEW_RECEIVED`, {
+        method: 'PATCH',
+      });
+    } catch (error) {
+      console.error('Failed to mark review notifications as read:', error);
+    }
+  };
 
   const fetchReviews = async () => {
     try {

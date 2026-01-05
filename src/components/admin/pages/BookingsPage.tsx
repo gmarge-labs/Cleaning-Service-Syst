@@ -49,6 +49,11 @@ export function BookingsPage() {
     fetchBookings();
     fetchSettings();
     
+    // Mark booking notifications as read when page opens
+    if (user?.id) {
+      markBookingNotificationsAsRead();
+    }
+    
     // Initialize socket connection
     if (user?.id) {
       socketService.connect(user.id, 'admin');
@@ -69,6 +74,18 @@ export function BookingsPage() {
       socketService.disconnect();
     };
   }, [user?.id]);
+
+  const markBookingNotificationsAsRead = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=BOOKING_CREATED`, {
+        method: 'PATCH',
+      });
+    } catch (error) {
+      console.error('Failed to mark booking notifications as read:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
