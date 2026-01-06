@@ -179,3 +179,25 @@ export const getUnreadCountsByType = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Mark all notifications of a specific type as read
+export const markAllByTypeAsRead = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { type } = req.query;
+
+  if (!type || typeof type !== 'string') {
+    return res.status(400).json({ error: 'Type parameter is required' });
+  }
+
+  try {
+    await prisma.notification.updateMany({
+      where: { userId, isRead: false, type },
+      data: { isRead: true },
+    });
+
+    res.json({ message: `All ${type} notifications marked as read` });
+  } catch (error) {
+    console.error('Mark all by type as read error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

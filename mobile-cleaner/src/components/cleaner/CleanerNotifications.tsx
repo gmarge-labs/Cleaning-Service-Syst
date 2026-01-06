@@ -113,13 +113,18 @@ export function CleanerNotifications({
         return `${days}d ago`;
     };
 
-    const getNotificationColor = (type: Notification['type']): [string, string] => {
+    const getNotificationColor = (type: Notification['type'] | string): [string, string] => {
         switch (type) {
             case 'new_booking':
+            case 'BOOKING_CREATED':
                 return [Colors.secondary, Colors.accent];
             case 'job_update':
+            case 'BOOKING_UPDATED':
                 return ['#3b82f6', '#2563eb'];
+            case 'REVISION_REQUESTED':
+                return ['#ef4444', '#dc2626'];
             case 'rating_received':
+            case 'REVIEW_RECEIVED':
                 return ['#a855f7', '#9333ea'];
             case 'payment_received':
                 return ['#22c55e', '#16a34a'];
@@ -128,13 +133,18 @@ export function CleanerNotifications({
         }
     };
 
-    const getEmojiIcon = (type: Notification['type']) => {
+    const getEmojiIcon = (type: Notification['type'] | string) => {
         switch (type) {
             case 'new_booking':
+            case 'BOOKING_CREATED':
                 return '🔔';
             case 'job_update':
+            case 'BOOKING_UPDATED':
                 return '📋';
+            case 'REVISION_REQUESTED':
+                return '⚠️';
             case 'rating_received':
+            case 'REVIEW_RECEIVED':
                 return '💬';
             case 'payment_received':
                 return '💰';

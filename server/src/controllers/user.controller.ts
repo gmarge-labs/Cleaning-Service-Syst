@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
 import { generateUserId } from '../utils/idGenerator';
 import { sendWelcomeEmail } from '../utils/email.service';
 import prisma from '../utils/prisma';
@@ -34,13 +35,25 @@ export const getProfile = async (req: Request, res: Response) => {
 };
 
 export const getCleaningStats = async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const { userId, email } = req.params;
+  let targetUserId = userId;
 
   try {
+    // If email is provided, get the user ID from email
+    if (email && !userId) {
+      const user = await prisma.user.findUnique({
+        where: { email: decodeURIComponent(email) }
+      });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      targetUserId = user.id;
+    }
+
     // Count completed bookings
     const completedCount = await prisma.booking.count({
       where: {
-        userId,
+        userId: targetUserId,
         status: 'COMPLETED'
       }
     });
@@ -48,7 +61,7 @@ export const getCleaningStats = async (req: Request, res: Response) => {
     // Count bookings where free cleaning reward was used
     const usedRewards = await prisma.booking.count({
       where: {
-        userId,
+        userId: targetUserId,
         paymentMethod: 'free-cleaning-reward'
       }
     });
@@ -74,7 +87,7 @@ export const getCleaningStats = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const { name, phone, address, notificationSettings, currentPassword, newPassword } = req.body;
+  const { name, phone, address, notificationSettings, currentPassword, newPassword, profileImage, isActive, bankAccountName, bankName, accountNumber, routingNumber } = req.body;
 
   try {
     // If password change is requested, validate current password first
@@ -101,6 +114,13 @@ export const updateProfile = async (req: Request, res: Response) => {
           address,
           notificationSettings,
           password: hashedPassword,
+          profileImage,
+          status: 'ACTIVE',
+          isActive: isActive !== undefined ? isActive : undefined,
+          bankAccountName,
+          bankName,
+          accountNumber,
+          routingNumber,
         },
       });
 
@@ -116,6 +136,13 @@ export const updateProfile = async (req: Request, res: Response) => {
         phone,
         address,
         notificationSettings,
+        profileImage,
+        status: 'ACTIVE',
+        isActive: isActive !== undefined ? isActive : undefined,
+        bankAccountName,
+        bankName,
+        accountNumber,
+        routingNumber,
       },
     });
 
@@ -255,16 +282,23 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const roleFilter = req.query.role as string; // 'CUSTOMER' for customer management, undefined for all users
 
     // Build where clause based on role filter
-    const whereClause = roleFilter ? { role: roleFilter as any } : {};
+    // Ensure roleFilter is a valid Role enum value
+    let whereClause = {};
+    if (roleFilter) {
+      const upperRole = roleFilter.toUpperCase();
+      if (Object.values(Role).includes(upperRole as Role)) {
+        whereClause = { role: upperRole as Role };
+      }
+    }
 
     // Get total count
     const totalCount = await prisma.user.count({
-      where: whereClause as any
+      where: whereClause
     });
 
     // Fetch users with optional role filter
     const users = await prisma.user.findMany({
-      where: whereClause as any,
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
@@ -320,7 +354,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 export const createUser = async (req: Request, res: Response) => {
-  const { name, email, password, role, phone, address } = req.body;
+  const { name, email, password, role, phone, address, notificationSettings, ...extraData } = req.body;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -332,7 +366,20 @@ export const createUser = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const id = await generateUserId(role || 'CUSTOMER');
+    
+    // Validate role
+    let userRole: Role = Role.CUSTOMER;
+    if (role && Object.values(Role).includes(role.toUpperCase() as Role)) {
+      userRole = role.toUpperCase() as Role;
+    }
+
+    const id = await generateUserId(userRole);
+
+    // Combine notification settings with any extra metadata
+    const combinedSettings = {
+      ...(notificationSettings || {}),
+      ...extraData
+    };
 
     const user = await prisma.user.create({
       data: {
@@ -340,19 +387,25 @@ export const createUser = async (req: Request, res: Response) => {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: role || 'CUSTOMER',
+        role: userRole,
+        status: 'PENDING',
         phone: phone || null,
         address: address || null,
+        notificationSettings: combinedSettings,
       },
     });
 
     // Send welcome email to the new user
     console.log('📧 User created successfully, sending welcome email...');
-    const emailSent = await sendWelcomeEmail(user, password);
-    if (emailSent) {
-      console.log('✅ Welcome email sent successfully');
-    } else {
-      console.warn('⚠️ User created but welcome email failed to send');
+    try {
+      const emailSent = await sendWelcomeEmail(user, password);
+      if (emailSent) {
+        console.log('✅ Welcome email sent successfully');
+      } else {
+        console.warn('⚠️ User created but welcome email failed to send');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending welcome email:', emailError);
     }
 
     const { password: _, ...userWithoutPassword } = user;

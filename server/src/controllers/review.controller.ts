@@ -34,6 +34,15 @@ export const createReview = async (req: Request, res: Response) => {
       }
     });
 
+    // Update booking as accepted when review is submitted
+    if (booking) {
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { isAccepted: true }
+      });
+      console.log(`Booking ${bookingId} marked as accepted after review submission`);
+    }
+
     // Notify admins about the new review
     await notifyAdmins({
       type: 'REVIEW_RECEIVED',

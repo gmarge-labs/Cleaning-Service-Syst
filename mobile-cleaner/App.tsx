@@ -11,6 +11,7 @@ import { CleanerProfile } from './src/components/cleaner/CleanerProfile';
 import { CleanerMessages } from './src/components/cleaner/CleanerMessages';
 import { authService, User as UserType } from './src/api/auth.service';
 import { jobService, Booking as BookingType } from './src/api/job.service';
+import { messageService } from './src/api/message.service';
 import { socketService } from './src/api/socket.service';
 import { pushNotificationService } from './src/api/push-notification.service';
 import { notificationService } from './src/api/notification.service';
@@ -21,13 +22,25 @@ type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completion' | 'm
 
 export default function App() {
     const [currentView, setCurrentView] = useState<CleanerView>('login');
+    const [activeTab, setActiveTab] = useState('available');
     const [user, setUser] = useState<UserType | null>(null);
     const [claimedJobs, setClaimedJobs] = useState<string[]>([]);
     const [selectedJob, setSelectedJob] = useState<BookingType | null>(null);
     const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
+    const [unreadMessages, setUnreadMessages] = useState<number>(0);
     const [expoPushToken, setExpoPushToken] = useState<string>('');
     const notificationListener = React.useRef<Notifications.Subscription>();
     const responseListener = React.useRef<Notifications.Subscription>();
+
+    const fetchUnreadMessagesCount = async () => {
+        try {
+            const conversations = await messageService.getConversations();
+            const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread, 0);
+            setUnreadMessages(totalUnread);
+        } catch (error) {
+            console.error('Error fetching unread messages:', error);
+        }
+    };
 
     React.useEffect(() => {
         const checkUser = async () => {
@@ -35,8 +48,9 @@ export default function App() {
             if (savedUser) {
                 setUser(savedUser);
                 socketService.connect(savedUser.id, savedUser.role);
-                const count = await notificationService.getUnreadCount(savedUser.id);
-                setUnreadNotifications(count);
+                const notifCount = await notificationService.getUnreadCount(savedUser.id);
+                setUnreadNotifications(notifCount);
+                await fetchUnreadMessagesCount();
                 setCurrentView('dashboard');
             }
         };
@@ -62,11 +76,14 @@ export default function App() {
             setCurrentView('notifications');
         });
 
-        // Socket listener for new notifications
+        // Socket listeners for both notifications and messages
         const socket = socketService.getSocket();
         if (socket) {
             socket.on('new_notification', () => {
                 setUnreadNotifications(prev => prev + 1);
+            });
+            socket.on('receive_message', () => {
+                fetchUnreadMessagesCount();
             });
         }
 
@@ -87,8 +104,9 @@ export default function App() {
     const handleLogin = async (loggedInUser: UserType) => {
         setUser(loggedInUser);
         socketService.connect(loggedInUser.id, loggedInUser.role);
-        const count = await notificationService.getUnreadCount(loggedInUser.id);
-        setUnreadNotifications(count);
+        const notifCount = await notificationService.getUnreadCount(loggedInUser.id);
+        setUnreadNotifications(notifCount);
+        await fetchUnreadMessagesCount();
         setCurrentView('dashboard');
     };
 
@@ -134,6 +152,8 @@ export default function App() {
             {currentView === 'dashboard' && (
                 <CleanerDashboard
                     user={user}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
                     onSelectJob={handleSelectJob}
                     onStartJob={handleStartJob}
                     onClaimJob={handleClaimJob}
@@ -143,6 +163,7 @@ export default function App() {
                     onNavigateToEarnings={() => setCurrentView('earnings')}
                     onNavigateToNotifications={() => setCurrentView('notifications')}
                     unreadCount={unreadNotifications}
+                    unreadMessages={unreadMessages}
                 />
             )}
 
@@ -204,7 +225,7 @@ export default function App() {
                 <CleanerMessages
                     currentView={currentView}
                     onNavigate={(view) => setCurrentView(view)}
-                    unreadCount={unreadNotifications}
+                    unreadCount={unreadMessages}
                 />
             )}
         </View>

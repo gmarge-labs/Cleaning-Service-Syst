@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Home, TrendingUp, MessageSquare, User } from 'lucide-react-native';
+import { Home, TrendingUp, MessageSquare, User, Bell } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 
 export type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completion' | 'messages' | 'profile' | 'earnings' | 'notifications';
@@ -8,10 +8,11 @@ export type CleanerView = 'login' | 'dashboard' | 'job-details' | 'job-completio
 interface BottomNavigationProps {
     currentView: CleanerView;
     onNavigate: (view: CleanerView) => void;
+    unreadNotifications?: number;
     unreadMessages?: number;
 }
 
-export function BottomNavigation({ currentView, onNavigate, unreadMessages = 0 }: BottomNavigationProps) {
+export function BottomNavigation({ currentView, onNavigate, unreadNotifications = 0, unreadMessages = 0 }: BottomNavigationProps) {
     const navItems = [
         {
             id: 'dashboard' as CleanerView,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Calendar, Clock, DollarSign, MapPin, ChevronRight, User, LogOut, Bell, Users, Star } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { Calendar, Clock, DollarSign, MapPin, ChevronRight, User, LogOut, Bell, Users, Star, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
 import { Button } from '../Button';
@@ -12,6 +12,8 @@ import { User as UserType } from '../../api/auth.service';
 
 interface CleanerDashboardProps {
     user: UserType | null;
+    activeTab: string;
+    onTabChange: (tab: string) => void;
     onSelectJob: (job: Booking) => void;
     onStartJob: (job: Booking) => void;
     onClaimJob: (jobId: string) => void;
@@ -21,6 +23,7 @@ interface CleanerDashboardProps {
     onNavigateToEarnings: () => void;
     onNavigateToNotifications: () => void;
     unreadCount?: number;
+    unreadMessages?: number;
 }
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +31,8 @@ import { RefreshControl } from 'react-native';
 
 export function CleanerDashboard({
     user,
+    activeTab,
+    onTabChange,
     onSelectJob,
     onStartJob,
     onClaimJob,
@@ -36,9 +41,9 @@ export function CleanerDashboard({
     onNavigateToProfile,
     onNavigateToEarnings,
     onNavigateToNotifications,
-    unreadCount = 0
+    unreadCount = 0,
+    unreadMessages = 0
 }: CleanerDashboardProps) {
-    const [activeTab, setActiveTab] = useState('available');
     const [availableJobs, setAvailableJobs] = useState<Booking[]>([]);
     const [myJobs, setMyJobs] = useState<Booking[]>([]);
     const [completedJobs, setCompletedJobs] = useState<Booking[]>([]);
@@ -62,7 +67,12 @@ export function CleanerDashboard({
                 return !isAlreadyClaimedByMe && needsMoreCleaners;
             });
 
-            setAvailableJobs(filteredAvailable);
+            // Sort available jobs by date (most recent first)
+            const sortedAvailable = filteredAvailable.sort((a, b) => {
+                return new Date(b.date).getTime() - new Date(a.date).getTime();
+            });
+
+            setAvailableJobs(sortedAvailable);
             setMyJobs(assigned);
 
             // Also fetch history if on completed tab, or just fetch it here
@@ -105,7 +115,11 @@ export function CleanerDashboard({
                 <View style={styles.headerTop}>
                     <TouchableOpacity style={styles.profileInfo} onPress={onNavigateToProfile}>
                         <View style={styles.avatar}>
-                            <User size={24} color={Colors.white} />
+                            {user?.profileImage ? (
+                                <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
+                            ) : (
+                                <User size={24} color={Colors.white} />
+                            )}
                         </View>
                         <View>
                             <Text style={styles.userName}>{user?.name || 'Cleaner'}</Text>
@@ -154,7 +168,7 @@ export function CleanerDashboard({
 
             <Tabs
                 activeTab={activeTab}
-                onTabChange={setActiveTab}
+                onTabChange={onTabChange}
                 tabs={[
                     { id: 'available', label: 'Available', count: availableJobs.length },
                     { id: 'upcoming', label: 'My Jobs', count: myJobs.length },
@@ -204,7 +218,8 @@ export function CleanerDashboard({
                     else if (view === 'earnings') onNavigateToEarnings();
                     else if (view === 'notifications') onNavigateToNotifications();
                 }}
-                unreadMessages={unreadCount}
+                unreadNotifications={unreadCount}
+                unreadMessages={unreadMessages}
             />
         </SafeAreaView>
     );
@@ -238,8 +253,8 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                     <Text style={styles.jobId}>{job.id}</Text>
                     <Text style={styles.serviceType}>{job.serviceType}</Text>
                 </View>
-                <Badge variant={isCompleted ? 'success' : 'secondary'}>
-                    {isCompleted ? 'Completed' : job.status === 'IN_PROGRESS' ? 'In Progress' : 'Upcoming'}
+                <Badge variant={isCompleted ? 'success' : job.status === 'REVISION_REQUESTED' ? 'error' : job.status === 'IN_PROGRESS' ? 'info' : 'secondary'}>
+                    {isCompleted ? 'Completed' : job.status === 'REVISION_REQUESTED' ? 'Revision' : job.status === 'IN_PROGRESS' ? 'In Progress' : 'Upcoming'}
                 </Badge>
             </View>
             <View style={styles.cardContent}>
@@ -270,7 +285,12 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                             </View>
                         )}
                         {showStartButton && !isCompleted && (
-                            <Button title="Start" onPress={() => onStart(job)} variant="gradient" style={styles.startBtn} />
+                            <Button 
+                                title={job.status === 'REVISION_REQUESTED' ? 'Fix Issues' : job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'} 
+                                onPress={() => onStart(job)} 
+                                variant="gradient" 
+                                style={styles.startBtn} 
+                            />
                         )}
                         <TouchableOpacity onPress={() => onSelect(job)} style={styles.detailsBtn}>
                             <Text style={styles.detailsText}>Details</Text>
@@ -355,6 +375,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.md,
+    },
+    avatarImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
     userName: {
         fontSize: 18,

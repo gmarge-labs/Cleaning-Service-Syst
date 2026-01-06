@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
-import { sendApplicationAccepted, sendApplicationRejected } from '../utils/email.service';
+import { sendApplicationAccepted, sendApplicationRejected, sendEmail } from '../utils/email.service';
+import { uploadBase64File } from '../utils/googleDrive';
 
 export const submitApplication = async (req: Request, res: Response) => {
   try {
@@ -35,6 +36,24 @@ export const submitApplication = async (req: Request, res: Response) => {
       agreedToTerms
     } = req.body;
 
+    // Handle Google Drive Upload for ID Document
+    let driveIdUrl = idUrl;
+    if (idUrl && idUrl.startsWith('data:')) {
+      const now = new Date();
+      const year = now.getFullYear().toString();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const day = now.getDate().toString().padStart(2, '0');
+      
+      const folderPath = ['Applicants', year, month, day, `${firstName}_${lastName}`.replace(/\s+/g, '_')];
+      
+      // Determine extension from base64
+      const mimeType = idUrl.split(';')[0].split(':')[1];
+      const extension = mimeType.split('/')[1] || 'jpg';
+      
+      const timestamp = new Date().getTime();
+      driveIdUrl = await uploadBase64File(idUrl, `ID_Document_${timestamp}.${extension}`, folderPath);
+    }
+
     // Using any cast for cleanerApplication as the editor's TS server might not have picked up the generated types yet
     const application = await (prisma as any).cleanerApplication.create({
       data: {
@@ -49,7 +68,7 @@ export const submitApplication = async (req: Request, res: Response) => {
         state,
         zipCode,
         ssn,
-        idUrl,
+        idUrl: driveIdUrl,
         reference1Name,
         reference1Phone,
         reference1Relationship,
@@ -89,6 +108,33 @@ export const submitApplication = async (req: Request, res: Response) => {
         }
       });
     }
+
+    // Send email to company
+    const settings = await prisma.systemSettings.findUnique({
+      where: { id: 'default' }
+    });
+
+    const general = settings?.general as any;
+    const companyEmail = general?.email || 'hello@Sparkleville.com';
+
+    await sendEmail({
+      to: companyEmail,
+      subject: `New Cleaner Application: ${application.firstName} ${application.lastName}`,
+      templateType: 'broadcast',
+      variables: {
+        name: 'Admin',
+        message: `
+          You have received a new cleaner application:
+          
+          Name: ${application.firstName} ${application.lastName}
+          Email: ${application.email}
+          Phone: ${application.phone}
+          Location: ${application.city}, ${application.state}
+          
+          Please log in to the admin dashboard to review the full application.
+        `
+      }
+    });
 
     res.status(201).json({
       message: 'Application submitted successfully',
@@ -138,6 +184,38 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Update application status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getCleaners = async (req: Request, res: Response) => {
+  try {
+    const cleaners = await prisma.user.findMany({
+      where: {
+        role: 'CLEANER'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        profileImage: true,
+        address: true,
+        createdAt: true,
+      }
+    });
+
+    // Map profileImage to photo for compatibility
+    const formattedCleaners = cleaners.map(cleaner => ({
+      ...cleaner,
+      photo: cleaner.profileImage,
+      rating: 4.5, // Default rating - can be calculated from reviews later
+      completedJobs: 0, // Can be calculated from completed bookings
+    }));
+
+    res.json(formattedCleaners);
+  } catch (error) {
+    console.error('Get cleaners error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

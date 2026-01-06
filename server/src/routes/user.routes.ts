@@ -17,6 +17,7 @@ const router = Router();
 
 router.get('/', getAllUsers);
 router.post('/', createUser);
+router.get('/by-email/:email/cleaning-stats', getCleaningStats);
 router.get('/:userId', getProfile);
 router.get('/:userId/cleaning-stats', getCleaningStats);
 router.patch('/:userId', updateProfile);

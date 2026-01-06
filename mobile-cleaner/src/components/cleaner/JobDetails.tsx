@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform, Alert } from 'react-native';
 import { ArrowLeft, MapPin, Clock, DollarSign, Navigation, CheckCircle, AlertCircle, Package, Shield, Send, Key, IdCard, ListChecks, ChevronRight, Users, Wrench, Info, Home } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -7,6 +7,7 @@ import { Button } from '../Button';
 import { Input } from '../Input';
 import { jobService, Booking, calculateEarnings } from '../../api/job.service';
 import { LinearGradient } from 'expo-linear-gradient';
+import { socketService } from '../../api/socket.service';
 
 interface JobDetailsProps {
     job: Booking;
@@ -17,9 +18,12 @@ interface JobDetailsProps {
 }
 
 export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: JobDetailsProps) {
+    const isClaimedByMe = job.claimedBy?.some(c => c.id === user?.id) || 
+                         job.cleanerId === user?.id;
     const [isClockedIn, setIsClockedIn] = useState(job.status === 'IN_PROGRESS');
     const [startTime, setStartTime] = useState<Date | null>(job.status === 'IN_PROGRESS' ? new Date() : null);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [arrivalNotified, setArrivalNotified] = useState(job.status === 'ARRIVED' || job.status === 'IN_PROGRESS');
     const [securityCodeInput, setSecurityCodeInput] = useState('');
     const [cleanerIdInput, setCleanerIdInput] = useState('');
     const [showTaskList, setShowTaskList] = useState(job.status === 'IN_PROGRESS');
@@ -27,19 +31,101 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
     const [elapsedTime, setElapsedTime] = useState('0:00');
 
     const cleanerId = user?.id || 'CLN-12845';
-    const jobSecurityCode = '4738';
 
-    const cleaningTasks = [
-        'Dust all surfaces',
-        'Vacuum all floors',
-        'Mop hard floors',
-        'Empty trash bins',
-        'Wipe down light switches',
-        'Clean countertops',
-        'Clean sink and faucet',
-        'Sanitize toilet',
-        'Clean mirrors',
-    ];
+    const getCleaningTasks = () => {
+        const tasks = [
+            `Standard ${job.serviceType} tasks`,
+            `${job.bedrooms} Bedrooms`,
+            `${job.bathrooms} Bathrooms`,
+            `${job.toilets} Toilets`,
+        ];
+
+        // Add specific rooms
+        if (job.rooms) {
+            Object.entries(job.rooms).forEach(([room, qty]) => {
+                if (qty && (qty as number) > 0) {
+                    const roomName = room.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    tasks.push(`${qty}x ${roomName}`);
+                }
+            });
+        }
+
+        // Add kitchen add-ons
+        if (job.kitchenAddOns) {
+            Object.entries(job.kitchenAddOns).forEach(([kitchen, addons]) => {
+                if (Array.isArray(addons)) {
+                    addons.forEach(addon => {
+                        const addonName = addon.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                        tasks.push(`Kitchen: ${addonName}`);
+                    });
+                }
+            });
+        }
+
+        // Add laundry details
+        if (job.laundryRoomDetails) {
+            Object.entries(job.laundryRoomDetails).forEach(([room, details]: [string, any]) => {
+                if (details.baskets) {
+                    tasks.push(`Laundry: ${details.baskets} Baskets`);
+                }
+                if (details.washAndFold) tasks.push('Laundry: Wash & Fold');
+                if (details.ironing) tasks.push('Laundry: Ironing');
+            });
+        }
+
+        // Add general add-ons
+        if (job.addOns && Array.isArray(job.addOns)) {
+            job.addOns.forEach(addon => {
+                const name = typeof addon === 'string' ? addon : addon.name;
+                const qty = typeof addon === 'string' ? 1 : (addon.quantity || 1);
+                tasks.push(`${qty}x ${name}`);
+            });
+        }
+
+        // Add special instructions if any
+        if (job.specialInstructions) {
+            tasks.push(`NOTE: ${job.specialInstructions}`);
+        }
+
+        // Add base tasks
+        tasks.push('Dust all surfaces');
+        tasks.push('Vacuum all floors');
+        tasks.push('Mop hard floors');
+        tasks.push('Empty trash bins');
+
+        return tasks;
+    };
+
+    const cleaningTasks = getCleaningTasks();
+
+    useEffect(() => {
+        const socket = socketService.getSocket();
+        if (socket) {
+            const handleJobStarted = (data: any) => {
+                if (data.bookingId === job.id) {
+                    setIsClockedIn(true);
+                    setStartTime(new Date());
+                    setShowTaskList(true);
+                    setArrivalNotified(true);
+                    Alert.alert('Job Started!', 'The customer has verified your identity. You can now start the cleaning.');
+                }
+            };
+
+            const handleRevisionRequested = (data: any) => {
+                if (data.bookingId === job.id) {
+                    Alert.alert('Revision Requested', 'The customer has requested a revision for this job. Please check the details.');
+                    // You might want to refresh the job data here or just let the user see the updated status
+                }
+            };
+
+            socket.on('job_started', handleJobStarted);
+            socket.on('revision_requested', handleRevisionRequested);
+            return () => {
+                socket.off('job_started', handleJobStarted);
+                socket.off('revision_requested', handleRevisionRequested);
+            };
+        }
+    }, [job.id]);
 
     useEffect(() => {
         let interval: any;
@@ -55,24 +141,34 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
         return () => clearInterval(interval);
     }, [isClockedIn, startTime]);
 
-    const handleArrival = () => {
+    const handleArrival = async () => {
+        setShowVerificationModal(true);
+    };
+
+    const handleSendVerification = async () => {
+        if (!securityCodeInput || !cleanerIdInput) {
+            alert('Please enter both Security Code and Cleaner ID');
+            return;
+        }
+
+        try {
+            await jobService.notifyArrival(job.id, user.id, securityCodeInput);
+            setArrivalNotified(true);
+            setShowVerificationModal(false);
+            alert('Verification credentials sent to customer. Please wait for them to verify.');
+        } catch (error: any) {
+            alert(error.message);
+        }
+    };
+
+    const handleStartClick = () => {
         setShowVerificationModal(true);
     };
 
     const handleVerify = async () => {
-        if (securityCodeInput === jobSecurityCode && cleanerIdInput === cleanerId) {
-            try {
-                await jobService.updateJobStatus(job.id, 'IN_PROGRESS');
-                setIsClockedIn(true);
-                setStartTime(new Date());
-                setShowTaskList(true);
-                setShowVerificationModal(false);
-            } catch (error: any) {
-                alert(error.message);
-            }
-        } else {
-            alert('Invalid Security Code or Cleaner ID');
-        }
+        // This is now handled by the customer, but we can keep a local check if we want
+        // or just wait for the status to change to IN_PROGRESS via polling/socket
+        handleSendVerification();
     };
 
     const handleGetDirections = () => {
@@ -129,8 +225,8 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                         <Text style={styles.headerTitle}>Job Details</Text>
                         <Text style={styles.headerSubtitle}>{job.id}</Text>
                     </View>
-                    <Badge variant={job.status === 'COMPLETED' ? 'success' : isClockedIn ? 'info' : 'outline'} style={{ borderColor: Colors.white }}>
-                        {job.status === 'COMPLETED' ? 'Completed' : isClockedIn ? 'In Progress' : 'Not Started'}
+                    <Badge variant={job.status === 'COMPLETED' ? 'success' : job.status === 'REVISION_REQUESTED' ? 'error' : isClockedIn ? 'info' : 'outline'} style={{ borderColor: Colors.white }}>
+                        {job.status === 'COMPLETED' ? 'Completed' : job.status === 'REVISION_REQUESTED' ? 'Revision Requested' : isClockedIn ? 'In Progress' : 'Not Started'}
                     </Badge>
                 </View>
 
@@ -212,10 +308,6 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 <View>
                                     <Text style={styles.label}>Start Time</Text>
                                     <Text style={styles.value}>{job.time}</Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.label}>Frequency</Text>
-                                    <Text style={styles.value}>{job.frequency || 'One-time'}</Text>
                                 </View>
                             </View>
                         </View>
@@ -364,20 +456,40 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 </View>
                             </View>
                         ) : null}
+
+                        {/* Revision Reason */}
+                        {job.status === 'REVISION_REQUESTED' && job.revisionReason ? (
+                            <View style={[styles.detailCard, { borderColor: Colors.error, borderWidth: 1 }]}>
+                                <View style={styles.detailHeader}>
+                                    <AlertCircle size={20} color={Colors.error} />
+                                    <Text style={[styles.detailTitle, { color: Colors.error }]}>Revision Requested</Text>
+                                </View>
+                                <View style={[styles.instructionBox, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
+                                    <Text style={[styles.instructionText, { color: Colors.error }]}>"{job.revisionReason}"</Text>
+                                </View>
+                                <Text style={{ fontSize: 12, color: Colors.gray, marginTop: 8 }}>
+                                    Please address the issues mentioned above and submit new photos for verification.
+                                </Text>
+                            </View>
+                        ) : null}
                     </View>
                 )}
             </ScrollView>
 
             {/* Footer Actions */}
             <View style={styles.footer}>
-                {!job.cleanerId ? (
-                    <Button title="Claim Job" onPress={() => onClaimJob(job.id)} variant="gradient" />
+                {!isClaimedByMe ? (
+                    <Button title="Claim" onPress={() => onClaimJob(job.id)} variant="gradient" />
                 ) : job.status === 'COMPLETED' ? (
                     <View style={{ alignItems: 'center', padding: Spacing.sm }}>
                         <Text style={{ color: Colors.success, fontWeight: 'bold' }}>Job Completed</Text>
                     </View>
                 ) : !isClockedIn ? (
-                    <Button title="Start Job" onPress={handleArrival} variant="gradient" />
+                    !arrivalNotified ? (
+                        <Button title="Arrive" onPress={handleArrival} variant="gradient" />
+                    ) : (
+                        <Button title="Start" onPress={handleStartClick} variant="gradient" />
+                    )
                 ) : (
                     <Button
                         title="Complete Job"
@@ -406,26 +518,25 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                             style={styles.codeCard}
                         >
                             <View style={styles.codeItem}>
-                                <Text style={styles.codeLabel}>Security Code</Text>
-                                <Text style={styles.codeValue}>{jobSecurityCode}</Text>
-                            </View>
-                            <View style={styles.codeDivider} />
-                            <View style={styles.codeItem}>
-                                <Text style={styles.codeLabel}>Cleaner ID</Text>
-                                <Text style={styles.codeValue}>{cleanerId}</Text>
+                                <Text style={styles.codeLabel}>Your Verification Code</Text>
+                                <View style={styles.codeRow}>
+                                    <Key size={24} color={Colors.white} style={{ marginRight: 8 }} />
+                                    <Text style={styles.codeValue}>{job.securityCode || '----'}</Text>
+                                </View>
+                                <Text style={styles.codeHint}>Provide this code to the customer</Text>
                             </View>
                         </LinearGradient>
 
                         <View style={styles.inputSection}>
                             <Input
-                                label="Enter Security Code"
+                                label="Enter Security Code from Customer"
                                 value={securityCodeInput}
                                 onChangeText={setSecurityCodeInput}
                                 placeholder="4-digit code"
                                 keyboardType="numeric"
                             />
                             <Input
-                                label="Enter Cleaner ID"
+                                label="Confirm Your Cleaner ID"
                                 value={cleanerIdInput}
                                 onChangeText={setCleanerIdInput}
                                 placeholder="CLN-XXXXX"
@@ -433,7 +544,7 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                         </View>
 
                         <View style={styles.modalActions}>
-                            <Button title="Verify & Start" onPress={handleVerify} variant="gradient" />
+                            <Button title="Send to Customer" onPress={handleSendVerification} variant="gradient" />
                             <Button title="Cancel" variant="outline" onPress={() => setShowVerificationModal(false)} />
                         </View>
                     </SafeAreaView>
@@ -726,29 +837,40 @@ const styles = StyleSheet.create({
         color: Colors.gray,
     },
     codeCard: {
-        flexDirection: 'row',
         backgroundColor: Colors.primary,
-        borderRadius: 16,
-        padding: Spacing.md,
+        borderRadius: 24,
+        padding: Spacing.xl,
         marginBottom: Spacing.xl,
     },
     codeItem: {
-        flex: 1,
         alignItems: 'center',
+        paddingVertical: Spacing.sm,
     },
     codeLabel: {
-        fontSize: 10,
+        fontSize: 14,
         color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 4,
+        marginBottom: 8,
+    },
+    codeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     codeValue: {
-        fontSize: 20,
+        fontSize: 36,
         fontWeight: 'bold',
-        color: Colors.white,
+        color: Colors.white, 
+        letterSpacing: 2,
+    },
+    codeHint: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.7)',
+        marginTop: 8,
     },
     codeDivider: {
-        width: 1,
+        height: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        marginVertical: Spacing.md,
     },
     inputSection: {
         gap: Spacing.md,
