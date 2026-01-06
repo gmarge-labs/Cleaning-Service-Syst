@@ -9,13 +9,13 @@ frontend:
       commands:
         - npm run build
   artifacts:
-    baseDirectory: frontend/build
+    baseDirectory: build
     files:
       - '**/*'
   cache:
     paths:
-      - frontend/node_modules/**/*
+      - node_modules/**/*
 env:
   variables:
-    VITE_API_URL: https://your-ec2-backend-domain.com/api
-    VITE_SOCKET_URL: https://your-ec2-backend-domain.com
+    VITE_API_URL: http://localhost:5000/api
+    VITE_SOCKET_URL: http://localhost:5000
