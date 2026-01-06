@@ -5,6 +5,7 @@ const user_controller_1 = require("../controllers/user.controller");
 const router = (0, express_1.Router)();
 router.get('/', user_controller_1.getAllUsers);
 router.post('/', user_controller_1.createUser);
+router.get('/by-email/:email/cleaning-stats', user_controller_1.getCleaningStats);
 router.get('/:userId', user_controller_1.getProfile);
 router.get('/:userId/cleaning-stats', user_controller_1.getCleaningStats);
 router.patch('/:userId', user_controller_1.updateProfile);

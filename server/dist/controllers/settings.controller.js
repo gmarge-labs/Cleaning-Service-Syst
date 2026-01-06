@@ -12,14 +12,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getQualifiedUsersCount = exports.updateSettings = exports.getSettings = void 0;
+exports.getIntegrationHealth = exports.testAPIConfig = exports.updateAPIConfig = exports.getAPIConfig = exports.getAPIConfigs = exports.getQualifiedUsersCount = exports.updateSettings = exports.getSettings = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const api_config_service_1 = require("../utils/api-config.service");
 const DEFAULT_SETTINGS = {
     general: {
         companyName: 'Sparkleville',
         email: 'hello@Sparkleville.com',
-        phone: '(555) 123-4567',
-        address: '123 Clean Street, Suite 100',
+        phone: '+12079007700',
+        address: 'City: Bangor, State: Maine, County: Penobscot county',
         businessHours: '8:00 AM - 8:00 PM',
         serviceArea: '10001, 10002, 10003',
     },
@@ -101,10 +102,27 @@ const DEFAULT_SETTINGS = {
         googleCalendar: { enabled: true, apiKey: 'AIza***************' },
     },
     notifications: {
-        confirmation: 'Dear {customer_name}, Your booking for {service_type} on {date} at {time} has been confirmed...',
+        confirmation: `Dear {customer_name},
+
+Your booking has been successfully confirmed! Here are your booking details:
+
+BOOKING INFORMATION
+Booking ID: {booking_id}
+Service Type: {service_type}
+Date: {date}
+Time: {time}
+Location: {address}
+Total Amount: {total_amount}
+
+{booking_details}
+
+Thank you for choosing Sparkleville for your cleaning needs. Our team is committed to providing you with professional and reliable service. If you have any questions or need to make changes to your booking, please don't hesitate to contact us.
+
+Best regards,
+The Sparkleville Team`,
         reminder: 'Hi {customer_name}, This is a reminder that your {service_type} is scheduled for tomorrow at {time}...',
         completion: 'Hi {customer_name}, Your cleaning service has been completed. We hope you\'re satisfied with the results...',
-        welcome: 'Dear {customer_name}, Welcome to our platform! Your account has been created and you can now access all our services.',
+        welcome: 'Dear {customer_name}, Welcome to our Sparkleville! Your account has been created, kindly find your login details below.',
         application_accepted: 'Dear {name}, Congratulations! Your application to join the Sparkleville team has been accepted. We are excited to have you on board. Our team will contact you shortly with the next steps for onboarding.',
         application_rejected: 'Dear {name}, Thank you for your interest in joining Sparkleville. After carefully reviewing your application, we regret to inform you that we will not be moving forward with your application at this time. We wish you the best in your future endeavors.',
     }
@@ -202,3 +220,128 @@ const getQualifiedUsersCount = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.getQualifiedUsersCount = getQualifiedUsersCount;
+/**
+ * Get all API configurations
+ * Admin endpoint
+ */
+const getAPIConfigs = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const configs = yield api_config_service_1.APIConfigService.getConfigs();
+        // Mask sensitive data before sending to client
+        const maskedConfigs = {
+            sendgrid: configs.sendgrid ? {
+                enabled: configs.sendgrid.enabled,
+                apiKey: configs.sendgrid.apiKey ? `${configs.sendgrid.apiKey.substring(0, 10)}...` : '',
+                fromEmail: configs.sendgrid.fromEmail,
+                configured: !!configs.sendgrid.apiKey
+            } : null,
+            payment: configs.payment ? {
+                enabled: configs.payment.enabled,
+                apiKey: configs.payment.apiKey ? `${configs.payment.apiKey.substring(0, 10)}...` : '',
+                provider: configs.payment.provider,
+                configured: !!configs.payment.apiKey
+            } : null,
+            googleCalendar: configs.googleCalendar ? {
+                enabled: configs.googleCalendar.enabled,
+                apiKey: configs.googleCalendar.apiKey ? `${configs.googleCalendar.apiKey.substring(0, 10)}...` : '',
+                calendarId: configs.googleCalendar.calendarId,
+                configured: !!configs.googleCalendar.apiKey
+            } : null
+        };
+        res.json(maskedConfigs);
+    }
+    catch (error) {
+        console.error('Get API configs error:', error);
+        res.status(500).json({ message: 'Failed to retrieve API configurations' });
+    }
+});
+exports.getAPIConfigs = getAPIConfigs;
+/**
+ * Get specific API configuration
+ * Admin endpoint
+ */
+const getAPIConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { name } = req.params;
+        if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+            return res.status(400).json({ message: 'Invalid API name' });
+        }
+        const config = yield api_config_service_1.APIConfigService.getConfig(name);
+        if (!config) {
+            return res.json({ configured: false });
+        }
+        // Mask sensitive data
+        return res.json(Object.assign(Object.assign({}, config), { apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '', secretKey: config.secretKey ? `${config.secretKey.substring(0, 10)}...` : '', configured: !!config.apiKey }));
+    }
+    catch (error) {
+        console.error('Get API config error:', error);
+        res.status(500).json({ message: 'Failed to retrieve API configuration' });
+    }
+});
+exports.getAPIConfig = getAPIConfig;
+/**
+ * Update API configuration
+ * Admin endpoint
+ */
+const updateAPIConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { name } = req.params;
+        const updates = req.body;
+        if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+            return res.status(400).json({ message: 'Invalid API name' });
+        }
+        const updated = yield api_config_service_1.APIConfigService.updateConfig(name, updates);
+        // Get the specific config for this service
+        const config = updated[name];
+        // Mask sensitive data in response
+        const maskedResponse = Object.assign(Object.assign({}, config), { apiKey: (config === null || config === void 0 ? void 0 : config.apiKey) ? `${config.apiKey.substring(0, 10)}...` : '', secretKey: (config === null || config === void 0 ? void 0 : config.secretKey) ? `${config.secretKey.substring(0, 10)}...` : '', configured: !!(config === null || config === void 0 ? void 0 : config.apiKey) });
+        res.json(maskedResponse);
+    }
+    catch (error) {
+        console.error('Update API config error:', error);
+        res.status(500).json({ message: 'Failed to update API configuration' });
+    }
+});
+exports.updateAPIConfig = updateAPIConfig;
+/**
+ * Test API configuration
+ * Admin endpoint - validates if API keys are working
+ */
+const testAPIConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { name } = req.params;
+        if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+            return res.status(400).json({ message: 'Invalid API name' });
+        }
+        const isValid = yield api_config_service_1.APIConfigService.validateConfig(name);
+        res.json({
+            service: name,
+            valid: isValid,
+            message: isValid ? `${name} configuration is valid` : `${name} configuration is invalid or incomplete`
+        });
+    }
+    catch (error) {
+        console.error('Test API config error:', error);
+        res.status(500).json({ message: 'Failed to test API configuration' });
+    }
+});
+exports.testAPIConfig = testAPIConfig;
+/**
+ * Get health status of all API integrations
+ * Admin endpoint
+ */
+const getIntegrationHealth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const health = yield api_config_service_1.APIConfigService.checkHealthStatus();
+        res.json({
+            status: health.sendgrid && health.payment && health.googleCalendar ? 'healthy' : 'degraded',
+            services: health,
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Get integration health error:', error);
+        res.status(500).json({ message: 'Failed to check integration health' });
+    }
+});
+exports.getIntegrationHealth = getIntegrationHealth;

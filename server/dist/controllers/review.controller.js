@@ -42,6 +42,14 @@ const createReview = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 comment: comment || '',
             }
         });
+        // Update booking as accepted when review is submitted
+        if (booking) {
+            yield prisma_1.default.booking.update({
+                where: { id: bookingId },
+                data: { isAccepted: true }
+            });
+            console.log(`Booking ${bookingId} marked as accepted after review submission`);
+        }
         // Notify admins about the new review
         yield (0, notification_1.notifyAdmins)({
             type: 'REVIEW_RECEIVED',

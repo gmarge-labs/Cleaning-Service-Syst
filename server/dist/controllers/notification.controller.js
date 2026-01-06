@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUnreadCountsByType = exports.createNotification = exports.deleteNotification = exports.markAllAsRead = exports.markAsRead = exports.getUnreadCount = exports.getUserNotifications = void 0;
+exports.markAllByTypeAsRead = exports.getUnreadCountsByType = exports.createNotification = exports.deleteNotification = exports.markAllAsRead = exports.markAsRead = exports.getUnreadCount = exports.getUserNotifications = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 // Get all notifications for a user
 const getUserNotifications = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -176,3 +176,23 @@ const getUnreadCountsByType = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getUnreadCountsByType = getUnreadCountsByType;
+// Mark all notifications of a specific type as read
+const markAllByTypeAsRead = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { userId } = req.params;
+    const { type } = req.query;
+    if (!type || typeof type !== 'string') {
+        return res.status(400).json({ error: 'Type parameter is required' });
+    }
+    try {
+        yield prisma_1.default.notification.updateMany({
+            where: { userId, isRead: false, type },
+            data: { isRead: true },
+        });
+        res.json({ message: `All ${type} notifications marked as read` });
+    }
+    catch (error) {
+        console.error('Mark all by type as read error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.markAllByTypeAsRead = markAllByTypeAsRead;

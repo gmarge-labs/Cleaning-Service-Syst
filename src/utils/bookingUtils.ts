@@ -1,8 +1,19 @@
 import { BookingData, SystemSettings } from '../components/booking/BookingFlow';
 
 export function calculateBookingDuration(bookingData: BookingData, settings?: SystemSettings | null) {
+  // Handle rooms - can be array or object (from reschedule)
+  let roomArray: string[] = [];
+  if (bookingData.rooms) {
+    if (Array.isArray(bookingData.rooms)) {
+      roomArray = bookingData.rooms;
+    } else if (typeof bookingData.rooms === 'object') {
+      // Convert object keys to array (for reschedule case)
+      roomArray = Object.keys(bookingData.rooms);
+    }
+  }
+
   const roomCount = (bookingData.bedrooms || 0) + (bookingData.bathrooms || 0) + (bookingData.toilets || 0) + 
-    (bookingData.rooms?.reduce((acc, r) => acc + (bookingData.roomQuantities?.[r] || 1), 0) || 0);
+    (roomArray?.reduce((acc, r) => acc + (bookingData.roomQuantities?.[r] || 1), 0) || 0);
 
   let estimatedHours = 2 + (roomCount * 0.5); // Fallback
   let cleanerCount = 1;
@@ -15,8 +26,8 @@ export function calculateBookingDuration(bookingData: BookingData, settings?: Sy
     totalMinutes += (bookingData.bathrooms || 0) * (ds.perBathroom || 45);
     totalMinutes += (bookingData.toilets || 0) * (ds.perToilet || 15);
     
-    if (bookingData.rooms) {
-      bookingData.rooms.forEach(roomId => {
+    if (roomArray && roomArray.length > 0) {
+      roomArray.forEach(roomId => {
         const quantity = bookingData.roomQuantities?.[roomId] || 1;
         let roomDuration = ds.perOtherRoom || 20;
         
@@ -50,9 +61,12 @@ export function calculateBookingDuration(bookingData: BookingData, settings?: Sy
 
     // Laundry Details Duration
     if (bookingData.laundryRoomDetails) {
-      Object.values(bookingData.laundryRoomDetails).forEach((details: any) => {
-        const basketDuration = ds.perLaundryBasket || 30;
-        totalMinutes += (details.baskets || 1) * basketDuration;
+      const laundryDetails = bookingData.laundryRoomDetails as any;
+      Object.values(laundryDetails).forEach((details: any) => {
+        if (details && typeof details === 'object') {
+          const basketDuration = ds.perLaundryBasket || 30;
+          totalMinutes += (details.baskets || 1) * basketDuration;
+        }
       });
     }
 

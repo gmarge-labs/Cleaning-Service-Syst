@@ -167,12 +167,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
               <div className="text-sm text-neutral-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(bookingToCancel.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}</span>
+                  <span>{formatDisplayDate(bookingToCancel.date)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />

@@ -8,5 +8,6 @@ router.get('/:userId/unread-count', notification_controller_1.getUnreadCount);
 router.get('/:userId/unread-counts-by-type', notification_controller_1.getUnreadCountsByType);
 router.patch('/:notificationId/read', notification_controller_1.markAsRead);
 router.patch('/:userId/read-all', notification_controller_1.markAllAsRead);
+router.patch('/:userId/read-all-by-type', notification_controller_1.markAllByTypeAsRead);
 router.delete('/:notificationId', notification_controller_1.deleteNotification);
 exports.default = router;

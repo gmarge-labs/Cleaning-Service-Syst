@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
+import { formatDateForDB } from '../../../utils/dateUtils';
 import { Badge } from '../../ui/badge';
 
 interface PaymentStepProps {
@@ -90,6 +91,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
 
     const bookingPayload = {
       ...data,
+      date: data.date ? formatDateForDB(data.date) : null,
       userId: user?.id || null,
       guestName: !user ? (data.name || null) : null,
       guestEmail: !user ? (data.email || null) : null,

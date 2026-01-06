@@ -326,19 +326,23 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
       .join(', ');
   }
 
-  // Format add-ons
+  // Format add-ons - handle both array and name format
   let addOnsDetails = '';
   if (booking.addOns && Array.isArray(booking.addOns) && booking.addOns.length > 0) {
-    addOnsDetails = booking.addOns.join(', ');
+    addOnsDetails = booking.addOns
+      .map((addon: any) => typeof addon === 'object' ? addon.name : addon)
+      .join(', ');
   }
 
   // Format kitchen add-ons if available
   let kitchenDetails = '';
   if (booking.kitchenAddOns && typeof booking.kitchenAddOns === 'object') {
-    kitchenDetails = Object.entries(booking.kitchenAddOns)
+    const kitchenEntries = Object.entries(booking.kitchenAddOns)
       .filter(([_, value]: [string, any]) => value)
-      .map(([key, _]: [string, any]) => key)
-      .join(', ');
+      .map(([key, _]: [string, any]) => key);
+    if (kitchenEntries.length > 0) {
+      kitchenDetails = kitchenEntries.join(', ');
+    }
   }
 
   // Format laundry details if available
@@ -347,13 +351,37 @@ export async function sendBookingConfirmation(booking: any, customerEmail: strin
     const laundry = booking.laundryRoomDetails as any;
     if (laundry.selected && laundry.selectedOptions && laundry.selectedOptions.length > 0) {
       laundryDetails = laundry.selectedOptions.join(', ');
+    } else if (laundry[Object.keys(laundry)[0]]?.selectedOptions) {
+      // Alternative structure: laundry room index -> selectedOptions
+      const laundryEntries = Object.entries(laundry)
+        .filter(([_, value]: [string, any]) => value?.selectedOptions && value.selectedOptions.length > 0)
+        .map(([_, value]: [string, any]) => value.selectedOptions.join(', '));
+      laundryDetails = laundryEntries.join('; ');
     }
   }
 
-  // Build booking details summary
+  // Format pet details
+  let petDetails = '';
+  if (booking.hasPet && booking.petDetails) {
+    const petType = booking.petDetails.type || 'Pet';
+    const petDesc = booking.petDetails.description || '';
+    petDetails = `${petType}${petDesc ? ' - ' + petDesc : ''}`;
+  }
+
+  // Build comprehensive booking details summary
   let bookingDetails = `
+=== BOOKING CONFIRMATION ===
+
 Booking ID: ${booking.id}
+
+--- SERVICE DETAILS ---
 Service Type: ${booking.serviceType}
+Property Type: ${booking.propertyType || 'Not specified'}
+${propertyDetails ? `Property Size: ${propertyDetails}` : ''}
+${roomsDetails ? `\nRooms to be cleaned:\n${roomsDetails}` : ''}
+${booking.frequency ? `\nFrequency: ${booking.frequency}` : ''}
+
+--- SCHEDULING ---
 Date: ${new Date(booking.date).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -361,25 +389,23 @@ Date: ${new Date(booking.date).toLocaleDateString('en-US', {
     day: 'numeric'
   })}
 Time: ${booking.time || 'Not specified'}
-Frequency: ${booking.frequency || 'One-time'}
 Location: ${booking.address || 'Your specified location'}
-`;
 
-  if (booking.propertyType) bookingDetails += `Property Type: ${booking.propertyType}\n`;
-  if (propertyDetails) bookingDetails += `Property Details: ${propertyDetails}\n`;
-  if (roomsDetails) bookingDetails += `Rooms: ${roomsDetails}\n`;
-  if (addOnsDetails) bookingDetails += `Add-ons: ${addOnsDetails}\n`;
-  if (kitchenDetails) bookingDetails += `Kitchen Services: ${kitchenDetails}\n`;
-  if (laundryDetails) bookingDetails += `Laundry Services: ${laundryDetails}\n`;
-  if (booking.hasPet) bookingDetails += `Pets: Yes (${booking.petDetails?.type || 'Pet'} - ${booking.petDetails?.description || ''})\n`;
-  if (booking.specialInstructions) bookingDetails += `Special Instructions: ${booking.specialInstructions}\n`;
+--- SERVICES INCLUDED ---
+${addOnsDetails ? `Add-ons: ${addOnsDetails}` : 'Standard cleaning services'}
+${kitchenDetails ? `Kitchen Services: ${kitchenDetails}\n` : ''}${laundryDetails ? `Laundry Services: ${laundryDetails}\n` : ''}${petDetails ? `Pet Handling: ${petDetails}\n` : ''}${booking.specialInstructions ? `Special Instructions: ${booking.specialInstructions}\n` : ''}
 
-  bookingDetails += `
-Estimated Duration: ${booking.estimatedDuration || '0'} hours
-Cleaners Assigned: ${booking.cleanerCount || 1}
-Payment Method: ${booking.paymentMethod || 'To be determined'}
-Tip Amount: $${Number(booking.tipAmount || 0).toFixed(2)}
+--- APPOINTMENT DETAILS ---
+Estimated Duration: ${booking.estimatedDuration || 'TBD'} hours
+Cleaner(s) Assigned: ${booking.cleanerCount || 1}
+
+--- PAYMENT DETAILS ---
+Subtotal: $${Number(booking.totalAmount - (booking.tipAmount || 0)).toFixed(2)}
+Tip: $${Number(booking.tipAmount || 0).toFixed(2)}
 Total Amount: $${Number(booking.totalAmount).toFixed(2)}
+Payment Method: ${booking.paymentMethod || 'To be determined'}
+
+===========================
 `;
 
   return sendEmail({
@@ -500,7 +526,7 @@ export async function sendInvoiceEmail(booking: any, email: string, total: numbe
         month: 'long',
         day: 'numeric'
       }),
-      time: booking.time,
+      time: booking.time || 'Not specified',
       total_amount: total.toFixed(2),
       balance_due: balanceDue.toFixed(2),
       booking_id: booking.id

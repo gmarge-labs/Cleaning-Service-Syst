@@ -57,19 +57,30 @@ const getProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.getProfile = getProfile;
 const getCleaningStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { userId } = req.params;
+    const { userId, email } = req.params;
+    let targetUserId = userId;
     try {
+        // If email is provided, get the user ID from email
+        if (email && !userId) {
+            const user = yield prisma_1.default.user.findUnique({
+                where: { email: decodeURIComponent(email) }
+            });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            targetUserId = user.id;
+        }
         // Count completed bookings
         const completedCount = yield prisma_1.default.booking.count({
             where: {
-                userId,
+                userId: targetUserId,
                 status: 'COMPLETED'
             }
         });
         // Count bookings where free cleaning reward was used
         const usedRewards = yield prisma_1.default.booking.count({
             where: {
-                userId,
+                userId: targetUserId,
                 paymentMethod: 'free-cleaning-reward'
             }
         });
@@ -94,7 +105,7 @@ const getCleaningStats = (req, res) => __awaiter(void 0, void 0, void 0, functio
 exports.getCleaningStats = getCleaningStats;
 const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
-    const { name, phone, address, notificationSettings, currentPassword, newPassword, profileImage } = req.body;
+    const { name, phone, address, notificationSettings, currentPassword, newPassword, profileImage, isActive, bankAccountName, bankName, accountNumber, routingNumber } = req.body;
     try {
         // If password change is requested, validate current password first
         if (currentPassword && newPassword) {
@@ -118,6 +129,12 @@ const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                     notificationSettings,
                     password: hashedPassword,
                     profileImage,
+                    status: 'ACTIVE',
+                    isActive: isActive !== undefined ? isActive : undefined,
+                    bankAccountName,
+                    bankName,
+                    accountNumber,
+                    routingNumber,
                 },
             });
             const { password } = updatedUser, profile = __rest(updatedUser, ["password"]);
@@ -132,6 +149,12 @@ const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 address,
                 notificationSettings,
                 profileImage,
+                status: 'ACTIVE',
+                isActive: isActive !== undefined ? isActive : undefined,
+                bankAccountName,
+                bankName,
+                accountNumber,
+                routingNumber,
             },
         });
         const { password } = updatedUser, profile = __rest(updatedUser, ["password"]);
@@ -354,6 +377,7 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 email: email.toLowerCase(),
                 password: hashedPassword,
                 role: userRole,
+                status: 'PENDING',
                 phone: phone || null,
                 address: address || null,
                 notificationSettings: combinedSettings,

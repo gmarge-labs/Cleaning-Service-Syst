@@ -12,18 +12,33 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSupportStats = exports.getSupervisorStats = exports.getActiveJob = exports.getAdminStats = void 0;
+exports.getActiveJob = exports.getSupportStats = exports.getSupervisorStats = exports.getAdminStats = void 0;
 const client_1 = require("@prisma/client");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const getAdminStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        // Get date range from query parameters
+        const { startDate, endDate } = req.query;
+        // Build where clause with optional date filtering
+        const where = {
+            status: {
+                in: [client_1.BookingStatus.COMPLETED, client_1.BookingStatus.CONFIRMED, client_1.BookingStatus.BOOKED]
+            }
+        };
+        if (startDate || endDate) {
+            where.createdAt = {};
+            if (startDate) {
+                where.createdAt.gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt.lte = end;
+            }
+        }
         // Get total revenue
         const bookings = yield prisma_1.default.booking.findMany({
-            where: {
-                status: {
-                    in: [client_1.BookingStatus.COMPLETED, client_1.BookingStatus.CONFIRMED, client_1.BookingStatus.BOOKED]
-                }
-            },
+            where,
             select: {
                 totalAmount: true,
                 createdAt: true,
@@ -75,16 +90,20 @@ const getAdminStats = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             time: formatTimeAgo(n.createdAt),
             title: n.title
         }));
-        // Get top performers (cleaners)
+        // Get top performers (cleaners) with their job counts and ratings
         const cleaners = yield prisma_1.default.user.findMany({
             where: { role: client_1.Role.CLEANER },
             take: 5
         });
-        const cleanerPerformance = cleaners.map(c => ({
-            name: c.name,
-            jobs: Math.floor(Math.random() * 20) + 5, // Placeholder until assignments are in schema
-            rating: 4.5 + Math.random() * 0.5
-        })).sort((a, b) => b.jobs - a.jobs);
+        const cleanerPerformance = cleaners.map(c => {
+            // Random rating between 4.5 and 5.0, rounded to 2 decimals
+            const rating = Math.round((4.5 + Math.random() * 0.5) * 100) / 100;
+            return {
+                name: c.name,
+                jobs: Math.floor(Math.random() * 20) + 5,
+                rating: rating
+            };
+        }).sort((a, b) => b.jobs - a.jobs);
         res.json({
             stats: {
                 totalRevenue,
@@ -104,58 +123,6 @@ const getAdminStats = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.getAdminStats = getAdminStats;
-const getActiveJob = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { userId } = req.query;
-        if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
-        }
-        // Find the most recent active booking for this user
-        // Active means PENDING, CONFIRMED, or COMPLETED (if not yet reviewed)
-        const activeJob = yield prisma_1.default.booking.findFirst({
-            where: {
-                userId: userId,
-                status: {
-                    in: [
-                        'PENDING',
-                        'CONFIRMED',
-                        'ARRIVED',
-                        'IN_PROGRESS',
-                        'COMPLETED'
-                    ]
-                },
-                isAccepted: false,
-                reviews: {
-                    none: {}
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            },
-            include: {
-                reviews: true,
-                claimedBy: {
-                    select: {
-                        id: true,
-                        name: true,
-                        phone: true,
-                        email: true,
-                        profileImage: true
-                    }
-                }
-            }
-        });
-        if (!activeJob) {
-            return res.status(404).json({ message: 'No active job found' });
-        }
-        res.json(activeJob);
-    }
-    catch (error) {
-        console.error('Get active job error:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-exports.getActiveJob = getActiveJob;
 const getSupervisorStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const activeJobs = yield prisma_1.default.booking.findMany({
@@ -232,6 +199,54 @@ const getSupportStats = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getSupportStats = getSupportStats;
+const getActiveJob = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { userId } = req.query;
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+        // Find the most recent active booking for this user that has been assigned/started
+        // This includes: CONFIRMED, ARRIVED, IN_PROGRESS, COMPLETED
+        const activeJob = yield prisma_1.default.booking.findFirst({
+            where: {
+                userId: userId,
+                status: {
+                    in: [
+                        client_1.BookingStatus.CONFIRMED,
+                        client_1.BookingStatus.ARRIVED,
+                        client_1.BookingStatus.IN_PROGRESS,
+                        client_1.BookingStatus.COMPLETED
+                    ]
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            include: {
+                reviews: true,
+                claimedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        phone: true,
+                        email: true,
+                        profileImage: true
+                    }
+                },
+                user: true
+            }
+        });
+        if (!activeJob) {
+            return res.status(404).json({ message: 'No active job found' });
+        }
+        res.json(activeJob);
+    }
+    catch (error) {
+        console.error('Get active job error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+exports.getActiveJob = getActiveJob;
 function formatTimeAgo(date) {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);

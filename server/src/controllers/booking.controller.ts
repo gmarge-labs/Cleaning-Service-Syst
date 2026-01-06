@@ -59,18 +59,29 @@ export const createBooking = async (req: Request, res: Response) => {
     }
 
     // Generate custom booking ID: BK-YYYYMMDD-XXX
-    const bookingDate = new Date(date);
-    // Use UTC date components to match the ISO date string sent from frontend
-    const year = bookingDate.getUTCFullYear();
-    const month = String(bookingDate.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(bookingDate.getUTCDate()).padStart(2, '0');
-    const dateStr = `${year}${month}${day}`;
+    // Parse the date string to avoid timezone issues
+    let year: number, month: number, day: number;
+    if (typeof date === 'string') {
+      // If it's a string like "2025-01-22", extract the components
+      const [dateYear, dateMonth, dateDay] = date.split('T')[0].split('-').map(Number);
+      year = dateYear;
+      month = dateMonth;
+      day = dateDay;
+    } else {
+      // If it's a Date object, extract local date components
+      const d = new Date(date);
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    }
+    
+    const monthStr = String(month).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}${monthStr}${dayStr}`;
 
-    // Count bookings for this specific day to get the sequence number
-    const startOfDay = new Date(bookingDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(bookingDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    // Create date boundaries using UTC to ensure consistent behavior across timezones
+    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
     const count = await prisma.booking.count({
       where: {
@@ -127,7 +138,7 @@ export const createBooking = async (req: Request, res: Response) => {
         addOns: addOns || [],
         kitchenAddOns: kitchenAddOns ? JSON.parse(JSON.stringify(kitchenAddOns)) : null,
         laundryRoomDetails: laundryRoomDetails ? JSON.parse(JSON.stringify(laundryRoomDetails)) : null,
-        date: new Date(date),
+        date: new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)),
         time,
         frequency: frequency || 'One-time',
         specialInstructions: specialInstructions || '',
@@ -342,7 +353,22 @@ export const updateBooking = async (req: Request, res: Response) => {
         ...dataWithoutId,
         completionPhotos: completionPhotos,
         revisionPhotos: revisionPhotos,
-        date: updateData.date ? new Date(updateData.date) : undefined,
+        date: updateData.date ? (() => {
+          // Parse date string to avoid timezone issues - store as UTC midnight
+          let year: number, month: number, day: number;
+          if (typeof updateData.date === 'string') {
+            const [dateYear, dateMonth, dateDay] = updateData.date.split('T')[0].split('-').map(Number);
+            year = dateYear;
+            month = dateMonth;
+            day = dateDay;
+          } else {
+            const d = new Date(updateData.date);
+            year = d.getFullYear();
+            month = d.getMonth() + 1;
+            day = d.getDate();
+          }
+          return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        })() : undefined,
         estimatedDuration,
         cleanerCount,
         startTime: updateData.status === 'IN_PROGRESS' ? new Date() : undefined,
@@ -430,24 +456,45 @@ export const updateBooking = async (req: Request, res: Response) => {
     }
 
     // If date was changed (reschedule), notify admins
-    if (updateData.date && existingBooking.date !== new Date(updateData.date)) {
-      const oldDate = existingBooking.date.toLocaleDateString();
-      const newDate = new Date(updateData.date).toLocaleDateString();
+    if (updateData.date) {
+      // Parse new date using UTC to ensure consistent comparison
+      let newYear: number, newMonth: number, newDay: number;
+      if (typeof updateData.date === 'string') {
+        const [y, m, d] = updateData.date.split('T')[0].split('-').map(Number);
+        newYear = y;
+        newMonth = m;
+        newDay = d;
+      } else {
+        const d = new Date(updateData.date);
+        newYear = d.getFullYear();
+        newMonth = d.getMonth() + 1;
+        newDay = d.getDate();
+      }
 
-      await notifyAdmins({
-        type: 'BOOKING_UPDATED',
-        title: 'Booking Rescheduled',
-        message: `Booking ${id} has been rescheduled from ${oldDate} to ${newDate} by customer ${existingBooking.guestName || 'Guest'}`,
-        data: {
-          bookingId: id,
-          customerId: existingBooking.userId,
-          customerName: existingBooking.guestName,
-          serviceType: existingBooking.serviceType,
-          oldDate: oldDate,
-          newDate: newDate,
-          totalAmount: existingBooking.totalAmount.toString()
-        }
-      });
+      // Compare just the date portions (ignoring time)
+      const oldYear = existingBooking.date.getUTCFullYear();
+      const oldMonth = existingBooking.date.getUTCMonth() + 1;
+      const oldDay = existingBooking.date.getUTCDate();
+
+      if (newYear !== oldYear || newMonth !== oldMonth || newDay !== oldDay) {
+        const oldDate = existingBooking.date.toLocaleDateString();
+        const newDate = new Date(newYear, newMonth - 1, newDay).toLocaleDateString();
+
+        await notifyAdmins({
+          type: 'BOOKING_UPDATED',
+          title: 'Booking Rescheduled',
+          message: `Booking ${id} has been rescheduled from ${oldDate} to ${newDate} by customer ${existingBooking.guestName || 'Guest'}`,
+          data: {
+            bookingId: id,
+            customerId: existingBooking.userId,
+            customerName: existingBooking.guestName,
+            serviceType: existingBooking.serviceType,
+            oldDate: oldDate,
+            newDate: newDate,
+            totalAmount: existingBooking.totalAmount.toString()
+          }
+        });
+      }
     }
 
     res.json({

@@ -8,13 +8,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateUserId = generateUserId;
 const client_1 = require("@prisma/client");
-const prisma_1 = __importDefault(require("./prisma"));
+const uuid_1 = require("uuid");
 const PREFIXES = {
     [client_1.Role.CUSTOMER]: 'user',
     [client_1.Role.ADMIN]: 'adm',
@@ -25,43 +22,9 @@ const PREFIXES = {
 function generateUserId(role) {
     return __awaiter(this, void 0, void 0, function* () {
         const prefix = PREFIXES[role];
-        // Find the last user with this role, ordered by ID descending
-        // We need to filter by ID starting with the prefix to be safe
-        const lastUser = yield prisma_1.default.user.findFirst({
-            where: {
-                role: role,
-                id: {
-                    startsWith: prefix
-                }
-            },
-            orderBy: {
-                createdAt: 'desc' // Using createdAt as a proxy for order, but ideally we'd parse the ID. 
-                // However, since we are generating them sequentially, the latest created should have the highest number.
-            }
-        });
-        if (!lastUser) {
-            // First user of this role
-            return `${prefix}001`;
-        }
-        // Extract the number part
-        const idPart = lastUser.id.replace(prefix, '');
-        const currentNumber = parseInt(idPart, 10);
-        if (isNaN(currentNumber)) {
-            // Fallback if for some reason the ID format is messed up
-            return `${prefix}001`;
-        }
-        const nextNumber = currentNumber + 1;
-        // Pad with zeros to ensure at least 3 digits (or 4 for cleaner as per request example spkl0001)
-        // The request said: user001, adm02, spkl0001. 
-        // Let's standardize on 3 digits for most, and 4 for cleaner if that was specific, or just use 3 for all for consistency?
-        // User said: "user001, adm02, (for cleaner it should be spkl0001)"
-        // adm02 implies 2 digits? user001 implies 3? spkl0001 implies 4?
-        // Let's try to follow the examples.
-        let padding = 3;
-        if (role === client_1.Role.CLEANER)
-            padding = 4;
-        if (role === client_1.Role.ADMIN)
-            padding = 2;
-        return `${prefix}${nextNumber.toString().padStart(padding, '0')}`;
+        // Generate a unique ID using UUID v4 with the role prefix
+        // This eliminates race conditions entirely
+        const uniquePart = (0, uuid_1.v4)().replace(/-/g, '').substring(0, 12);
+        return `${prefix}_${uniquePart}`;
     });
 }
