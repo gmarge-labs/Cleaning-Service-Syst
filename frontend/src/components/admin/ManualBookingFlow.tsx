@@ -113,7 +113,7 @@ function CustomerInfoStep({
               type="tel"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="(555) 123-4567"
+              placeholder="+12079007700"
               className="mt-1.5"
             />
           </div>

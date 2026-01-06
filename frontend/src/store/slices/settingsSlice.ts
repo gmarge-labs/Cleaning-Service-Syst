@@ -18,9 +18,9 @@ interface SettingsState {
 const initialState: SettingsState = {
   general: {
     companyName: 'Sparkleville',
-    email: 'hello@Sparkleville.com',
-    phone: '(555) 123-4567',
-    address: '123 Clean Street, Suite 100',
+    email: 'admin@sparkleville.co',
+    phone: '+12079007700',
+    address: 'Bangor, Maine,Penobscot county',
     businessHours: '8:00 AM - 8:00 PM',
     serviceArea: '10001, 10002, 10003',
   },

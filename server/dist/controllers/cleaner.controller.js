@@ -90,7 +90,7 @@ const submitApplication = (req, res) => __awaiter(void 0, void 0, void 0, functi
             where: { id: 'default' }
         });
         const general = settings === null || settings === void 0 ? void 0 : settings.general;
-        const companyEmail = (general === null || general === void 0 ? void 0 : general.email) || 'hello@Sparkleville.com';
+        const companyEmail = (general === null || general === void 0 ? void 0 : general.email) || 'admin@sparkleville.co';
         yield (0, email_service_1.sendEmail)({
             to: companyEmail,
             subject: `New Cleaner Application: ${application.firstName} ${application.lastName}`,

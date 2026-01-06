@@ -407,7 +407,7 @@ export function ActiveJob() {
     profileImage: null,
     rating: 4.8,
     totalReviews: 127,
-    phone: '+1 (555) 123-4567'
+    phone: '+1 +12079007700'
   };
 
   // Get customer info for review section

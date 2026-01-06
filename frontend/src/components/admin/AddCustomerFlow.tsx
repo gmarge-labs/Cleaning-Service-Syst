@@ -292,7 +292,7 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
                 value={formData.phoneNumber}
                 onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-                placeholder="(555) 123-4567"
+                placeholder="+12079007700"
                 required
               />
             </div>

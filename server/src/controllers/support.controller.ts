@@ -30,7 +30,7 @@ export const submitContactForm = async (req: Request, res: Response) => {
     });
 
     const general = settings?.general as any;
-    const companyEmail = general?.email || 'hello@Sparkleville.com';
+    const companyEmail = general?.email || 'admin@sparkleville.co';
 
     await sendEmail({
       to: companyEmail,

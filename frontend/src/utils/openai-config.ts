@@ -48,7 +48,7 @@ export const KNOWLEDGE_BASE = [
     3. Select your preferred date and time
     4. Complete payment information
     
-    We offer next-day availability for most services. Book online in 60 seconds or call (555) 123-4567. Our customer service team is available Mon-Fri 7am-8pm, Sat-Sun 8am-6pm.`,
+    We offer next-day availability for most services. Book online in 60 seconds or call +12079007700. Our customer service team is available Mon-Fri 7am-8pm, Sat-Sun 8am-6pm.`,
   },
   {
     category: 'Company Info',
@@ -62,8 +62,8 @@ export const KNOWLEDGE_BASE = [
     - Professional and reliable
     
     Contact us:
-    - Main Line: (555) 123-4567
-    - Support Line: (555) 123-4568
+    - Main Line: +12079007700
+    - Support Line: +12079007700
     - Emergency 24/7: (555) 123-4569
     - Available for chat 24/7 with our AI Assistant Manager`,
   },

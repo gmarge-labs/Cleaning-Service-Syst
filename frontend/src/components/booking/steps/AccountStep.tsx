@@ -74,7 +74,7 @@ export function AccountStep({ data, onUpdate, onNext }: AccountStepProps) {
             type="tel"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            placeholder="(555) 123-4567"
+            placeholder="+12079007700"
             className="mt-1.5"
           />
           <p className="text-sm text-neutral-500 mt-1.5">
