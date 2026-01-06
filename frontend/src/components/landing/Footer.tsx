@@ -74,7 +74,7 @@ export function Footer({ onAdminLogin, onCleanerLogin }: FooterProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-primary-900/20 via-secondary-900/10 to-primary-800/15"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-16 w-full">
         <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-12 mb-12">
           {/* Brand Column */}
           <div className="lg:col-span-2">

@@ -207,7 +207,7 @@ export function LoginModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[420px] max-h-[90vh] my-4 md:my-8 lg:my-12 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[420px] max-h-[90vh] my-4 md:my-8 lg:my-12 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
         {/* Header with Gradient */}
         <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-6 pb-8 flex-shrink-0">
           <div className="flex items-center justify-center mb-3">
@@ -256,8 +256,8 @@ export function LoginModal({
                     />
                   </div>
                   <p className="text-xs text-neutral-500 flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
-                    Use @admin.com, @supervisor.com, or @support.com for staff access
+                    {/* <Shield className="w-3 h-3" />
+                    Use @admin.com, @supervisor.com, or @support.com for staff access */}
                   </p>
                 </div>
 

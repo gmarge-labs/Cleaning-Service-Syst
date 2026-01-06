@@ -109,7 +109,7 @@ export function ForgotPasswordModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[440px] p-0 overflow-hidden border-0 shadow-2xl">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[440px] p-0 overflow-hidden border-0 shadow-2xl">
         {/* Header with Gradient */}
         <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-6 pb-8">
           <div className="flex items-center justify-center mb-3">

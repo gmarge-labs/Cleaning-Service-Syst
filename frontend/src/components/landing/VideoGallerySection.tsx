@@ -141,7 +141,7 @@ export function VideoGallerySection() {
   };
 
   return (
-    <section className="py-20 px-2 sm:px-4 lg:px-6 bg-gradient-to-b from-neutral-50 to-white overflow-hidden">
+    <section className="py-20 px-3 sm:px-4 lg:px-6 bg-gradient-to-b from-neutral-50 to-white overflow-hidden w-full">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">

@@ -13,7 +13,7 @@ export function HeroSection({ onStartBooking }: HeroSectionProps) {
   const heroImages = [image1, image2, image3];
 
   return (
-    <section id="home" className="relative min-h-screen pt-20 pb-12 px-4 overflow-hidden">
+    <section id="home" className="relative min-h-screen pt-20 pb-12 px-3 sm:px-4 lg:px-6 overflow-hidden w-full">
       {/* Background Image Slider */}
       <div className="absolute top-20 left-0 right-0 bottom-0 w-full">
         <ImageSlider 
@@ -27,10 +27,10 @@ export function HeroSection({ onStartBooking }: HeroSectionProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
       </div>
 
-      <div className="relative z-20 max-w-7xl mx-auto px-6">
+      <div className="relative z-20 max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 w-full">
         <div className="flex items-end min-h-[calc(100vh-8rem)] pb-16">
           {/* Content */}
-          <div className="space-y-6 max-w-2xl">
+          <div className="space-y-6 max-w-2xl w-full">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
