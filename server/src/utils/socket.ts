@@ -6,10 +6,16 @@ import prisma from './prisma';
 let io: Server;
 
 export const initSocket = (server: HttpServer) => {
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',')
+    : ['http://localhost:3000'];
+
   io = new Server(server, {
     cors: {
-      origin: '*', // In production, specify the frontend URL
-      methods: ['GET', 'POST']
+      origin: allowedOrigins,
+      methods: ['GET', 'POST'],
+      credentials: true,
+      transports: ['websocket', 'polling']
     }
   });
 
