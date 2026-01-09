@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Upload, X, Eye, EyeOff, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
+import { api } from '../../utils/api';
 
 interface AddCustomerFlowProps {
   onComplete: () => void;
@@ -166,13 +167,7 @@ export function AddCustomerFlow({ onComplete, onCancel }: AddCustomerFlowProps) 
       };
 
       // Send to backend
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      const response = await api.post('/api/users', userData);
 
       if (!response.ok) {
         const errorData = await response.json();

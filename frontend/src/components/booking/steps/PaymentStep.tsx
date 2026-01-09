@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
 import { formatDateForDB } from '../../../utils/dateUtils';
 import { Badge } from '../../ui/badge';
+import { api } from '../../../utils/api';
 
 interface PaymentStepProps {
   data: BookingData;
@@ -103,7 +104,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     };
 
     try {
-      const response = await fetch('/api/bookings', {
+      const response = await api.post('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

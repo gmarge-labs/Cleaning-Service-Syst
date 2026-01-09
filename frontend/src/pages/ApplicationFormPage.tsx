@@ -9,6 +9,7 @@ import { ProgressIndicator } from '../components/booking/ProgressIndicator';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
+import { api } from '../utils/api';
 
 interface ApplicationFormData {
   // Step 1: Personal Information
@@ -132,7 +133,7 @@ export function ApplicationFormPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/cleaners/apply', {
+      const response = await api.post('/api/cleaners/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

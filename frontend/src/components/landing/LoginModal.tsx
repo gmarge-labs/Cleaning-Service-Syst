@@ -10,6 +10,7 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../store/slices/authSlice';
 import { ForgotPasswordModal } from '../auth/ForgotPasswordModal';
 import logo from '../../images/logo/Sparkleville1(2).png';
+import { api } from '../../utils/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -62,15 +63,9 @@ export function LoginModal({
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: loginEmail,
-          password: loginPassword,
-        }),
+      const response = await api.post('/api/auth/login', {
+        email: loginEmail,
+        password: loginPassword,
       });
 
       const data = await response.json();
@@ -162,17 +157,11 @@ export function LoginModal({
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: signupName,
-          email: signupEmail,
-          password: signupPassword,
-          role: 'CUSTOMER', // Default role for signup
-        }),
+      const response = await api.post('/api/auth/signup', {
+        name: signupName,
+        email: signupEmail,
+        password: signupPassword,
+        role: 'CUSTOMER', // Default role for signup
       });
 
       const data = await response.json();
