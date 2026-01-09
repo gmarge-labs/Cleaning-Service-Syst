@@ -71,6 +71,29 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// httpServer.listen(port, async () => {
+
+//   console.log(`Server is running on port ${port}`);
+  
+//   // Initialize API configurations on startup
+//   await initializeAPIConfigs();
+// });
+
+httpServer.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${port} is in use, retrying in 5 seconds...`);
+    setTimeout(() => {
+      httpServer.close();
+      httpServer.listen(port, async () => {
+        console.log(`Server is running on port ${port}`);
+        await initializeAPIConfigs();
+      });
+    }, 5000);
+  } else {
+    throw err;
+  }
+});
+
 httpServer.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
   
