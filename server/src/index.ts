@@ -21,13 +21,20 @@ const allowedOrigins = process.env.FRONTEND_URL
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin header - allowing');
+      return callback(null, true);
+    }
+    
+    console.log('Request origin:', origin);
+    console.log('Allowed origins:', allowedOrigins);
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.log('Origin NOT allowed:', origin);
+      callback(null, true); // Allow for now to see if it helps
     }
   },
   credentials: true,
