@@ -20,17 +20,11 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean | string) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
+    if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
-      // Return the matching origin, not the list
-      callback(null, origin);
+      callback(null, true);
     } else {
-      // Still allow but log it
-      callback(null, origin);
+      callback(null, true);
     }
   },
   credentials: true,
@@ -38,7 +32,19 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
+// Apply CORS
 app.use(cors(corsOptions));
+
+// Override CORS origin header to send only the matching origin
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin && allowedOrigins.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+  }
+  next();
+});
+
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
