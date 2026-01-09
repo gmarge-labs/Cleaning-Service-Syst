@@ -10,15 +10,13 @@ export const initSocket = (server: HttpServer) => {
     ? process.env.FRONTEND_URL.split(',')
     : ['http://localhost:3000'];
 
-  io = new Server(server, {
+   io = new Server(server, {
     cors: {
       origin: allowedOrigins,
       methods: ['GET', 'POST'],
-      credentials: true,
-      transports: ['websocket', 'polling']
+      credentials: true
     }
   });
-
   io.on('connection', (socket: Socket) => {
     console.log('A user connected:', socket.id);
 
