@@ -430,14 +430,14 @@ export function LoginModal({
                 </Button>
 
                 {/* Staff Account Note */}
-                <div className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                {/* <div className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-900 leading-relaxed">
                       <strong className="font-semibold">Staff Access:</strong> Accounts with @admin.com, @supervisor.com, or @support.com domains require administrator approval.
                     </p>
                   </div>
-                </div>
+                </div> */}
               </form>
             </TabsContent>
           </Tabs>

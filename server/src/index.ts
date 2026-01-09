@@ -14,12 +14,24 @@ const port = process.env.PORT || 5000;
 initSocket(httpServer);
 
 // CORS configuration for production
+// const corsOptions = {
+//   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// };
+// CORS configuration for production
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : ['http://localhost:3000'];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
+
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
