@@ -79,6 +79,7 @@ app.get('/api/health', (req, res) => {
 //   await initializeAPIConfigs();
 // });
 
+// Attach error handler FIRST, before any listen attempts
 httpServer.on('error', (err: any) => {
   if (err.code === 'EADDRINUSE') {
     console.log(`Port ${port} is in use, retrying in 5 seconds...`);
@@ -94,6 +95,7 @@ httpServer.on('error', (err: any) => {
   }
 });
 
+// Now listen
 httpServer.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
   
