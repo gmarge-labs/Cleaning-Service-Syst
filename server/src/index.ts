@@ -14,24 +14,26 @@ const port = process.env.PORT || 5000;
 initSocket(httpServer);
 
 // CORS configuration for production
-// const corsOptions = {
-//   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// };
-// CORS configuration for production
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
   : ['http://localhost:3000'];
 
 const corsOptions = {
-  origin: allowedOrigins,
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
-
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
@@ -75,4 +77,3 @@ httpServer.listen(port, async () => {
   // Initialize API configurations on startup
   await initializeAPIConfigs();
 });
- 
