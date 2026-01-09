@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
 import { Label } from "../../ui/label";
+import { api } from '../../../utils/api';
 
 export function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,7 +56,7 @@ export function InventoryPage() {
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/inventory');
+      const response = await api.get('/api/inventory');
       const data = await response.json();
       if (response.ok) {
         setInventoryItems(data);
@@ -72,18 +73,14 @@ export function InventoryPage() {
     try {
       const totalQuantity = Number(newItem.quantityPurchased) * Number(newItem.itemsPerPurchaseUnit);
       
-      const response = await fetch('/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newItem.name,
-          category: newItem.category,
-          quantity: totalQuantity,
-          unit: newItem.baseUnit,
-          reorderThreshold: newItem.reorderThreshold,
-          vendor: newItem.vendor,
-          cost: newItem.pricePerPurchaseUnit
-        }),
+      const response = await api.post('/api/inventory', {
+        name: newItem.name,
+        category: newItem.category,
+        quantity: totalQuantity,
+        unit: newItem.baseUnit,
+        reorderThreshold: newItem.reorderThreshold,
+        vendor: newItem.vendor,
+        cost: newItem.pricePerPurchaseUnit
       });
 
       if (response.ok) {

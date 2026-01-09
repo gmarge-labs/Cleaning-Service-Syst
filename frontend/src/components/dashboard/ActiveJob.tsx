@@ -29,6 +29,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { api } from '../../utils/api';
 
 type JobStatus = 'pending' | 'assigned' | 'arrived' | 'in-progress' | 'completed';
 type WorkflowStep = 'job-details' | 'payment' | 'review' | 'revision-request';
@@ -313,18 +314,11 @@ export function ActiveJob() {
     }
 
     try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          bookingId: displayJob.id,
-          rating,
-          comment: reviewText,
-          userId: user?.id,
-        }),
+      const response = await api.post('/api/reviews', {
+        bookingId: displayJob.id,
+        rating,
+        comment: reviewText,
+        userId: user?.id,
       });
 
       if (response.ok) {
