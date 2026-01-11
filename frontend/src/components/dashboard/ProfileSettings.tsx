@@ -77,7 +77,7 @@ export function ProfileSettings() {
   const handleSavePersonal = async () => {
     setIsLoading(true);
     try {
-      const response = await api.put(`/api/users/${user?.id}`, {
+      const response = await api.patch(`/api/users/${user?.id}`, {
         name: personalInfo.name,
         phone: personalInfo.phone,
       });
@@ -97,7 +97,7 @@ export function ProfileSettings() {
   const handleSaveNotifications = async () => {
     setIsLoading(true);
     try {
-      const response = await api.put(`/api/users/${user?.id}`, {
+      const response = await api.patch(`/api/users/${user?.id}`, {
         notificationSettings: notifications,
       });
 

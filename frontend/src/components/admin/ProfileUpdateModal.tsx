@@ -77,7 +77,7 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
         updateData.newPassword = formData.newPassword;
       }
       
-      const response = await api.put(`/api/users/${user?.id}`, updateData);
+      const response = await api.patch(`/api/users/${user?.id}`, updateData);
       
       if (!response.ok) {
         const errorText = await response.text();
