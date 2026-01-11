@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { PaymentModal } from './PaymentModal';
 import { parseDateFromDB, formatDisplayDate } from '../../utils/dateUtils';
+import { api } from '../../utils/api';
 
 interface DashboardOverviewProps {
   onStartBooking: () => void;
@@ -35,7 +36,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
     }
 
     try {
-      const response = await fetch(`/api/bookings?userId=${user.id}`);
+      const response = await api.get(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data);
@@ -52,7 +53,7 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
   const fetchCleaningStats = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
+      const response = await api.get(`/api/users/${user.id}/cleaning-stats`);
       if (response.ok) {
         const data = await response.json();
         setCleaningStats(data);

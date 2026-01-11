@@ -1,6 +1,7 @@
 import { Star, Quote } from 'lucide-react';
 import { ScrollReveal } from '../ui/scroll-reveal';
 import { useState, useEffect } from 'react';
+import { api } from '../../utils/api';
 
 interface Review {
   id: string;
@@ -25,7 +26,7 @@ export function TestimonialsSection() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const response = await fetch('/api/reviews/published');
+        const response = await api.get('/api/reviews/published');
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0) {

@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -27,7 +28,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/dashboard/admin/stats');
+      const response = await api.get('/api/dashboard/admin/stats');
       const data = await response.json();
       if (response.ok) {
         setDashboardData(data);
@@ -42,7 +43,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch('/api/cleaners/applications');
+      const response = await api.get('/api/cleaners/applications');
       const data = await response.json();
       if (response.ok) {
         setApplications(data.filter((app: any) => app.status === 'PENDING'));
@@ -54,11 +55,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
   
   const handleUpdateApplicationStatus = async (id: string, status: string) => {
     try {
-      const response = await fetch(`/api/cleaners/applications/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
+      const response = await api.put(`/api/cleaners/applications/${id}/status`, { status });
 
       if (response.ok) {
         toast.success(`Application ${status.toLowerCase()} successfully`);

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { UserRole } from './AdminDashboard';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import { api } from '../../utils/api';
 
 interface User {
   id: string;
@@ -94,12 +95,7 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar, user, onProfile
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      await api.put(`/api/notifications/${notificationId}/read`);
       
       setNotifications(
         notifications.map(n =>

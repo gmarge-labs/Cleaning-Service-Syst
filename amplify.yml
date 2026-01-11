@@ -17,5 +17,5 @@ frontend:
       - node_modules/**/*
 env:
   variables:
-   VITE_API_URL: https://api.sparkleville.co
-VITE_SOCKET_URL: https://api.sparkleville.co
+    VITE_API_URL: https://api.sparkleville.co
+    VITE_SOCKET_URL: https://api.sparkleville.co

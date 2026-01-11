@@ -46,7 +46,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     const fetchCleaningStats = async () => {
       if (!user?.id) return;
       try {
-        const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
+        const response = await api.get(`/api/users/${user.id}/cleaning-stats`);
         if (response.ok) {
           const data = await response.json();
           setCleaningStats(data);

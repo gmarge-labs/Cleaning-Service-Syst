@@ -6,6 +6,7 @@ import { Checkbox } from '../ui/checkbox';
 import { CreditCard, Shield, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { toast } from 'sonner';
+import { api } from '../../utils/api';
 
 interface PaymentModalProps {
     booking: any;
@@ -32,15 +33,9 @@ export function PaymentModal({ booking, onClose, onSuccess }: PaymentModalProps)
         setIsLoading(true);
 
         try {
-            const response = await fetch(`/api/bookings/${booking.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    status: 'BOOKED',
-                    paymentMethod: paymentMethod,
-                }),
+            const response = await api.put(`/api/bookings/${booking.id}`, {
+                status: 'BOOKED',
+                paymentMethod: paymentMethod,
             });
 
             const result = await response.json();
