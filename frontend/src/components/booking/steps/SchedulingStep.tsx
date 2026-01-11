@@ -252,11 +252,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     };
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingPayload),
-      });
+      const response = await api.post('/api/bookings', bookingPayload);
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || result.message || 'Failed to save draft');

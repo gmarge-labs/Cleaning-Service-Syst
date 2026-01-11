@@ -61,6 +61,19 @@ export const api = {
     });
     return response;
   },
+
+  patch: async (endpoint: string, data?: any, options?: RequestInit) => {
+    const response = await fetch(getApiUrl(endpoint), {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    });
+    return response;
+  },
 };
 
 export default api;

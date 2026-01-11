@@ -8,6 +8,7 @@ import { useSocket } from '../../../hooks/useSocket';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { api } from '../../../utils/api';
 
 export function MessagingPage() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -109,7 +110,7 @@ export function MessagingPage() {
     try {
       setIsLoading(true);
       console.log('Fetching conversations for user:', user.id);
-      const response = await fetch('/api/messages/conversations', {
+      const response = await api.get('/api/messages/conversations', {
         headers: {
           'x-user-id': user.id
         }
@@ -156,7 +157,7 @@ export function MessagingPage() {
     try {
       setIsContactsLoading(true);
       console.log('Fetching contacts for user:', user.id);
-      const response = await fetch('/api/messages/contacts', {
+      const response = await api.get('/api/messages/contacts', {
         headers: {
           'x-user-id': user.id
         }

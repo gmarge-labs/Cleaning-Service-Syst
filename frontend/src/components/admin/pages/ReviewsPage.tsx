@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
+import { api } from '../../../utils/api';
 import { RootState } from '../../../store/store';
 
 interface Review {
@@ -94,7 +95,7 @@ export function ReviewsPage() {
   const fetchReviews = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/reviews');
+      const response = await api.get('/api/reviews');
       if (response.ok) {
         const data = await response.json();
         setReviews(data);

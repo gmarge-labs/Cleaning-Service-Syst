@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { CleanerOnboardingFlow } from '../CleanerOnboardingFlow';
 import { Pagination } from '../../ui/pagination';
 import { toast } from 'sonner@2.0.3';
+import { api } from '../../../utils/api';
 
 interface Application {
   id: string;
@@ -61,7 +62,7 @@ export function CleanersPage() {
   const fetchCleaners = async () => {
     setIsLoadingCleaners(true);
     try {
-      const response = await fetch('/api/users?role=CLEANER');
+      const response = await api.get('/api/users?role=CLEANER');
       if (response.ok) {
         const result = await response.json();
         const data = result.data || [];
@@ -98,7 +99,7 @@ export function CleanersPage() {
   const fetchApplications = async () => {
     setIsLoadingApplications(true);
     try {
-      const response = await fetch('/api/cleaners/applications');
+      const response = await api.get('/api/cleaners/applications');
       if (response.ok) {
         const data = await response.json();
         setApplications(data);
