@@ -114,11 +114,7 @@ export function CleanersPage() {
 
   const handleUpdateApplicationStatus = async (id: string, status: string) => {
     try {
-      const response = await fetch(`/api/cleaners/applications/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      const response = await api.patch(`/api/cleaners/applications/${id}/status`, { status });
       if (response.ok) {
         toast.success(`Application ${status.toLowerCase()} successfully`);
         fetchApplications();

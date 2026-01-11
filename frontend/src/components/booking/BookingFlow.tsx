@@ -131,7 +131,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const settingsResponse = await fetch(`${API_URL}/settings`);
+        const settingsResponse = await api.get(`/api/settings`);
         if (settingsResponse.ok) {
           const data = await settingsResponse.json();
           setSettings(data);
@@ -140,7 +140,7 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
         // Fetch user's booking count if authenticated
         if (user?.id) {
           try {
-            const statsResponse = await fetch(`${API_URL}/users/${user.id}/cleaning-stats`);
+            const statsResponse = await api.get(`/api/users/${user.id}/cleaning-stats`);
             if (statsResponse.ok) {
               const statsData = await statsResponse.json();
               setUserBookingCount(statsData.completedCount || 0);

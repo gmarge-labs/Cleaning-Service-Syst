@@ -45,9 +45,7 @@ export function MessagingPage() {
     if (!user?.id) return;
     
     try {
-      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=MESSAGE_RECEIVED`, {
-        method: 'PATCH',
-      });
+      await api.patch(`/api/notifications/${user.id}/read-all-by-type?type=MESSAGE_RECEIVED`);
     } catch (error) {
       console.error('Failed to mark message notifications as read:', error);
     }
@@ -135,7 +133,7 @@ export function MessagingPage() {
   const fetchMessages = async (partnerId: string) => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/messages/${partnerId}`, {
+      const response = await api.get(`/api/messages/${partnerId}`, {
         headers: {
           'x-user-id': user.id
         }

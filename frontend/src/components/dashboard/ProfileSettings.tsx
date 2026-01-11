@@ -116,11 +116,7 @@ export function ProfileSettings() {
   const handleAddAddress = async (addressData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/addresses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addressData),
-      });
+      const response = await api.post(`/api/users/${user?.id}/addresses`, addressData);
 
       if (response.ok) {
         toast.success('Address added successfully');
@@ -138,9 +134,7 @@ export function ProfileSettings() {
 
   const handleDeleteAddress = async (id: string) => {
     try {
-      const response = await fetch(`/api/users/addresses/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/users/addresses/${id}`);
 
       if (response.ok) {
         toast.success('Address deleted');
@@ -154,11 +148,7 @@ export function ProfileSettings() {
   const handleAddPayment = async (paymentData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/payment-methods`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData),
-      });
+      const response = await api.post(`/api/users/${user?.id}/payment-methods`, paymentData);
 
       if (response.ok) {
         toast.success('Payment method added');
@@ -176,9 +166,7 @@ export function ProfileSettings() {
 
   const handleDeletePayment = async (id: string) => {
     try {
-      const response = await fetch(`/api/users/payment-methods/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/users/payment-methods/${id}`);
 
       if (response.ok) {
         toast.success('Payment method deleted');
@@ -197,13 +185,9 @@ export function ProfileSettings() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentPassword: passwords.current,
-          newPassword: passwords.new,
-        }),
+      const response = await api.post(`/api/users/${user?.id}/password`, {
+        currentPassword: passwords.current,
+        newPassword: passwords.new,
       });
 
       const result = await response.json();

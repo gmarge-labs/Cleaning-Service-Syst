@@ -8,6 +8,7 @@ import { AddCustomerFlow } from '../AddCustomerFlow';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { api } from '../../../utils/api';
 
 const statusColors = {
   'Active': 'bg-green-100 text-green-700',
@@ -47,7 +48,7 @@ export function CustomersPage() {
   const fetchCustomers = async (page: number) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/users?role=CUSTOMER&page=${page}&limit=${itemsPerPage}`);
+      const response = await api.get(`/api/users?role=CUSTOMER&page=${page}&limit=${itemsPerPage}`);
       if (!response.ok) throw new Error('Failed to fetch customers');
       const data = await response.json();
       

@@ -5,6 +5,7 @@ import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 import {
   Dialog,
   DialogContent,
@@ -110,11 +111,7 @@ export function InventoryPage() {
   const handleUpdateItem = async () => {
     if (!editingItem) return;
     try {
-      const response = await fetch(`/api/inventory/${editingItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingItem),
-      });
+      const response = await api.put(`/api/inventory/${editingItem.id}`, editingItem);
 
       if (response.ok) {
         toast.success('Item updated successfully');
@@ -134,9 +131,7 @@ export function InventoryPage() {
     if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`/api/inventory/${itemToDelete}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/inventory/${itemToDelete}`);
 
       if (response.ok) {
         toast.success('Item deleted successfully');

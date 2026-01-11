@@ -197,17 +197,12 @@ export function BookingsPage() {
 
   const handlePublishJob = async (jobData: any) => {
     try {
-      const response = await fetch(`/api/bookings/${jobData.bookingId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'CONFIRMED',
-          cleanerCount: jobData.requiredCleaners,
-          paymentPerHour: jobData.paymentPerHour,
-          toolsRequired: jobData.toolsRequired,
-          specialInstructions: jobData.specialInstructions,
+      const response = await api.patch(`/api/bookings/${jobData.bookingId}`, {
+        status: 'CONFIRMED',
+        cleanerCount: jobData.requiredCleaners,
+        paymentPerHour: jobData.paymentPerHour,
+        toolsRequired: jobData.toolsRequired,
+        specialInstructions: jobData.specialInstructions,
         }),
       });
 

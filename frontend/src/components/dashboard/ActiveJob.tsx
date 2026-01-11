@@ -87,7 +87,7 @@ export function ActiveJob() {
   const fetchActiveJob = async (showLoader = true) => {
     try {
       if (showLoader) setIsLoading(true);
-      const response = await fetch(`/api/dashboard/active-job?userId=${user?.id}`);
+      const response = await api.get(`/api/dashboard/active-job?userId=${user?.id}`);
       if (response.ok) {
         const data = await response.json();
         setActiveJob(data);
@@ -202,13 +202,8 @@ export function ActiveJob() {
 
   const handleAcceptWork = async () => {
     try {
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ isAccepted: true }),
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, {
+        isAccepted: true,
       });
 
       if (response.ok) {
@@ -270,17 +265,10 @@ export function ActiveJob() {
 
       const base64Photos = await Promise.all(photoPromises);
 
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          status: 'REVISION_REQUESTED',
-          revisionReason: revisionReason,
-          revisionPhotos: base64Photos
-        }),
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, {
+        status: 'REVISION_REQUESTED',
+        revisionReason: revisionReason,
+        revisionPhotos: base64Photos
       });
 
       if (response.ok) {
@@ -353,14 +341,7 @@ export function ActiveJob() {
     }
 
     try {
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status: 'IN_PROGRESS' }),
-      });
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, { status: 'IN_PROGRESS' });
 
       if (response.ok) {
         setShowVerificationModal(false);

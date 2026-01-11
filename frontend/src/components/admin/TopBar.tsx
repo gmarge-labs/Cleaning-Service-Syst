@@ -55,13 +55,8 @@ export function TopBar({ currentRole, onLogout, onToggleSidebar, user, onProfile
     
     try {
       setIsLoadingNotifications(true);
-      const response = await fetch(
-        `/api/notifications/${authUser.id}?limit=5`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+      const response = await api.get(
+        `/api/notifications/${authUser.id}?limit=5`
       );
 
       if (response.ok) {
