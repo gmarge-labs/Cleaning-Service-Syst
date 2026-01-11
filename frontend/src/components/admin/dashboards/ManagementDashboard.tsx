@@ -1,12 +1,11 @@
 import { DollarSign, Calendar, Users, Star, TrendingUp, TrendingDown, Activity, FileText, UserPlus, CheckSquare, Wallet, Download, X, Mail, Phone, MapPin, Clock } from 'lucide-react';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Button } from '../../ui/button';
 import { useState, useEffect } from 'react';
 import { Badge } from '../../ui/badge';
 import { toast } from 'sonner';
 import { api } from '../../../utils/api';
 import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
 
 export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'bookings' | 'cleaners' | 'analytics' | 'reviews') => void }) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -671,12 +670,12 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
             </div>
 
             <div className="space-y-3 mb-6">
-              {cleanerPerformance.slice(0, 5).map((cleaner, index) => (
+              {(dashboardData?.cleanerPerformance || []).slice(0, 5).map((cleaner: any, index: number) => (
                 <div key={index} className="border border-neutral-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-semibold">
-                        {cleaner.name.split(' ').map(n => n[0]).join('')}
+                        {cleaner.name.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
                         <div className="font-semibold text-neutral-900">{cleaner.name}</div>
@@ -696,7 +695,7 @@ export function ManagementDashboard({ onNavigate }: { onNavigate?: (page: 'booki
               <div className="flex items-center justify-between text-lg">
                 <span className="font-semibold text-neutral-900">Total Payroll</span>
                 <span className="font-bold text-secondary-500">
-                  ${cleanerPerformance.slice(0, 5).reduce((sum, c) => sum + (c.jobs * 45), 0).toFixed(2)}
+                  ${(dashboardData?.cleanerPerformance || []).slice(0, 5).reduce((sum: number, c: any) => sum + (c.jobs * 45), 0).toFixed(2)}
                 </span>
               </div>
             </div>
