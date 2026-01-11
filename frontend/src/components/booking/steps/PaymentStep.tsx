@@ -104,14 +104,15 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     };
 
     try {
-      const response = await api.post('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(bookingPayload),
-      });
+      // const response = await api.post('/api/bookings', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(bookingPayload),
+      // });
 
+      const response = await api.post('/api/bookings', bookingPayload);
       const result = await response.json();
 
       if (!response.ok) {
