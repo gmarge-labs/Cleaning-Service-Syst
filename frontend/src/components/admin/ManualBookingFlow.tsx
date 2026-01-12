@@ -11,6 +11,7 @@ import { SchedulingStep } from '../booking/steps/SchedulingStep';
 import { PricingSidebar } from '../booking/PricingSidebar';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner';
+import { api } from '../../utils/api';
 import logo from '../../images/logo/Sparkleville1(2).png';
 import { calculateBookingDuration, formatDisplayHours } from '../../utils/bookingUtils';
 
@@ -334,15 +335,11 @@ function InvoiceStep({
     }
     setIsSending(true);
     try {
-      const response = await fetch('/api/bookings/send-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId: data.id,
-          email: data.customerEmail,
-          total,
-          balanceDue
-        })
+      const response = await api.post('/api/bookings/send-invoice', {
+        bookingId: data.id,
+        email: data.customerEmail,
+        total,
+        balanceDue
       });
       if (response.ok) {
         setEmailSent(true);
@@ -687,7 +684,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch('/api/settings');
+        const response = await api.get('/api/settings');
         if (response.ok) {
           const data = await response.json();
           setSettings(data);
@@ -707,7 +704,7 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
         return;
       }
       try {
-        const response = await fetch(`/api/users/by-email/${encodeURIComponent(bookingData.customerEmail)}/cleaning-stats`);
+        const response = await api.get(`/api/users/by-email/${encodeURIComponent(bookingData.customerEmail)}/cleaning-stats`);
         if (response.ok) {
           const data = await response.json();
           setUserBookingCount(data.completedCount || 0);
@@ -792,17 +789,13 @@ export function ManualBookingFlow({ onComplete, onCancel }: ManualBookingFlowPro
         }
         const total = subtotal * (1 - discountRate);
 
-        const response = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...bookingData,
-            guestName: bookingData.customerName,
-            guestEmail: bookingData.customerEmail,
-            guestPhone: bookingData.customerPhone,
-            totalAmount: total,
-            status: 'BOOKED'
-          })
+        const response = await api.post('/api/bookings', {
+          ...bookingData,
+          guestName: bookingData.customerName,
+          guestEmail: bookingData.customerEmail,
+          guestPhone: bookingData.customerPhone,
+          totalAmount: total,
+          status: 'BOOKED'
         });
 
         if (response.ok) {

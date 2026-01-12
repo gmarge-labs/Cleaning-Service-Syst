@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from '../../ui/label';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import {
@@ -174,7 +175,7 @@ export function AnalyticsPage() {
         }
         
         // Fetch admin stats with date range
-        const response = await fetch(url);
+        const response = await api.get(url);
         if (!response.ok) {
           throw new Error('Failed to fetch analytics data');
         }

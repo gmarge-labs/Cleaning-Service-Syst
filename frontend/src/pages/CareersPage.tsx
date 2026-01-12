@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
+import { api } from '../utils/api';
 import { 
   Briefcase, 
   Users, 
@@ -121,7 +122,7 @@ export function CareersPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/cleaners/apply', {
+      const response = await api.post('/api/cleaners/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

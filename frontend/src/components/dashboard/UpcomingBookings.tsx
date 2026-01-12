@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { PaymentModal } from './PaymentModal';
 import { parseDateFromDB, formatDisplayDate } from '../../utils/dateUtils';
+import { api } from '../../utils/api';
 
 interface UpcomingBookingsProps {
   onReschedule?: (booking: any) => void;
@@ -28,7 +29,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     }
 
     try {
-      const response = await fetch(`/api/bookings?userId=${user.id}`);
+      const response = await api.get(`/api/bookings?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         // Filter for upcoming bookings (today or future) and not cancelled or completed
@@ -87,14 +88,8 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     if (!bookingToCancel) return;
 
     try {
-      const response = await fetch(`/api/bookings/${bookingToCancel.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'CANCELLED',
-        }),
+      const response = await api.put(`/api/bookings/${bookingToCancel.id}`, {
+        status: 'CANCELLED',
       });
 
       if (!response.ok) {

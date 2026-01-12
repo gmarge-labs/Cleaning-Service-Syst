@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from '../../ui/select';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 
 interface User {
   id: string;
@@ -86,7 +87,7 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setIsFetching(true);
-      const response = await fetch('/api/users');
+      const response = await api.get('/api/users');
       const data = await response.json();
       if (response.ok) {
         // Handle paginated response format from API
@@ -116,11 +117,7 @@ export function UserManagementPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = await api.post('/api/users', formData);
 
       if (response.ok) {
         toast.success('User created successfully');

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building, DollarSign, Bell, Plug, Save, Key, Tag, AlertCircle, TrendingDown, Loader2, Plus, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../ui/badge';
-
+import { api } from '../../../utils/api';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import { updateGeneralSettings } from '../../../store/slices/settingsSlice';
@@ -134,7 +134,7 @@ export function SettingsPage() {
       
       try {
         setIsLoadingCount(true);
-        const response = await fetch(`${API_URL}/settings/qualified-count?category=${pricingSettings.topBookerCategory}`);
+        const response = await api.get(`/api/settings/qualified-count?category=${pricingSettings.topBookerCategory}`);
         if (response.ok) {
           const data = await response.json();
           setQualifiedUsersCount(data.count);
@@ -152,7 +152,7 @@ export function SettingsPage() {
   const fetchSettings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/settings`);
+      const response = await api.get(`/api/settings`);
       if (!response.ok) throw new Error('Failed to fetch settings');
       const data = await response.json();
       
@@ -178,11 +178,7 @@ export function SettingsPage() {
   const saveSettings = async (updates: any) => {
     try {
       setIsSaving(true);
-      const response = await fetch(`${API_URL}/settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
+      const response = await api.patch(`/api/settings`, updates);
 
       if (!response.ok) throw new Error('Failed to update settings');
       

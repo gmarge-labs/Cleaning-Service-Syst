@@ -21,6 +21,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import { sendMessageToOpenAI, Message } from '../utils/openai-service';
 import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '../components/ui/scroll-reveal';
 import { toast } from 'sonner';
+import { api } from '../utils/api';
 
 interface ContactPageProps {
   onStartChat: () => void;
@@ -61,7 +62,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
   useEffect(() => {
     const fetchBusinessHours = async () => {
       try {
-        const response = await fetch('/api/settings');
+        const response = await api.get('/api/settings');
         if (response.ok) {
           const data = await response.json();
           if (data.general?.businessHours) {
@@ -89,13 +90,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
     };
 
     try {
-      const response = await fetch('/api/support/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await api.post('/api/support/contact', data);
 
       if (response.ok) {
         toast.success('Message sent successfully! We\'ll get back to you soon.');

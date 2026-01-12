@@ -3,6 +3,7 @@ import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 
 export function SupportDashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -15,7 +16,7 @@ export function SupportDashboard() {
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/dashboard/support/stats');
+      const response = await api.get('/api/dashboard/support/stats');
       const data = await response.json();
       if (response.ok) {
         setDashboardData(data);

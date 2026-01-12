@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, Upload, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner@2.0.3';
+import { api } from '../../utils/api';
 
 interface CleanerOnboardingFlowProps {
   onComplete: () => void;
@@ -260,17 +261,13 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
 
   const handleComplete = async () => {
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.tempPassword || 'Clean!2024', // Fallback
-          role: 'CLEANER',
-          phone: formData.phoneNumber,
-          address: `${formData.homeAddress}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
-        }),
+      const response = await api.post('/api/users', {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.tempPassword || 'Clean!2024', // Fallback
+        role: 'CLEANER',
+        phone: formData.phoneNumber,
+        address: `${formData.homeAddress}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
       });
 
       if (response.ok) {

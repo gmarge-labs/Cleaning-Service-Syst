@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
 import { formatDateForDB } from '../../../utils/dateUtils';
 import { Badge } from '../../ui/badge';
+import { api } from '../../../utils/api';
 
 interface PaymentStepProps {
   data: BookingData;
@@ -45,7 +46,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     const fetchCleaningStats = async () => {
       if (!user?.id) return;
       try {
-        const response = await fetch(`/api/users/${user.id}/cleaning-stats`);
+        const response = await api.get(`/api/users/${user.id}/cleaning-stats`);
         if (response.ok) {
           const data = await response.json();
           setCleaningStats(data);
@@ -103,14 +104,15 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     };
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(bookingPayload),
-      });
+      // const response = await api.post('/api/bookings', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(bookingPayload),
+      // });
 
+      const response = await api.post('/api/bookings', bookingPayload);
       const result = await response.json();
 
       if (!response.ok) {

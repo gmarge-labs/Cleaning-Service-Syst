@@ -14,6 +14,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { socketService } from '../../../api/socket.service';
 import { MessageModal } from '../modals/MessageModal';
+import { api } from '../../../utils/api';
 
 type Tab = 'unclaimed' | 'claimed' | 'completed';
 
@@ -79,9 +80,7 @@ export function BookingsPage() {
     if (!user?.id) return;
     
     try {
-      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=BOOKING_CREATED`, {
-        method: 'PATCH',
-      });
+      await api.patch(`/api/notifications/${user.id}/read-all-by-type?type=BOOKING_CREATED`);
     } catch (error) {
       console.error('Failed to mark booking notifications as read:', error);
     }
@@ -89,9 +88,9 @@ export function BookingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/settings');
-      const data = await response.json();
+      const response = await api.get('/api/settings');
       if (response.ok) {
+        const data = await response.json();
         setSettings(data);
       }
     } catch (error) {
@@ -102,9 +101,9 @@ export function BookingsPage() {
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/bookings');
-      const data = await response.json();
+      const response = await api.get('/api/bookings');
       if (response.ok) {
+        const data = await response.json();
         setBookings(data);
       }
     } catch (error) {
@@ -198,20 +197,13 @@ export function BookingsPage() {
 
   const handlePublishJob = async (jobData: any) => {
     try {
-      const response = await fetch(`/api/bookings/${jobData.bookingId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'CONFIRMED',
-          cleanerCount: jobData.requiredCleaners,
-          paymentPerHour: jobData.paymentPerHour,
-          toolsRequired: jobData.toolsRequired,
-          specialInstructions: jobData.specialInstructions,
-        }),
+      const response = await api.patch(`/api/bookings/${jobData.bookingId}`, {
+        status: 'CONFIRMED',
+        cleanerCount: jobData.requiredCleaners,
+        paymentPerHour: jobData.paymentPerHour,
+        toolsRequired: jobData.toolsRequired,
+        specialInstructions: jobData.specialInstructions,
       });
-
       if (response.ok) {
         toast.success(`Job ${jobData.bookingId} has been published successfully!`);
         setEditJobModal(null);

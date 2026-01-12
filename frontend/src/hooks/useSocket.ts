@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { toast } from 'sonner';
 
-const SOCKET_URL = 'http://localhost:5000'; // Match your server port
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
