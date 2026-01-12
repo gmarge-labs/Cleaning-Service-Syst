@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
 import { Label } from "../../ui/label";
-import { api } from '../../../utils/api';
+
 
 export function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,7 +216,7 @@ export function InventoryPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-neutral-900 mb-1">₦{totalValue.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-neutral-900 mb-1">${totalValue.toLocaleString()}</div>
           <div className="text-sm text-neutral-600">Total Value</div>
         </div>
 
@@ -344,7 +344,7 @@ export function InventoryPage() {
                       <span className="text-neutral-900">{item.vendor}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-neutral-900">₦{Number(item.cost).toLocaleString()}</span>
+                      <span className="font-semibold text-neutral-900">${Number(item.cost).toLocaleString()}</span>
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-neutral-600">
@@ -464,7 +464,7 @@ export function InventoryPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="pricePerPurchaseUnit">Price per Purchase Unit (₦)</Label>
+                <Label htmlFor="pricePerPurchaseUnit">Price per Purchase Unit ($)</Label>
                 <Input
                   id="pricePerPurchaseUnit"
                   type="number"
@@ -570,7 +570,7 @@ export function InventoryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-cost">Cost (₦)</Label>
+                  <Label htmlFor="edit-cost">Cost ($)</Label>
                   <Input
                     id="edit-cost"
                     type="number"

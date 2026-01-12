@@ -12,7 +12,7 @@ import { ProgressIndicator } from './ProgressIndicator';
 import { PricingSidebar } from './PricingSidebar';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { parseDateFromDB } from '../../utils/dateUtils';
-
+import { api } from '../../utils/api';
 const API_URL = '/api';
 
 export interface BookingData {
