@@ -203,9 +203,7 @@ export function BookingsPage() {
         paymentPerHour: jobData.paymentPerHour,
         toolsRequired: jobData.toolsRequired,
         specialInstructions: jobData.specialInstructions,
-        }),
       });
-
       if (response.ok) {
         toast.success(`Job ${jobData.bookingId} has been published successfully!`);
         setEditJobModal(null);

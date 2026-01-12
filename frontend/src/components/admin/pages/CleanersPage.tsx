@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, MapPin, Calendar, DollarSign, Phone, Mail, Search, Filter, Eye, Edit, X, Send, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Star, MapPin, Calendar, DollarSign, Phone, Mail, Search, Filter, Eye, Edit, X, Send, Clock, CheckCircle, XCircle, FileText } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { CleanerOnboardingFlow } from '../CleanerOnboardingFlow';
 import { Pagination } from '../../ui/pagination';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { api } from '../../../utils/api';
 
 interface Application {
@@ -248,7 +248,7 @@ export function CleanersPage() {
                 <div>
                   <h4 className="font-semibold text-neutral-900 mb-3">Specialties</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCleaner.specialties.map((specialty, index) => (
+                    {selectedCleaner.specialties.map((specialty: string, index: number) => (
                       <Badge key={index} variant="secondary" className="bg-secondary-100 text-secondary-700">
                         {specialty}
                       </Badge>
@@ -260,7 +260,7 @@ export function CleanersPage() {
                   <h4 className="font-semibold text-neutral-900 mb-3">Certifications</h4>
                   <div className="bg-neutral-50 rounded-lg p-4">
                     <ul className="space-y-2">
-                      {selectedCleaner.certifications.map((cert, index) => (
+                      {selectedCleaner.certifications.map((cert: string, index: number) => (
                         <li key={index} className="flex items-center gap-2 text-neutral-700">
                           <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                           {cert}
