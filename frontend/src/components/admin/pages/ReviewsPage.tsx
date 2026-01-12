@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
+import { api } from '../../../utils/api';
 import { RootState } from '../../../store/store';
 
 interface Review {
@@ -83,9 +84,7 @@ export function ReviewsPage() {
     if (!user?.id) return;
     
     try {
-      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=REVIEW_RECEIVED`, {
-        method: 'PATCH',
-      });
+      await api.patch(`/api/notifications/${user.id}/read-all-by-type?type=REVIEW_RECEIVED`);
     } catch (error) {
       console.error('Failed to mark review notifications as read:', error);
     }
@@ -94,7 +93,7 @@ export function ReviewsPage() {
   const fetchReviews = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/reviews');
+      const response = await api.get('/api/reviews');
       if (response.ok) {
         const data = await response.json();
         setReviews(data);
@@ -111,11 +110,7 @@ export function ReviewsPage() {
 
   const handlePublish = async (id: string) => {
     try {
-      const response = await fetch(`/api/reviews/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PUBLISHED' })
-      });
+      const response = await api.patch(`/api/reviews/${id}/status`, { status: 'PUBLISHED' });
 
       if (response.ok) {
         setReviews(reviews.map(review => 
@@ -133,11 +128,7 @@ export function ReviewsPage() {
 
   const handleUnpublish = async (id: string) => {
     try {
-      const response = await fetch(`/api/reviews/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PENDING' })
-      });
+      const response = await api.patch(`/api/reviews/${id}/status`, { status: 'PENDING' });
 
       if (response.ok) {
         setReviews(reviews.map(review => 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateUser } from '../../store/slices/authSlice';
 import { RootState } from '../../store/store';
+import { api } from '../../utils/api';
 
 interface ProfileUpdateModalProps {
   isOpen: boolean;
@@ -76,14 +77,7 @@ export function ProfileUpdateModal({ isOpen, onClose }: ProfileUpdateModalProps)
         updateData.newPassword = formData.newPassword;
       }
       
-      const response = await fetch(`/api/users/${user?.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-      });
+      const response = await api.patch(`/api/users/${user?.id}`, updateData);
       
       if (!response.ok) {
         const errorText = await response.text();

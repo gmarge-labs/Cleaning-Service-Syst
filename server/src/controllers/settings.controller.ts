@@ -5,7 +5,7 @@ import { APIConfigService } from '../utils/api-config.service';
 const DEFAULT_SETTINGS = {
   general: {
     companyName: 'Sparkleville',
-    email: 'hello@Sparkleville.com',
+    email: 'admin@sparkleville.co',
     phone: '+12079007700',
     address: 'City: Bangor, State: Maine, County: Penobscot county',
     businessHours: '8:00 AM - 8:00 PM',

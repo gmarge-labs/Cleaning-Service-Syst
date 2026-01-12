@@ -9,6 +9,7 @@ import { ProgressIndicator } from '../components/booking/ProgressIndicator';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
+import { api } from '../utils/api';
 
 interface ApplicationFormData {
   // Step 1: Personal Information
@@ -132,7 +133,7 @@ export function ApplicationFormPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/cleaners/apply', {
+      const response = await api.post('/api/cleaners/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +216,7 @@ export function ApplicationFormPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="(555) 123-4567"
+                    placeholder="+12079007700"
                     className="mt-1.5 bg-white"
                   />
                 </div>
@@ -448,7 +449,7 @@ export function ApplicationFormPage() {
                         type="tel"
                         value={formData.reference1Phone}
                         onChange={(e) => handleInputChange('reference1Phone', e.target.value)}
-                        placeholder="(555) 123-4567"
+                        placeholder="+12079007700"
                         className="mt-1.5 bg-white"
                       />
                     </div>
@@ -547,7 +548,7 @@ export function ApplicationFormPage() {
                         type="tel"
                         value={formData.reference2Phone}
                         onChange={(e) => handleInputChange('reference2Phone', e.target.value)}
-                        placeholder="(555) 123-4567"
+                        placeholder="+12079007700"
                         className="mt-1.5 bg-white"
                       />
                     </div>

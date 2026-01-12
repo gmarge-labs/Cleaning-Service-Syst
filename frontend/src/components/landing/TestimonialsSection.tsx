@@ -1,6 +1,7 @@
 import { Star, Quote } from 'lucide-react';
 import { ScrollReveal } from '../ui/scroll-reveal';
 import { useState, useEffect } from 'react';
+import { api } from '../../utils/api';
 
 interface Review {
   id: string;
@@ -25,7 +26,7 @@ export function TestimonialsSection() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const response = await fetch('/api/reviews/published');
+        const response = await api.get('/api/reviews/published');
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0) {
@@ -73,10 +74,10 @@ export function TestimonialsSection() {
 
   return (
     <section 
-      className="py-12 px-2 sm:px-4 lg:px-6 bg-gradient-to-b from-white to-neutral-50 overflow-hidden"
+      className="py-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-b from-white to-neutral-50 overflow-hidden w-full"
       style={{ '--review-count': reviews.length } as React.CSSProperties}
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-3 sm:px-0">
         {/* Section Header */}
         <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-neutral-900 mb-4">

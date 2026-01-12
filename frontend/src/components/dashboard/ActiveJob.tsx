@@ -29,6 +29,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { api } from '../../utils/api';
 
 type JobStatus = 'pending' | 'assigned' | 'arrived' | 'in-progress' | 'completed';
 type WorkflowStep = 'job-details' | 'payment' | 'review' | 'revision-request';
@@ -86,7 +87,7 @@ export function ActiveJob() {
   const fetchActiveJob = async (showLoader = true) => {
     try {
       if (showLoader) setIsLoading(true);
-      const response = await fetch(`/api/dashboard/active-job?userId=${user?.id}`);
+      const response = await api.get(`/api/dashboard/active-job?userId=${user?.id}`);
       if (response.ok) {
         const data = await response.json();
         setActiveJob(data);
@@ -201,13 +202,8 @@ export function ActiveJob() {
 
   const handleAcceptWork = async () => {
     try {
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ isAccepted: true }),
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, {
+        isAccepted: true,
       });
 
       if (response.ok) {
@@ -269,17 +265,10 @@ export function ActiveJob() {
 
       const base64Photos = await Promise.all(photoPromises);
 
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          status: 'REVISION_REQUESTED',
-          revisionReason: revisionReason,
-          revisionPhotos: base64Photos
-        }),
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, {
+        status: 'REVISION_REQUESTED',
+        revisionReason: revisionReason,
+        revisionPhotos: base64Photos
       });
 
       if (response.ok) {
@@ -313,18 +302,11 @@ export function ActiveJob() {
     }
 
     try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          bookingId: displayJob.id,
-          rating,
-          comment: reviewText,
-          userId: user?.id,
-        }),
+      const response = await api.post('/api/reviews', {
+        bookingId: displayJob.id,
+        rating,
+        comment: reviewText,
+        userId: user?.id,
       });
 
       if (response.ok) {
@@ -359,14 +341,7 @@ export function ActiveJob() {
     }
 
     try {
-      const response = await fetch(`/api/bookings/${displayJob.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status: 'IN_PROGRESS' }),
-      });
+      const response = await api.patch(`/api/bookings/${displayJob.id}`, { status: 'IN_PROGRESS' });
 
       if (response.ok) {
         setShowVerificationModal(false);
@@ -407,7 +382,7 @@ export function ActiveJob() {
     profileImage: null,
     rating: 4.8,
     totalReviews: 127,
-    phone: '+1 (555) 123-4567'
+    phone: '+1 +12079007700'
   };
 
   // Get customer info for review section

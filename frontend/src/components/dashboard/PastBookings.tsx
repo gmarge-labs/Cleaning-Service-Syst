@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { api } from '../../utils/api';
 
 export function PastBookings() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -23,7 +24,7 @@ export function PastBookings() {
   const fetchPastBookings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/bookings?userId=${user?.id}&status=COMPLETED`);
+      const response = await api.get(`/api/bookings?userId=${user?.id}&status=COMPLETED`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data);

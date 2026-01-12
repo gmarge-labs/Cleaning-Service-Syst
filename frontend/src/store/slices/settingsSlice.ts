@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { api } from '../../utils/api';
 
 interface GeneralSettings {
   companyName: string;
@@ -18,9 +19,9 @@ interface SettingsState {
 const initialState: SettingsState = {
   general: {
     companyName: 'Sparkleville',
-    email: 'hello@Sparkleville.com',
-    phone: '(555) 123-4567',
-    address: '123 Clean Street, Suite 100',
+    email: 'admin@sparkleville.co',
+    phone: '+12079007700',
+    address: 'Bangor, Maine,Penobscot county',
     businessHours: '8:00 AM - 8:00 PM',
     serviceArea: '10001, 10002, 10003',
   },
@@ -31,7 +32,7 @@ const initialState: SettingsState = {
 export const fetchSettings = createAsyncThunk(
   'settings/fetchSettings',
   async () => {
-    const response = await fetch('/api/settings');
+    const response = await api.get('/api/settings');
     if (!response.ok) throw new Error('Failed to fetch settings');
     const data = await response.json();
     return data;

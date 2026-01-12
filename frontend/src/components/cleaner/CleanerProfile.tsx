@@ -34,7 +34,7 @@ export function CleanerProfile({ currentView, onNavigate }: CleanerProfileProps)
     name: 'Maria Garcia',
     cleanerId: 'CLN-12845',
     email: 'maria.garcia@Sparkleville.com',
-    phone: '+1 (555) 123-4567',
+    phone: '+1 +12079007700',
     address: '456 Maple Avenue, Apt 3B, New York, NY 10001',
     preferredWorkingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     preferredWorkingShift: 'Morning (6 AM - 12 PM)',

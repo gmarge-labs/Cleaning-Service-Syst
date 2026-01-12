@@ -635,7 +635,7 @@ export function PricingPage({ onGetQuote }: PricingPageProps) {
                 </div>
                 <h4 className="font-bold text-neutral-900 mb-2">Contact Us</h4>
                 <p className="text-sm text-neutral-600">
-                  Reach out via phone (555) 123-4567, email hello@Sparkleville.com, or through your customer dashboard within 24 hours of service.
+                  Reach out via phone +12079007700, email admin@sparkleville.co, or through your customer dashboard within 24 hours of service.
                 </p>
               </div>
 

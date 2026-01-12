@@ -2,6 +2,7 @@ import { Sparkles, LayoutDashboard, Calendar, Users, MessageSquare, BarChart3, P
 import { UserRole, Page } from './AdminDashboard';
 import { Badge } from '../ui/badge';
 import { useState, useEffect } from 'react';
+import { api } from '../../utils/api';
 import logo from '../../images/logo/Sparkleville1(2).png';
 
 interface User {
@@ -61,7 +62,7 @@ export function Sidebar({ currentPage, currentRole, onPageChange, onRoleChange, 
       if (!user?.id) return;
       
       try {
-        const response = await fetch(`/api/notifications/${user.id}/unread-counts-by-type`);
+        const response = await api.get(`/api/notifications/${user.id}/unread-counts-by-type`);
         if (response.ok) {
           const data = await response.json();
           setNotificationCounts(data);

@@ -29,10 +29,23 @@ export const createBooking = async (req: Request, res: Response) => {
     const bookingData = req.body;
 
     // Basic validation
-    if (!bookingData.serviceType || !bookingData.date || bookingData.totalAmount === undefined) {
-      return res.status(400).json({ message: 'Missing required booking fields: serviceType, date, or totalAmount' });
-    }
+    // if (!bookingData.serviceType || !bookingData.date || bookingData.totalAmount === undefined) {
+    //   return res.status(400).json({ message: 'Missing required booking fields: serviceType, date, or totalAmount' });
+    // }
+    // More detailed validation
+const missingFields = [];
+if (!bookingData.serviceType) missingFields.push('serviceType');
+if (!bookingData.date) missingFields.push('date');
+if (bookingData.totalAmount === undefined || bookingData.totalAmount === null) missingFields.push('totalAmount');
 
+if (missingFields.length > 0) {
+  console.error('Missing booking fields:', missingFields, 'Received payload:', bookingData);
+  return res.status(400).json({ 
+    message: `Missing required booking fields: ${missingFields.join(', ')}`,
+    missing: missingFields,
+    received: Object.keys(bookingData)
+  });
+}
     let {
       userId, guestName, guestEmail, guestPhone, address,
       serviceType, propertyType, bedrooms, bathrooms, toilets,

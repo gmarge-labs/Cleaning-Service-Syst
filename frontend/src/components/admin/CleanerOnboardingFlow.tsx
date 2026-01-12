@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, Upload, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ProgressIndicator } from '../booking/ProgressIndicator';
 import { toast } from 'sonner@2.0.3';
+import { api } from '../../utils/api';
 
 interface CleanerOnboardingFlowProps {
   onComplete: () => void;
@@ -260,17 +261,13 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
 
   const handleComplete = async () => {
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.tempPassword || 'Clean!2024', // Fallback
-          role: 'CLEANER',
-          phone: formData.phoneNumber,
-          address: `${formData.homeAddress}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
-        }),
+      const response = await api.post('/api/users', {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.tempPassword || 'Clean!2024', // Fallback
+        role: 'CLEANER',
+        phone: formData.phoneNumber,
+        address: `${formData.homeAddress}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
       });
 
       if (response.ok) {
@@ -318,7 +315,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
                 value={formData.phoneNumber}
                 onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-                placeholder="(555) 123-4567"
+                placeholder="+12079007700"
                 required
               />
             </div>
@@ -708,7 +705,7 @@ export function CleanerOnboardingFlow({ onComplete, onCancel }: CleanerOnboardin
               value={formData.emergencyPhone}
               onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
               className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-              placeholder="(555) 123-4567"
+              placeholder="+12079007700"
               required
             />
           </div>

@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 
 export function SupervisorDashboard() {
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
@@ -17,7 +18,7 @@ export function SupervisorDashboard() {
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/dashboard/supervisor/stats');
+      const response = await api.get('/api/dashboard/supervisor/stats');
       const data = await response.json();
       if (response.ok) {
         setDashboardData(data);

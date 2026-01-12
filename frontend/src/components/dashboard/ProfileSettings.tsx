@@ -8,6 +8,7 @@ import { Switch } from '../ui/switch';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { toast } from 'sonner';
+import { api } from '../../utils/api';
 import { AddressModal } from './AddressModal';
 import { PaymentMethodModal } from './PaymentMethodModal';
 
@@ -50,7 +51,7 @@ export function ProfileSettings() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`/api/users/${user?.id}`);
+      const response = await api.get(`/api/users/${user?.id}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -76,13 +77,9 @@ export function ProfileSettings() {
   const handleSavePersonal = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: personalInfo.name,
-          phone: personalInfo.phone,
-        }),
+      const response = await api.patch(`/api/users/${user?.id}`, {
+        name: personalInfo.name,
+        phone: personalInfo.phone,
       });
 
       if (response.ok) {
@@ -100,12 +97,8 @@ export function ProfileSettings() {
   const handleSaveNotifications = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notificationSettings: notifications,
-        }),
+      const response = await api.patch(`/api/users/${user?.id}`, {
+        notificationSettings: notifications,
       });
 
       if (response.ok) {
@@ -123,11 +116,7 @@ export function ProfileSettings() {
   const handleAddAddress = async (addressData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/addresses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addressData),
-      });
+      const response = await api.post(`/api/users/${user?.id}/addresses`, addressData);
 
       if (response.ok) {
         toast.success('Address added successfully');
@@ -145,9 +134,7 @@ export function ProfileSettings() {
 
   const handleDeleteAddress = async (id: string) => {
     try {
-      const response = await fetch(`/api/users/addresses/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/users/addresses/${id}`);
 
       if (response.ok) {
         toast.success('Address deleted');
@@ -161,11 +148,7 @@ export function ProfileSettings() {
   const handleAddPayment = async (paymentData: any) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/payment-methods`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData),
-      });
+      const response = await api.post(`/api/users/${user?.id}/payment-methods`, paymentData);
 
       if (response.ok) {
         toast.success('Payment method added');
@@ -183,9 +166,7 @@ export function ProfileSettings() {
 
   const handleDeletePayment = async (id: string) => {
     try {
-      const response = await fetch(`/api/users/payment-methods/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/users/payment-methods/${id}`);
 
       if (response.ok) {
         toast.success('Payment method deleted');
@@ -204,13 +185,9 @@ export function ProfileSettings() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user?.id}/password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentPassword: passwords.current,
-          newPassword: passwords.new,
-        }),
+      const response = await api.post(`/api/users/${user?.id}/password`, {
+        currentPassword: passwords.current,
+        newPassword: passwords.new,
       });
 
       const result = await response.json();

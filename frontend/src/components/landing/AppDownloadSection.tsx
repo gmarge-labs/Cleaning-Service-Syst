@@ -7,8 +7,8 @@ interface AppDownloadSectionProps {
 
 export function AppDownloadSection({ onDownload }: AppDownloadSectionProps) {
   return (
-    <section className="bg-gradient-to-r from-primary-600 to-accent-500 py-12">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+    <section className="bg-gradient-to-r from-primary-600 to-accent-500 py-12 w-full">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
           {/* Left Content */}
           <ScrollReveal variant="fade-right" className="flex-1 text-white text-center lg:text-left">

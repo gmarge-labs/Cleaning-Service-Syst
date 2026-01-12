@@ -21,6 +21,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import { sendMessageToOpenAI, Message } from '../utils/openai-service';
 import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '../components/ui/scroll-reveal';
 import { toast } from 'sonner';
+import { api } from '../utils/api';
 
 interface ContactPageProps {
   onStartChat: () => void;
@@ -47,6 +48,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
+  const [businessHours, setBusinessHours] = useState('Mon-Fri: 7am - 8pm\nSat-Sun: 8am - 6pm');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -56,6 +58,24 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
+
+  useEffect(() => {
+    const fetchBusinessHours = async () => {
+      try {
+        const response = await api.get('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.general?.businessHours) {
+            setBusinessHours(data.general.businessHours);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching business hours:', error);
+      }
+    };
+
+    fetchBusinessHours();
+  }, []);
 
   const handleContactSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,13 +90,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
     };
 
     try {
-      const response = await fetch('/api/support/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await api.post('/api/support/contact', data);
 
       if (response.ok) {
         toast.success('Message sent successfully! We\'ll get back to you soon.');
@@ -141,7 +155,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I apologize, but I encountered an error. Please try again or call us at (555) 123-4567 for immediate assistance.',
+        content: 'I apologize, but I encountered an error. Please try again or call us at +12079007700 for immediate assistance.',
         timestamp: new Date(),
       };
 
@@ -412,7 +426,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                         <div>
                           <div className="text-sm text-neutral-600">Main Line</div>
                           <a href="tel:5551234567" className="text-xl font-bold text-green-700 hover:text-green-800 block">
-                            (555) 123-4567
+                            +12079007700
                           </a>
                         </div>
                       </div>
@@ -422,7 +436,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                         <div>
                           <div className="text-sm text-neutral-600">Support Line</div>
                           <a href="tel:5551234568" className="text-xl font-bold text-secondary-600 hover:text-secondary-700 block">
-                            (555) 123-4568
+                            +12079007700
                           </a>
                         </div>
                       </div>
@@ -431,8 +445,9 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                         <Clock className="w-5 h-5 text-purple-600" />
                         <div>
                           <div className="text-sm text-neutral-600 mb-1">Business Hours</div>
-                          <div className="font-semibold text-neutral-900">Mon-Fri: 7am - 8pm</div>
-                          <div className="font-semibold text-neutral-900">Sat-Sun: 8am - 6pm</div>
+                          {businessHours.split('\n').map((line, index) => (
+                            <div key={index} className="font-semibold text-neutral-900">{line}</div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -529,7 +544,7 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                           id="phone"
                           name="phone"
                           className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-all"
-                          placeholder="(555) 123-4567"
+                          placeholder="+12079007700"
                         />
                       </div>
 
@@ -567,8 +582,8 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
                       <h3 className="text-lg font-bold text-neutral-900 mb-2">
                         Email Us
                       </h3>
-                      <a href="mailto:hello@Sparkleville.com" className="text-secondary-600 hover:text-secondary-700 hover:underline">
-                        hello@Sparkleville.com
+                      <a href="mailto:admin@sparkleville.co" className="text-secondary-600 hover:text-secondary-700 hover:underline">
+                        admin@sparkleville.co
                       </a>
                     </div>
                   </div>

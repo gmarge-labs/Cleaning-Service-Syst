@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { formatDateForDB, formatDisplayDate } from '../../../utils/dateUtils';
+import { api } from '../../../utils/api';
 
 interface SchedulingStepProps {
   data: BookingData;
@@ -170,14 +171,10 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/bookings/${data.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedDate ? formatDateForDB(selectedDate) : null,
-          time: selectedTime,
-          status: 'RESCHEDULED',
-        }),
+      const response = await api.put(`/api/bookings/${data.id}`, {
+        date: selectedDate ? formatDateForDB(selectedDate) : null,
+        time: selectedTime,
+        status: 'RESCHEDULED',
       });
 
       const result = await response.json();
@@ -255,11 +252,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     };
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingPayload),
-      });
+      const response = await api.post('/api/bookings', bookingPayload);
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || result.message || 'Failed to save draft');

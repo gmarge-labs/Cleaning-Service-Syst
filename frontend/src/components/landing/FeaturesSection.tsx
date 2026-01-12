@@ -107,8 +107,8 @@ export function FeaturesSection() {
   const extendedFeatures = [...features, ...features, ...features];
 
   return (
-    <section id="services" className="py-12 px-2 sm:px-4 lg:px-6 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto">
+    <section id="services" className="py-12 px-3 sm:px-4 lg:px-6 bg-white overflow-hidden w-full">
+      <div className="max-w-7xl mx-auto px-3 sm:px-0">
         {/* Section Header */}
         <ScrollReveal variant="fade-up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-neutral-900 mb-4">
@@ -121,7 +121,7 @@ export function FeaturesSection() {
 
         {/* Carousel Container */}
         <ScrollReveal variant="fade-up" delay={0.2}>
-          <div className="relative px-4 sm:px-12">
+          <div className="relative px-2 sm:px-4 lg:px-12 w-full">
             {/* Custom Navigation Buttons */}
             <button
               onClick={handlePrev}

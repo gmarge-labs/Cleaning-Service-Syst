@@ -102,7 +102,7 @@ Use this information to answer the customer's question. If the question is not r
       if (error.message.includes('API key')) {
         return 'I\'m currently unable to connect. Please make sure the OpenAI API key is configured correctly.';
       }
-      return `I encountered an error: ${error.message}. Please try again or contact support at (555) 123-4567.`;
+      return `I encountered an error: ${error.message}. Please try again or contact support at +12079007700.`;
     }
     
     return 'I apologize, but I encountered an unexpected error. Please try again or contact our support team.';
@@ -123,7 +123,7 @@ function getMockResponse(userMessage: string): string {
   }
 
   if (lowerMessage.includes('book') || lowerMessage.includes('schedule') || lowerMessage.includes('appointment')) {
-    return 'Booking with SparkleClean is quick and easy! You can:\n\n1. Use our online booking system (takes just 60 seconds)\n2. Call us at (555) 123-4567\n3. Continue chatting with me to get started\n\nWe offer next-day availability and flexible scheduling. What works best for you?';
+    return 'Booking with SparkleClean is quick and easy! You can:\n\n1. Use our online booking system (takes just 60 seconds)\n2. Call us at +12079007700\n3. Continue chatting with me to get started\n\nWe offer next-day availability and flexible scheduling. What works best for you?';
   }
 
   if (lowerMessage.includes('deep clean')) {
@@ -167,7 +167,7 @@ function getMockResponse(userMessage: string): string {
   }
 
   // Default response for unrecognized queries
-  return 'Thank you for your question! I\'m here to help you with:\n\n• Information about our cleaning services\n• Pricing and packages\n• Booking and scheduling\n• Service details and guarantees\n\nWhat would you like to know more about? Or call us at (555) 123-4567 to speak with our team!';
+  return 'Thank you for your question! I\'m here to help you with:\n\n• Information about our cleaning services\n• Pricing and packages\n• Booking and scheduling\n• Service details and guarantees\n\nWhat would you like to know more about? Or call us at +12079007700 to speak with our team!';
 }
 
 // NOTE: To use real OpenAI API:

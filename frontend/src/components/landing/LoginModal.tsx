@@ -10,6 +10,7 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../store/slices/authSlice';
 import { ForgotPasswordModal } from '../auth/ForgotPasswordModal';
 import logo from '../../images/logo/Sparkleville1(2).png';
+import { api } from '../../utils/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -62,15 +63,9 @@ export function LoginModal({
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: loginEmail,
-          password: loginPassword,
-        }),
+      const response = await api.post('/api/auth/login', {
+        email: loginEmail,
+        password: loginPassword,
       });
 
       const data = await response.json();
@@ -162,17 +157,11 @@ export function LoginModal({
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: signupName,
-          email: signupEmail,
-          password: signupPassword,
-          role: 'CUSTOMER', // Default role for signup
-        }),
+      const response = await api.post('/api/auth/signup', {
+        name: signupName,
+        email: signupEmail,
+        password: signupPassword,
+        role: 'CUSTOMER', // Default role for signup
       });
 
       const data = await response.json();
@@ -207,7 +196,7 @@ export function LoginModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[420px] max-h-[90vh] my-4 md:my-8 lg:my-12 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[420px] max-h-[90vh] my-4 md:my-8 lg:my-12 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
         {/* Header with Gradient */}
         <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-6 pb-8 flex-shrink-0">
           <div className="flex items-center justify-center mb-3">
@@ -255,10 +244,17 @@ export function LoginModal({
                       required
                     />
                   </div>
+<<<<<<< HEAD
                   <p className="text-xs text-neutral-500 flex items-center gap-1">
+                    {/* <Shield className="w-3 h-3" />
+                    Use @admin.com, @supervisor.com, or @support.com for staff access */}
+                  </p>
+=======
+                  {/* <p className="text-xs text-neutral-500 flex items-center gap-1">
                     <Shield className="w-3 h-3" />
                     Use @admin.com, @supervisor.com, or @support.com for staff access
-                  </p>
+                  </p> */}
+>>>>>>> production
                 </div>
 
                 <div className="space-y-2">
@@ -441,14 +437,14 @@ export function LoginModal({
                 </Button>
 
                 {/* Staff Account Note */}
-                <div className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                {/* <div className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-900 leading-relaxed">
                       <strong className="font-semibold">Staff Access:</strong> Accounts with @admin.com, @supervisor.com, or @support.com domains require administrator approval.
                     </p>
                   </div>
-                </div>
+                </div> */}
               </form>
             </TabsContent>
           </Tabs>

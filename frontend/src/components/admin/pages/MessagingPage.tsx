@@ -8,6 +8,7 @@ import { useSocket } from '../../../hooks/useSocket';
 import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { api } from '../../../utils/api';
 
 export function MessagingPage() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -44,9 +45,7 @@ export function MessagingPage() {
     if (!user?.id) return;
     
     try {
-      await fetch(`/api/notifications/${user.id}/read-all-by-type?type=MESSAGE_RECEIVED`, {
-        method: 'PATCH',
-      });
+      await api.patch(`/api/notifications/${user.id}/read-all-by-type?type=MESSAGE_RECEIVED`);
     } catch (error) {
       console.error('Failed to mark message notifications as read:', error);
     }
@@ -109,7 +108,7 @@ export function MessagingPage() {
     try {
       setIsLoading(true);
       console.log('Fetching conversations for user:', user.id);
-      const response = await fetch('/api/messages/conversations', {
+      const response = await api.get('/api/messages/conversations', {
         headers: {
           'x-user-id': user.id
         }
@@ -134,7 +133,7 @@ export function MessagingPage() {
   const fetchMessages = async (partnerId: string) => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/messages/${partnerId}`, {
+      const response = await api.get(`/api/messages/${partnerId}`, {
         headers: {
           'x-user-id': user.id
         }
@@ -156,7 +155,7 @@ export function MessagingPage() {
     try {
       setIsContactsLoading(true);
       console.log('Fetching contacts for user:', user.id);
-      const response = await fetch('/api/messages/contacts', {
+      const response = await api.get('/api/messages/contacts', {
         headers: {
           'x-user-id': user.id
         }

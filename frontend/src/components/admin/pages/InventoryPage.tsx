@@ -5,6 +5,7 @@ import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { toast } from 'sonner';
+import { api } from '../../../utils/api';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
 import { Label } from "../../ui/label";
+
 
 export function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,7 +57,7 @@ export function InventoryPage() {
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/inventory');
+      const response = await api.get('/api/inventory');
       const data = await response.json();
       if (response.ok) {
         setInventoryItems(data);
@@ -72,18 +74,14 @@ export function InventoryPage() {
     try {
       const totalQuantity = Number(newItem.quantityPurchased) * Number(newItem.itemsPerPurchaseUnit);
       
-      const response = await fetch('/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newItem.name,
-          category: newItem.category,
-          quantity: totalQuantity,
-          unit: newItem.baseUnit,
-          reorderThreshold: newItem.reorderThreshold,
-          vendor: newItem.vendor,
-          cost: newItem.pricePerPurchaseUnit
-        }),
+      const response = await api.post('/api/inventory', {
+        name: newItem.name,
+        category: newItem.category,
+        quantity: totalQuantity,
+        unit: newItem.baseUnit,
+        reorderThreshold: newItem.reorderThreshold,
+        vendor: newItem.vendor,
+        cost: newItem.pricePerPurchaseUnit
       });
 
       if (response.ok) {
@@ -113,11 +111,7 @@ export function InventoryPage() {
   const handleUpdateItem = async () => {
     if (!editingItem) return;
     try {
-      const response = await fetch(`/api/inventory/${editingItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingItem),
-      });
+      const response = await api.put(`/api/inventory/${editingItem.id}`, editingItem);
 
       if (response.ok) {
         toast.success('Item updated successfully');
@@ -137,9 +131,7 @@ export function InventoryPage() {
     if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`/api/inventory/${itemToDelete}`, {
-        method: 'DELETE',
-      });
+      const response = await api.delete(`/api/inventory/${itemToDelete}`);
 
       if (response.ok) {
         toast.success('Item deleted successfully');
@@ -224,7 +216,7 @@ export function InventoryPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="text-2xl font-bold text-neutral-900 mb-1">₦{totalValue.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-neutral-900 mb-1">${totalValue.toLocaleString()}</div>
           <div className="text-sm text-neutral-600">Total Value</div>
         </div>
 
@@ -352,7 +344,7 @@ export function InventoryPage() {
                       <span className="text-neutral-900">{item.vendor}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-neutral-900">₦{Number(item.cost).toLocaleString()}</span>
+                      <span className="font-semibold text-neutral-900">${Number(item.cost).toLocaleString()}</span>
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-neutral-600">
@@ -472,7 +464,7 @@ export function InventoryPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="pricePerPurchaseUnit">Price per Purchase Unit (₦)</Label>
+                <Label htmlFor="pricePerPurchaseUnit">Price per Purchase Unit ($)</Label>
                 <Input
                   id="pricePerPurchaseUnit"
                   type="number"
@@ -578,7 +570,7 @@ export function InventoryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-cost">Cost (₦)</Label>
+                  <Label htmlFor="edit-cost">Cost ($)</Label>
                   <Input
                     id="edit-cost"
                     type="number"

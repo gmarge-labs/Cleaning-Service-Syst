@@ -10,7 +10,7 @@ interface DemoVideoModalProps {
 export function DemoVideoModal({ isOpen, onClose }: DemoVideoModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black" aria-describedby={undefined}>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-4xl p-0 overflow-hidden bg-black" aria-describedby={undefined}>
         <VisuallyHidden.Root>
           <DialogTitle>Sparkleville Demo Video</DialogTitle>
         </VisuallyHidden.Root>
