@@ -4,6 +4,9 @@ import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notif
 import { sendBookingConfirmation, sendInvoiceEmail, sendEmail } from '../utils/email.service';
 import { calculateBookingDuration } from '../utils/booking';
 import { emitToUser } from '../utils/socket';
+import bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
+import { generateUserId } from '../utils/idGenerator';
 // import { uploadBase64Image } from '../utils/googleDrive'; // TODO: Google Drive uploads disabled
 
 export const sendInvoice = async (req: Request, res: Response) => {
@@ -56,6 +59,42 @@ if (missingFields.length > 0) {
       hasPet, petDetails, paymentMethod, tipAmount, totalAmount, status
     } = bookingData;
 
+    // Auto-create customer account for guest bookings
+    let isNewUser = false;
+    if (!userId && guestEmail) {
+      // Check if user with this email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: guestEmail.toLowerCase() }
+      });
+
+      if (existingUser) {
+        // User exists, link booking to this user
+        userId = existingUser.id;
+        console.log(`✅ Found existing user ${existingUser.id} for email ${guestEmail}`);
+      } else {
+        // Create new customer account
+        const defaultPassword = '123456';
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        const newUserId = await generateUserId(Role.CUSTOMER);
+        
+        const newUser = await prisma.user.create({
+          data: {
+            id: newUserId,
+            name: guestName || 'Guest',
+            email: guestEmail.toLowerCase(),
+            password: hashedPassword,
+            phone: guestPhone || null,
+            address: address || null,
+            role: Role.CUSTOMER,
+          },
+        });
+
+        userId = newUser.id;
+        isNewUser = true;
+        console.log(`✅ Created new customer account ${newUserId} for ${guestEmail}`);
+      }
+    }
+
     // If user is logged in, try to populate missing details from user table
     if (userId) {
       const user = await prisma.user.findUnique({
@@ -71,7 +110,7 @@ if (missingFields.length > 0) {
       }
     }
 
-    // Generate custom booking ID: BK-YYYYMMDD-XXX
+    // Generate custom booking ID: BK-YYYYMMDD-XXX with retry logic
     // Parse the date string to avoid timezone issues
     let year: number, month: number, day: number;
     if (typeof date === 'string') {
@@ -96,17 +135,49 @@ if (missingFields.length > 0) {
     const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
     const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
-    const count = await prisma.booking.count({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-    });
+    // Use a transaction to ensure atomic ID generation and booking creation
+    let customId: string;
+    let maxRetries = 5;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Count existing bookings for this day and generate new ID
+        const count = await prisma.booking.count({
+          where: {
+            date: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        });
 
-    const sequence = String(count + 1).padStart(3, '0');
-    const customId = `BK-${dateStr}-${sequence}`;
+        const sequence = String(count + 1 + retryCount).padStart(3, '0');
+        customId = `BK-${dateStr}-${sequence}`;
+
+        // Check if this ID already exists
+        const existingBooking = await prisma.booking.findUnique({
+          where: { id: customId }
+        });
+
+        if (!existingBooking) {
+          // ID is unique, break the loop
+          break;
+        }
+        
+        // ID exists, retry with incremented sequence
+        retryCount++;
+      } catch (err) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          throw new Error('Failed to generate unique booking ID after multiple attempts');
+        }
+      }
+    }
+    
+    if (!customId!) {
+      throw new Error('Failed to generate booking ID');
+    }
 
     // Combine rooms and roomQuantities to ensure all selected rooms are captured
     const combinedRooms: Record<string, number> = {};
@@ -201,6 +272,23 @@ if (missingFields.length > 0) {
       console.log(`📧 Calling sendBookingConfirmation for ${guestEmail}`);
       const emailResult = await sendBookingConfirmation(booking, guestEmail);
       console.log(`📧 sendBookingConfirmation result: ${emailResult}`);
+
+      // If this is a new user, send welcome email with login credentials
+      if (isNewUser) {
+        console.log(`📧 Sending welcome email with login credentials to new user ${guestEmail}`);
+        try {
+          const { sendWelcomeEmail } = await import('../utils/email.service');
+          const newUserData = await prisma.user.findUnique({
+            where: { id: userId! }
+          });
+          if (newUserData) {
+            const welcomeEmailResult = await sendWelcomeEmail(newUserData, '123456');
+            console.log(`📧 sendWelcomeEmail result: ${welcomeEmailResult}`);
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending welcome email:', emailError);
+        }
+      }
     } else {
       console.warn('⚠️ No guestEmail found, skipping confirmation email');
     }

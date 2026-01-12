@@ -110,60 +110,54 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
   };
 
   const isValid = () => {
+    // Only require property type and address to be filled
+    // Bedrooms and bathrooms are now optional
     if (!formData.propertyType || !formData.address) return false;
-
-    if (isResidentialProperty()) {
-      return formData.bedrooms > 0 && formData.bathrooms > 0;
-    }
-
-    if (isOfficeProperty()) {
-      return formData.toilets >= 0;
-    }
 
     return true;
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 space-y-8">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-neutral-900 mb-2">Property Details</h2>
-          <p className="text-neutral-600">Tell us about your space so we can provide an accurate quote</p>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 mb-1 sm:mb-2">Property Details</h2>
+          <p className="text-sm sm:text-base text-neutral-600">Tell us about your space so we can provide an accurate quote</p>
         </div>
 
         {/* Service Address */}
         <div>
-          <Label htmlFor="address" className="text-base font-semibold mb-3 block">Service Address *</Label>
+          <Label htmlFor="address" className="text-sm sm:text-base font-semibold mb-2 sm:mb-3 block">Service Address *</Label>
           <Input
             id="address"
             value={formData.address}
             onChange={(e) => updateFormData({ address: e.target.value })}
             placeholder="123 Sparkle St, City, State, Zip"
-            className="h-12 focus:ring-2 focus:ring-secondary-500"
+            className="h-10 sm:h-12 text-sm sm:text-base focus:ring-2 focus:ring-secondary-500"
             required
           />
         </div>
 
         {/* Property Type */}
         <div>
-          <Label className="text-base font-semibold mb-3 block">Property Type *</Label>
+          <Label className="text-sm sm:text-base font-semibold mb-2 sm:mb-3 block">Property Type *</Label>
           {!formData.propertyType ? (
             <div className="space-y-2">
               {propertyTypes.map((type) => (
                 <button
                   key={type.value}
                   onClick={() => updateFormData({ propertyType: type.value })}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
+                  className="w-full flex items-center gap-2 sm:gap-3 lg:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-neutral-200 hover:border-secondary-300 bg-white transition-all"
                 >
                   {/* Radio Button */}
-                  <div className="w-5 h-5 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-neutral-300 flex items-center justify-center flex-shrink-0 transition-all">
                   </div>
 
                   {/* Icon */}
-                  <div className="text-2xl flex-shrink-0">{type.icon}</div>
+                  <div className="text-xl sm:text-2xl flex-shrink-0">{type.icon}</div>
 
                   {/* Label */}
-                  <div className="flex-1 text-left font-medium text-neutral-900">{type.label}</div>
+                  <div className="flex-1 text-left text-sm sm:text-base font-medium text-neutral-900">{type.label}</div>
                 </button>
               ))}
             </div>
@@ -611,18 +605,18 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between gap-4">
+      <div className="flex flex-row justify-between gap-3 sm:gap-4">
         <Button
           onClick={onBack}
           variant="outline"
-          className="px-8"
+          className="px-4 sm:px-8"
         >
           Back
         </Button>
         <Button
           onClick={onNext}
           disabled={!isValid()}
-          className="bg-secondary-500 hover:bg-secondary-600 px-8"
+          className="flex-1 sm:flex-initial bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
         >
           Continue to Add-ons
         </Button>

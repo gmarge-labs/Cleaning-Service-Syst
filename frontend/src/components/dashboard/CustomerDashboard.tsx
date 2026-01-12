@@ -4,7 +4,7 @@ import { UpcomingBookings } from './UpcomingBookings';
 import { PastBookings } from './PastBookings';
 import { ProfileSettings } from './ProfileSettings';
 import { ActiveJob } from './ActiveJob';
-import { Sparkles, LayoutDashboard, Calendar, History, User, LogOut, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Calendar, History, User, LogOut, Briefcase } from 'lucide-react';
 import { Button } from '../ui/button';
 import logo from '../../images/logo/Sparkleville1(1).png';
 
@@ -32,25 +32,26 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-16">
-            <button onClick={onNavigateHome} className="flex items-center gap-2">
-              <img src={logo} alt="Sparkleville Logo" className="h-10 w-auto" />
-              <div>
-                <div className="font-bold text-xl text-neutral-900">Sparkleville</div>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <button onClick={onNavigateHome} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <img src={logo} alt="Sparkleville Logo" className="h-8 sm:h-10 w-auto flex-shrink-0" />
+              <div className="hidden sm:block">
+                <div className="font-bold text-lg sm:text-xl text-neutral-900">Sparkleville</div>
                 <div className="text-xs text-neutral-500">Customer Dashboard</div>
               </div>
             </button>
 
-            <div className="flex items-center gap-4">
-              <Button onClick={onStartBooking} className="bg-secondary-500 hover:bg-secondary-600">
-                + New Booking
-              </Button>
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* <Button onClick={onStartBooking} className="bg-secondary-500 hover:bg-secondary-600 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 h-auto whitespace-nowrap">
+                <span className="sm:inline hidden">New Booking</span>
+                <span className="sm:hidden inline">New</span>
+              </Button> */}
               <button
                 onClick={onLogout}
-                className="flex items-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-2 sm:px-4 py-2 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
@@ -59,9 +60,9 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-neutral-200 sticky top-16 z-30">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex gap-1 overflow-x-auto">
+      <div className="bg-white border-b border-neutral-200 sticky top-14 sm:top-16 z-30">
+        <div className="max-w-7xl mx-auto px-1 sm:px-4 lg:px-6">
+          <div className="flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -69,12 +70,12 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors whitespace-nowrap ${isActive
+                  className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-4 border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm ${isActive
                       ? 'border-secondary-500 text-secondary-500'
                       : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300'
                     }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   <span className="font-medium">{tab.label}</span>
                 </button>
               );
@@ -84,7 +85,7 @@ export function CustomerDashboard({ onNavigateHome, onStartBooking, onReschedule
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-8">
         {activeTab === 'overview' && <DashboardOverview onStartBooking={onStartBooking} onRescheduleBooking={onRescheduleBooking} />}
         {activeTab === 'active' && <ActiveJob />}
         {activeTab === 'upcoming' && <UpcomingBookings onReschedule={onRescheduleBooking} />}

@@ -33,7 +33,7 @@ export function PaymentModal({ booking, onClose, onSuccess }: PaymentModalProps)
         setIsLoading(true);
 
         try {
-            const response = await api.put(`/api/bookings/${booking.id}`, {
+            const response = await api.patch(`/api/bookings/${booking.id}`, {
                 status: 'BOOKED',
                 paymentMethod: paymentMethod,
             });

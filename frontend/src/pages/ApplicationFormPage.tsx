@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../components/ui/checkbox';
 import { ProgressIndicator } from '../components/booking/ProgressIndicator';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
 import { api } from '../utils/api';
 
@@ -717,13 +717,13 @@ export function ApplicationFormPage() {
                 />
                 <label htmlFor="terms" className="text-sm text-neutral-700 cursor-pointer leading-relaxed">
                   I agree to the{' '}
-                  <button type="button" className="text-secondary-500 hover:underline">
+                  <Link to="/terms" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">
                     Terms & Conditions
-                  </button>{' '}
+                  </Link>{' '}
                   and{' '}
-                  <button type="button" className="text-secondary-500 hover:underline">
+                  <Link to="/privacy" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">
                     Privacy Policy
-                  </button>{' '}
+                  </Link>{' '}
                   *
                 </label>
               </div>

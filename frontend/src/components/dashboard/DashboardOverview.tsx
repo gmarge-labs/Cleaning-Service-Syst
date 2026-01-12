@@ -108,46 +108,46 @@ export function DashboardOverview({ onStartBooking, onRescheduleBooking }: Dashb
 
     return (
       <div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
         onClick={() => setSelectedBooking(null)}
       >
         <div
-          className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-neutral-200 p-6 flex items-center justify-between">
+          <div className="sticky top-0 bg-white border-b border-neutral-200 p-4 sm:p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900">Booking Details</h2>
-              <p className="text-sm text-neutral-600">Booking ID: #{selectedBooking.id}</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Booking Details</h2>
+              <p className="text-xs sm:text-sm text-neutral-600">Booking ID: #{selectedBooking.id}</p>
             </div>
             <button
               onClick={() => setSelectedBooking(null)}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0"
             >
-              <X className="w-6 h-6 text-neutral-600" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-600" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Status Badge */}
             <div className="flex items-center gap-3">
-              <Badge className={`${selectedBooking.status === 'DRAFT' ? 'bg-orange-600' : selectedBooking.status === 'BOOKED' ? 'bg-blue-600' : 'bg-green-600'} text-white border-0 text-base px-4 py-2`}>
+              <Badge className={`${selectedBooking.status === 'DRAFT' ? 'bg-orange-600' : selectedBooking.status === 'BOOKED' ? 'bg-blue-600' : 'bg-green-600'} text-white border-0 text-sm sm:text-base px-3 sm:px-4 py-1.5 sm:py-2`}>
                 {selectedBooking.status}
               </Badge>
             </div>
 
             {/* Service Info */}
-            <div className="bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg p-6">
-              <h3 className="text-2xl font-bold text-neutral-900 mb-2">{selectedBooking.serviceType}</h3>
-              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+            <div className="bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg p-4 sm:p-6">
+              <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">{selectedBooking.serviceType}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                 <div className="flex items-center gap-2 text-neutral-700">
-                  <Calendar className="w-4 h-4 text-secondary-500" />
+                  <Calendar className="w-4 h-4 text-secondary-500 flex-shrink-0" />
                   <span>{selectedBooking && formatDisplayDate(selectedBooking.date)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">
-                  <Clock className="w-4 h-4 text-secondary-500" />
+                  <Clock className="w-4 h-4 text-secondary-500 flex-shrink-0" />
                   <span>{selectedBooking.time} (±30 min)</span>
                 </div>
                 <div className="flex items-center gap-2 text-neutral-700">

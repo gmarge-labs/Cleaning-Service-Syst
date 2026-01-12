@@ -171,7 +171,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
     setIsLoading(true);
 
     try {
-      const response = await api.put(`/api/bookings/${data.id}`, {
+      const response = await api.patch(`/api/bookings/${data.id}`, {
         date: selectedDate ? formatDateForDB(selectedDate) : null,
         time: selectedTime,
         status: 'RESCHEDULED',
@@ -272,25 +272,25 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
   tomorrow.setHours(0, 0, 0, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 space-y-8">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-neutral-900 mb-2">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 mb-1 sm:mb-2">
             {mode === 'reschedule' ? 'Reschedule Your Cleaning' : 'Schedule Your Cleaning'}
           </h2>
-          <p className="text-neutral-600">Choose a date and time that works best for you</p>
+          <p className="text-sm sm:text-base text-neutral-600">Choose a date and time that works best for you</p>
         </div>
 
-        <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-orange-900">
+        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs sm:text-sm text-orange-900">
             <strong>Note:</strong> {mode === 'reschedule' ? 'Rescheduling requires at least 24 hours notice from the current time.' : 'Next-day bookings available. Please select a date starting tomorrow or later.'}
           </div>
         </div>
 
         <div>
-          <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-secondary-500" />
+          <Label className="text-sm sm:text-base font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-500" />
             Select Date *
           </Label>
           <div className="flex justify-center">
@@ -299,11 +299,11 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
               selected={selectedDate}
               onSelect={handleDateSelect}
               disabled={(date: Date) => date < tomorrow}
-              className="rounded-xl border border-neutral-200 p-3"
+              className="rounded-lg sm:rounded-xl border border-neutral-200 p-2 sm:p-3 mx-auto"
             />
           </div>
           {selectedDate && (
-            <p className="text-center mt-3 text-sm text-neutral-600">
+            <p className="text-center mt-2 sm:mt-3 text-xs sm:text-sm text-neutral-600">
               Selected: <span className="font-semibold text-secondary-500">
                 {formatDisplayDate(selectedDate)}
               </span>
@@ -312,38 +312,38 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
         </div>
 
         {selectedDate && (
-          <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-3">
+          <div className="ml-3 sm:ml-4 lg:ml-6 pl-3 sm:pl-4 lg:pl-6 border-l-2 border-secondary-200 space-y-2 sm:space-y-3">
             <div>
-              <Label className="text-sm font-semibold text-secondary-700 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-secondary-500" />
+              <Label className="text-xs sm:text-sm font-semibold text-secondary-700 flex items-center gap-2">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-500" />
                 Select Time Slot *
               </Label>
-              <p className="text-xs text-neutral-600 mb-3">Choose your preferred arrival time</p>
+              <p className="text-xs text-neutral-600 mb-2 sm:mb-3">Choose your preferred arrival time</p>
             </div>
 
-            <div className="max-h-[220px] overflow-y-auto space-y-2 pr-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
+            <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 sm:pr-2 border border-neutral-200 rounded-lg p-2 sm:p-3 bg-neutral-50">
               {timeSlots.map((time) => (
                 <button
                   key={time}
                   onClick={() => handleTimeSelect(time)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${selectedTime === time
+                  className={`w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border-2 transition-all ${selectedTime === time
                     ? 'border-secondary-500 bg-secondary-50 shadow-sm'
                     : 'border-neutral-200 hover:border-secondary-300 bg-white'
                     }`}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${selectedTime === time
+                  <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${selectedTime === time
                     ? 'border-secondary-500 bg-secondary-500'
                     : 'border-neutral-300'
                     }`}>
-                    {selectedTime === time && <div className="w-2 h-2 rounded-full bg-white" />}
+                    {selectedTime === time && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white" />}
                   </div>
 
                   <div className="flex-1 text-left">
-                    <div className="font-semibold text-sm text-neutral-900">{time}</div>
-                    <div className="text-xs text-neutral-600">±30 min arrival window</div>
+                    <div className="font-semibold text-xs sm:text-sm text-neutral-900">{time}</div>
+                    <div className="text-xs text-neutral-600 hidden sm:block">±30 min arrival window</div>
                   </div>
 
-                  <Clock className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-neutral-400 flex-shrink-0" />
                 </button>
               ))}
             </div>
@@ -627,21 +627,21 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
         )}
       </div>
 
-      <div className="flex justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
         <Button
           onClick={onBack}
           variant="outline"
-          className="px-8"
+          className="px-4 sm:px-8 order-2 sm:order-1"
         >
           Back
         </Button>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 order-1 sm:order-2">
           {mode !== 'reschedule' && (
             <Button
               onClick={handleSaveDraft}
               variant="outline"
               disabled={!isValid() || isLoading}
-              className="px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
+              className="px-4 sm:px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
             >
               {isLoading ? 'Saving...' : 'Save as Draft'}
             </Button>
@@ -649,7 +649,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
           <Button
             onClick={mode === 'reschedule' ? handleReschedule : handleContinueToPayment}
             disabled={!isValid() || isLoading}
-            className="bg-secondary-500 hover:bg-secondary-600 px-8"
+            className="bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
           >
             {isLoading ? 'Processing...' : mode === 'reschedule' ? 'Confirm Reschedule' : 'Continue to Payment'}
           </Button>

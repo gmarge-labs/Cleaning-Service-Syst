@@ -420,7 +420,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.emailBookingConfirmation}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, emailBookingConfirmation: checked })
                   }
                 />
@@ -433,7 +433,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.emailReminders}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, emailReminders: checked })
                   }
                 />
@@ -446,7 +446,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.smsReminders}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, smsReminders: checked })
                   }
                 />
@@ -459,7 +459,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.whatsappReminders}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, whatsappReminders: checked })
                   }
                 />
@@ -472,7 +472,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.pushNotifications}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, pushNotifications: checked })
                   }
                 />
@@ -485,7 +485,7 @@ export function ProfileSettings() {
                 </div>
                 <Switch
                   checked={notifications.promotionalEmails}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setNotifications({ ...notifications, promotionalEmails: checked })
                   }
                 />
