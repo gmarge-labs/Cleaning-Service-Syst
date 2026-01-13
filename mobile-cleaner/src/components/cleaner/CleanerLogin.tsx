@@ -112,19 +112,19 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
                                     disabled={isLoading}
                                 />
 
-                                <View style={styles.demoBox}>
+                                {/* <View style={styles.demoBox}>
                                     <Text style={styles.demoText}>
                                         <Text style={styles.demoBold}>Demo Mode:</Text> Click "Sign In" to continue
                                     </Text>
-                                </View>
+                                </View> */}
                             </View>
                         </View>
 
-                        {/* Footer */}
+                        Footer
                         <View style={styles.footer}>
                             <Text style={styles.footerText}>Need help? Contact support</Text>
                             <Text style={styles.copyright}>© 2025 Sparkleville</Text>
-                        </View>
+                        </View>jj
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
