@@ -107,11 +107,11 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
           </Button>
 
           {/* Demo Info */}
-          <div className="mt-6 p-4 bg-secondary-50 rounded-xl">
+          {/* <div className="mt-6 p-4 bg-secondary-50 rounded-xl">
             <p className="text-sm text-center text-secondary-900">
               <span className="font-semibold">Demo Mode:</span> Click "Sign In" to continue
             </p>
-          </div>
+          </div> */}
         </form>
       </div>
 
