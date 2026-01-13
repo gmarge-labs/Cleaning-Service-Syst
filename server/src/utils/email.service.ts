@@ -280,14 +280,14 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       `,
       // Enhanced headers to prevent spam filtering and improve deliverability
       headers: {
-        'X-Priority': '3' as any,
-        'X-MSMail-Priority': 'Normal' as any,
-        'Importance': 'Normal' as any,
+        'X-Priority': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? '1' : '3' as any,
+        'X-MSMail-Priority': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'High' : 'Normal' as any,
+        'Importance': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'high' : 'Normal' as any,
         'X-Mailer': `${companyName} Mail Service v1.0` as any,
         'List-Unsubscribe': `<${appUrl}/unsubscribe>` as any,
         'List-Help': `<${appUrl}/help>` as any,
         'List-Id': `<notifications.${fromEmail.split('@')[1]}>` as any,
-        'Precedence': 'bulk' as any,
+        'Precedence': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'list' : 'bulk' as any,
         'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply' as any,
       } as any,
       // Add tracking settings to prevent spam
@@ -312,8 +312,10 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
           enable: false
         }
       },
-      // Add categories for better organization
-      categories: [options.templateType, 'transactional']
+      // Add categories for better organization - transactional first for welcome/confirmation emails
+      categories: (options.templateType === 'welcome' || options.templateType === 'confirmation') 
+        ? ['transactional', options.templateType] 
+        : [options.templateType, 'transactional']
     };
 
     if (mailtrapTransporter) {

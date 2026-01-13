@@ -228,6 +228,8 @@ export default function App() {
                     unreadCount={unreadMessages}
                 />
             )}
+
+            <StatusBar style="auto" />
         </View>
     );
 }

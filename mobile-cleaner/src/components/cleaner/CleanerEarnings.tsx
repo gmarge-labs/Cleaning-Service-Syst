@@ -268,11 +268,16 @@ export function CleanerEarnings({ currentView, onNavigate, user, unreadCount }: 
                                 <View style={styles.recordHeader}>
                                     <View style={{ flex: 1 }}>
                                         <View style={styles.row}>
-                                            <Text style={styles.customerName}>{record.guestName || record.user?.name || 'Customer'}</Text>
+                                            <Text style={styles.serviceType}>{record.serviceType}</Text>
                                             {getStatusBadge(record.status)}
                                         </View>
-                                        <Text style={styles.serviceType}>{record.serviceType}</Text>
                                         <Text style={styles.recordId}>Booking ID: {record.id}</Text>
+                                        <Text style={styles.locationText}>{record.address || 'Location not specified'}</Text>
+                                        <View style={styles.propertyDetails}>
+                                            <Text style={styles.propertyText}>
+                                                {record.bedrooms} BR · {record.bathrooms} Bath · {record.propertyType}
+                                            </Text>
+                                        </View>
                                     </View>
                                     <View style={styles.amountContainer}>
                                         <DollarSign size={16} color={Colors.secondary} />
@@ -518,19 +523,27 @@ const styles = StyleSheet.create({
         gap: 8,
         marginBottom: 4,
     },
-    customerName: {
+    serviceType: {
         fontSize: 15,
         fontWeight: 'bold',
         color: Colors.black,
-    },
-    serviceType: {
-        fontSize: 13,
-        color: Colors.gray,
     },
     recordId: {
         fontSize: 11,
         color: Colors.gray,
         marginTop: 2,
+    },
+    locationText: {
+        fontSize: 12,
+        color: Colors.gray,
+        marginTop: 4,
+    },
+    propertyDetails: {
+        marginTop: 4,
+    },
+    propertyText: {
+        fontSize: 11,
+        color: Colors.gray,
     },
     amountContainer: {
         flexDirection: 'row',

@@ -98,6 +98,15 @@ export const jobService = {
         }
     },
 
+    getJobDetails: async (jobId: string): Promise<Booking> => {
+        try {
+            const response = await api.get(`/bookings/${jobId}`);
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Failed to fetch job details');
+        }
+    },
+
     updateJobStatus: async (jobId: string, status: string, completionData?: any) => {
         try {
             const response = await api.patch(`/bookings/${jobId}`, { 

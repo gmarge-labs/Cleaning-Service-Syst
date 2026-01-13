@@ -69,13 +69,10 @@ const RELATIONSHIP_OPTIONS = [
 ];
 
 const US_STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+  'Bangor', 'Old town', 'Brewer', 'Orono', 
+  'Hampden', 'Hermon', 'Veazie'
 ];
-
+ 
 export function ApplicationFormPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -820,7 +817,7 @@ export function ApplicationFormPage() {
             {/* Help Text */}
             <ScrollReveal variant="fade-up" delay={0.3}>
               <div className="mt-6 text-center text-sm text-neutral-600">
-                <p>Need help? Contact us at <a href="mailto:careers@sparkle-ville.com" className="text-secondary-500 hover:underline">careers@sparkle-ville.com</a></p>
+                <p>Need help? Contact us at <a href="mailto:admin@spakleville.co" className="text-secondary-500 hover:underline">admin@spakleville.co</a></p>
               </div>
             </ScrollReveal>
           </div>

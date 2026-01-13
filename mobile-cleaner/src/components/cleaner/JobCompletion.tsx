@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, TextInput } from 'react-native';
-import { ArrowLeft, Camera, X, CheckCircle, Upload, AlertTriangle } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, TextInput, Alert, ActionSheetIOS, Platform } from 'react-native';
+import { ArrowLeft, Camera, X, CheckCircle, Upload, AlertTriangle, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Button } from '../Button';
 import { Input } from '../Input';
@@ -21,8 +21,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
     const [issues, setIssues] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handlePhotoUpload = async () => {
-        // Request permissions
+    const handleTakePhoto = async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
         if (permissionResult.granted === false) {
@@ -33,7 +32,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
         const result = await ImagePicker.launchCameraAsync({
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.5, // Reduced quality for faster upload
+            quality: 0.5,
             base64: true,
         });
 
@@ -42,6 +41,59 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
                 uri: result.assets[0].uri, 
                 base64: `data:image/jpeg;base64,${result.assets[0].base64}` 
             }]);
+        }
+    };
+
+    const handlePickFromGallery = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (permissionResult.granted === false) {
+            alert("You've refused to allow this app to access your photo library!");
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0].base64) {
+            setPhotos([...photos, { 
+                uri: result.assets[0].uri, 
+                base64: `data:image/jpeg;base64,${result.assets[0].base64}` 
+            }]);
+        }
+    };
+
+    const handlePhotoUpload = async () => {
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+                    cancelButtonIndex: 0,
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 1) {
+                        handleTakePhoto();
+                    } else if (buttonIndex === 2) {
+                        handlePickFromGallery();
+                    }
+                }
+            );
+        } else {
+            Alert.alert(
+                'Upload Photo',
+                'Choose an option',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Take Photo', onPress: handleTakePhoto },
+                    { text: 'Choose from Gallery', onPress: handlePickFromGallery },
+                ],
+                { cancelable: true }
+            );
         }
     };
 

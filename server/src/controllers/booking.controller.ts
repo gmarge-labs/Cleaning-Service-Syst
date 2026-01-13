@@ -136,45 +136,96 @@ if (missingFields.length > 0) {
     const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
     // Use a transaction to ensure atomic ID generation and booking creation
-    let customId: string;
-    let maxRetries = 5;
-    let retryCount = 0;
+    // let customId: string;
+    // let maxRetries = 5;
+    // let retryCount = 0;
     
-    while (retryCount < maxRetries) {
-      try {
-        // Count existing bookings for this day and generate new ID
-        const count = await prisma.booking.count({
-          where: {
-            date: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
-          },
-        });
+    // while (retryCount < maxRetries) {
+    //   try {
+    //     // Count existing bookings for this day and generate new ID
+    //     const count = await prisma.booking.count({
+    //       where: {
+    //         date: {
+    //           gte: startOfDay,
+    //           lte: endOfDay,
+    //         },
+    //       },
+    //     });
 
-        const sequence = String(count + 1 + retryCount).padStart(3, '0');
-        customId = `BK-${dateStr}-${sequence}`;
+    //     const sequence = String(count + 1 + retryCount).padStart(3, '0');
+    //     customId = `BK-${dateStr}-${sequence}`;
 
-        // Check if this ID already exists
-        const existingBooking = await prisma.booking.findUnique({
-          where: { id: customId }
-        });
+    //     // Check if this ID already exists
+    //     const existingBooking = await prisma.booking.findUnique({
+    //       where: { id: customId }
+    //     });
 
-        if (!existingBooking) {
-          // ID is unique, break the loop
-          break;
-        }
+    //     if (!existingBooking) {
+    //       // ID is unique, break the loop
+    //       break;
+    //     }
         
-        // ID exists, retry with incremented sequence
-        retryCount++;
-      } catch (err) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          throw new Error('Failed to generate unique booking ID after multiple attempts');
-        }
-      }
+    //     // ID exists, retry with incremented sequence
+    //     retryCount++;
+    //   } catch (err) {
+    //     retryCount++;
+    //     if (retryCount >= maxRetries) {
+    //       throw new Error('Failed to generate unique booking ID after multiple attempts');
+    //     }
+    //   }
+    // }
+    // Use a transaction to ensure atomic ID generation and booking creation
+let customId: string;
+let maxRetries = 10; // Increase retries
+let retryCount = 0;
+
+while (retryCount < maxRetries) {
+  try {
+    // Add milliseconds to make ID more unique
+    const timestamp = Date.now().toString().slice(-3); // Last 3 digits of timestamp
+    
+    // Count existing bookings for this day
+    const count = await prisma.booking.count({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    // Generate ID with timestamp to avoid collisions
+    const sequence = String(count + 1 + retryCount).padStart(3, '0');
+    customId = `BK-${dateStr}-${sequence}-${timestamp}`;
+
+    // Check if this ID already exists
+    const existingBooking = await prisma.booking.findUnique({
+      where: { id: customId }
+    });
+
+    if (!existingBooking) {
+      // ID is unique, break the loop
+      break;
     }
     
+    // ID exists, retry with incremented sequence
+    retryCount++;
+    
+    // Add small delay to avoid tight loop
+    await new Promise(resolve => setTimeout(resolve, 10));
+  } catch (err) {
+    retryCount++;
+    if (retryCount >= maxRetries) {
+      // Fallback to UUID if all retries fail
+      const { v4: uuidv4 } = await import('uuid');
+      customId = `BK-${dateStr}-${uuidv4().split('-')[0]}`;
+      break;
+    }
+  }
+}
+
+
+
     if (!customId!) {
       throw new Error('Failed to generate booking ID');
     }
@@ -366,6 +417,49 @@ export const getBookings = async (req: Request, res: Response) => {
     res.json(bookings);
   } catch (error) {
     console.error('Get bookings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getBookingById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            name: true,
+            phone: true,
+            email: true
+          }
+        },
+        cleaner: {
+          select: {
+            name: true,
+            phone: true
+          }
+        },
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true
+          }
+        },
+        reviews: true
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.json(booking);
+  } catch (error) {
+    console.error('Get booking by ID error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
