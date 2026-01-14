@@ -1,42 +1,36 @@
 import { io, Socket } from 'socket.io-client';
-import { BASE_URL } from './api';
+import ENV from '../config/environment';
 
-let socket: Socket | null = null;
+class SocketService {
+    private socket: Socket | null = null;
 
-export const socketService = {
-    connect: (userId: string, role?: string) => {
-        if (socket) return socket;
+    connect(userId: string, role: string) {
+        if (this.socket?.connected) return;
 
-        // Use the same base URL as the API, but without the /api suffix
-        const socketUrl = BASE_URL.replace('/api', '');
-
-        socket = io(socketUrl, {
+        this.socket = io(ENV.socketUrl, {
             transports: ['websocket'],
-            forceNew: true
+            query: { userId, role }
         });
 
-        socket.on('connect', () => {
-            console.log('Connected to socket server');
-            socket?.emit('join', { userId, role });
+        this.socket.on('connect', () => {
+            console.log('Socket connected');
         });
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from socket server');
+        this.socket.on('disconnect', () => {
+            console.log('Socket disconnected');
         });
+    }
 
-        socket.on('error', (error) => {
-            console.error('Socket error:', error);
-        });
-
-        return socket;
-    },
-
-    disconnect: () => {
-        if (socket) {
-            socket.disconnect();
-            socket = null;
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
         }
-    },
+    }
 
-    getSocket: () => socket
-};
+    getSocket() {
+        return this.socket;
+    }
+}
+
+export const socketService = new SocketService();

@@ -151,6 +151,10 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         email: fromEmail,
         name: companyName
       },
+      replyTo: {
+        email: fromEmail,
+        name: companyName
+      },
       subject: options.subject,
       text: emailContent,
       html: `
@@ -161,35 +165,35 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #374151; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #374151; background-color: #f9fafb; }
             .email-wrapper { background-color: #f9fafb; padding: 20px 0; }
             .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
             .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }
             .logo { max-width: 200px; height: auto; margin: 0 auto 15px; display: block; }
             .header-text { color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
             .tagline { color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 8px; font-weight: 500; }
-            .content { padding: 40px; }
-            .content p { margin-bottom: 16px; color: #374151; }
-            .content pre, .content-text { white-space: pre-wrap; word-wrap: break-word; }
+            .content { padding: 40px 30px; background-color: #ffffff; }
+            .content p { margin-bottom: 16px; color: #374151; font-size: 15px; }
+            .content pre, .content-text { white-space: pre-wrap; word-wrap: break-word; font-size: 15px; }
             .button-container { text-align: center; margin: 30px 0; }
-            .button { display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-            .button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4); }
+            .button { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
             .divider { height: 1px; background-color: #e5e7eb; margin: 30px 0; }
             .footer { background-color: #f9fafb; padding: 30px 20px; text-align: center; border-top: 1px solid #e5e7eb; }
-            .footer-text { color: #6b7280; font-size: 12px; line-height: 1.8; }
+            .footer-text { color: #6b7280; font-size: 13px; line-height: 1.8; }
             .footer-link { color: #10b981; text-decoration: none; font-weight: 500; }
-            .footer-link:hover { text-decoration: underline; }
-            .social-links { margin-top: 15px; }
-            .social-links a { display: inline-block; margin: 0 8px; }
-            .info-box { background-color: #ecfdf5; padding: 20px; border-left: 4px solid #10b981; border-radius: 4px; margin: 20px 0; font-size: 13px; }
-            .credentials-box { background-color: #f0fdf4; padding: 20px; border: 1px solid #dcfce7; border-radius: 8px; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 13px; }
-            .credentials-label { color: #059669; font-weight: 600; margin-bottom: 8px; }
-            .credentials-item { padding: 10px; background-color: #ffffff; border: 1px solid #dcfce7; border-radius: 4px; margin-bottom: 10px; word-break: break-all; }
+            .info-box { background-color: #ecfdf5; padding: 20px; border-left: 4px solid #10b981; border-radius: 4px; margin: 20px 0; font-size: 14px; }
+            .credentials-box { background-color: #f0fdf4; padding: 20px; border: 1px solid #dcfce7; border-radius: 8px; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 14px; }
+            .credentials-label { color: #059669; font-weight: 600; margin-bottom: 8px; font-size: 15px; }
+            .credentials-item { padding: 12px; background-color: #ffffff; border: 1px solid #dcfce7; border-radius: 4px; margin-bottom: 10px; word-break: break-all; }
             .credentials-item strong { color: #059669; }
-            .instruction-box { background-color: #ecfdf5; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
-            .instruction-box ol { padding-left: 20px; }
-            .instruction-box li { margin: 10px 0; color: #374151; }
-            .warning-box { background-color: #fef3c7; padding: 16px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0; font-size: 13px; color: #92400e; }
+            .instruction-box { background-color: #ecfdf5; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+            .instruction-box ol { padding-left: 20px; margin-top: 10px; }
+            .instruction-box li { margin: 10px 0; color: #374151; font-size: 14px; }
+            .warning-box { background-color: #fef3c7; padding: 18px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0; font-size: 14px; color: #92400e; }
+            @media only screen and (max-width: 600px) {
+              .content { padding: 30px 20px !important; }
+              .button { padding: 12px 28px !important; font-size: 14px !important; }
+            }
           </style>
         </head>
         <body>
@@ -274,14 +278,44 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         </body>
         </html>
       `,
-      // Add headers to prevent spam filtering
+      // Enhanced headers to prevent spam filtering and improve deliverability
       headers: {
-        'X-Priority': '3' as any,
-        'X-MSMail-Priority': 'Normal' as any,
-        'X-Mailer': 'Sparkleville Mail Service' as any,
+        'X-Priority': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? '1' : '3' as any,
+        'X-MSMail-Priority': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'High' : 'Normal' as any,
+        'Importance': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'high' : 'Normal' as any,
+        'X-Mailer': `${companyName} Mail Service v1.0` as any,
         'List-Unsubscribe': `<${appUrl}/unsubscribe>` as any,
         'List-Help': `<${appUrl}/help>` as any,
-      } as any
+        'List-Id': `<notifications.${fromEmail.split('@')[1]}>` as any,
+        'Precedence': (options.templateType === 'welcome' || options.templateType === 'confirmation') ? 'list' : 'bulk' as any,
+        'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply' as any,
+      } as any,
+      // Add tracking settings to prevent spam
+      trackingSettings: {
+        clickTracking: {
+          enable: false,
+          enableText: false
+        },
+        openTracking: {
+          enable: false
+        },
+        subscriptionTracking: {
+          enable: false
+        }
+      },
+      // Add mail settings
+      mailSettings: {
+        sandboxMode: {
+          enable: false
+        },
+        footer: {
+          enable: false
+        }
+      },
+      // Add categories for better organization - transactional first for welcome/confirmation emails
+      categories: (options.templateType === 'welcome' || options.templateType === 'confirmation') 
+        ? ['transactional', options.templateType] 
+        : [options.templateType, 'transactional']
     };
 
     if (mailtrapTransporter) {
@@ -395,10 +429,10 @@ Location: ${booking.address || 'Your specified location'}
 ${addOnsDetails ? `Add-ons: ${addOnsDetails}` : 'Standard cleaning services'}
 ${kitchenDetails ? `Kitchen Services: ${kitchenDetails}\n` : ''}${laundryDetails ? `Laundry Services: ${laundryDetails}\n` : ''}${petDetails ? `Pet Handling: ${petDetails}\n` : ''}${booking.specialInstructions ? `Special Instructions: ${booking.specialInstructions}\n` : ''}
 
---- APPOINTMENT DETAILS ---
-Estimated Duration: ${booking.estimatedDuration || 'TBD'} hours
-Cleaner(s) Assigned: ${booking.cleanerCount || 1}
-
+// --- APPOINTMENT DETAILS ---
+// Estimated Duration: ${booking.estimatedDuration || 'TBD'} hours
+// Cleaner(s) Assigned: ${booking.cleanerCount || 1}
+okay
 --- PAYMENT DETAILS ---
 Subtotal: $${Number(booking.totalAmount - (booking.tipAmount || 0)).toFixed(2)}
 Tip: $${Number(booking.tipAmount || 0).toFixed(2)}

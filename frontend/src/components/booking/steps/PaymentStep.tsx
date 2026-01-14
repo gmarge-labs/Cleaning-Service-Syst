@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
 import { formatDateForDB } from '../../../utils/dateUtils';
 import { api } from '../../../utils/api';
+import { Link } from 'react-router-dom';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface PaymentStepProps {
@@ -198,18 +199,18 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 space-y-8">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-neutral-900 mb-2">Payment Details</h2>
-          <p className="text-neutral-600">Secure payment processing with end-to-end encryption</p>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 mb-1 sm:mb-2">Payment Details</h2>
+          <p className="text-sm sm:text-base text-neutral-600">Secure payment processing with end-to-end encryption</p>
         </div>
 
         {/* Security Badge */}
-        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <Shield className="w-6 h-6 text-green-600" />
+        <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
+          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
           <div>
-            <div className="text-sm font-semibold text-green-900">Secure Payment</div>
+            <div className="text-xs sm:text-sm font-semibold text-green-900">Secure Payment</div>
             <div className="text-xs text-green-700">256-bit SSL encryption • PCI DSS compliant</div>
           </div>
         </div>
@@ -221,7 +222,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
             <TabsTrigger value="debit-card">Debit Card</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="credit-card" className="space-y-4 mt-6">
+          <TabsContent value="credit-card" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
             {settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe' ? (
               <div className="space-y-4">
                 <div>
@@ -262,7 +263,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
             ) : (
               <>
                 <div>
-                  <Label htmlFor="card-number">Card Number *</Label>
+                  <Label htmlFor="card-number" className="text-sm">Card Number *</Label>
                   <div className="relative mt-1.5">
                     <Input
                       id="card-number"
@@ -270,26 +271,26 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
                       onChange={(e) => setCardNumber(e.target.value)}
                       placeholder="1234 5678 9012 3456"
                       maxLength={19}
-                      className="pl-10"
+                      className="pl-10 text-sm"
                     />
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="expiry">Expiry Date *</Label>
+                    <Label htmlFor="expiry" className="text-sm">Expiry Date *</Label>
                     <Input
                       id="expiry"
                       value={expiryDate}
                       onChange={(e) => setExpiryDate(e.target.value)}
                       placeholder="MM/YY"
                       maxLength={5}
-                      className="mt-1.5"
+                      className="mt-1.5 text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="cvv">CVV *</Label>
+                    <Label htmlFor="cvv" className="text-sm">CVV *</Label>
                     <Input
                       id="cvv"
                       value={cvv}
@@ -297,7 +298,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
                       placeholder="123"
                       maxLength={4}
                       type="password"
-                      className="mt-1.5"
+                      className="mt-1.5 text-sm"
                     />
                   </div>
                 </div>
@@ -527,35 +528,35 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
             className="text-sm text-neutral-700 cursor-pointer leading-relaxed"
           >
             I agree to the{' '}
-            <button className="text-secondary-500 hover:underline">Terms & Conditions</button>,{' '}
-            <button className="text-secondary-500 hover:underline">Privacy Policy</button>, and{' '}
-            <button className="text-secondary-500 hover:underline">Cancellation Policy</button> *
+            <Link to="/terms" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</Link>,{' '}
+            <Link to="/privacy" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>, and{' '}
+            <Link to="/terms" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Cancellation Policy</Link> *
           </label>
         </div>
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
         <Button
           onClick={onBack}
           variant="outline"
-          className="px-8"
+          className="px-4 sm:px-8 order-2 sm:order-1"
         >
           Back
         </Button>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 order-1 sm:order-2">
           <Button
             onClick={() => handleSubmit('DRAFT')}
             variant="outline"
             disabled={isLoading}
-            className="px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
+            className="px-4 sm:px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
           >
             Save as Draft
           </Button>
           <Button
             onClick={() => handleSubmit('BOOKED')}
             disabled={!isValid() || isLoading}
-            className="bg-secondary-500 hover:bg-secondary-600 px-8"
+            className="bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
           >
             {isLoading ? 'Processing...' : `Complete Booking - $${totalAmount.toFixed(2)}`}
           </Button>

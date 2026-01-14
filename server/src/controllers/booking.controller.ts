@@ -5,6 +5,9 @@ import { sendBookingConfirmation, sendInvoiceEmail, sendEmail } from '../utils/e
 import { calculateBookingDuration } from '../utils/booking';
 import { emitToUser } from '../utils/socket';
 import { PaymentService } from '../utils/payment.service';
+import bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
+import { generateUserId } from '../utils/idGenerator';
 
 export const sendInvoice = async (req: Request, res: Response) => {
   try {
@@ -78,6 +81,42 @@ export const createBooking = async (req: Request, res: Response) => {
       hasPet, petDetails, paymentMethod, tipAmount, totalAmount, status
     } = bookingData;
 
+    // Auto-create customer account for guest bookings
+    let isNewUser = false;
+    if (!userId && guestEmail) {
+      // Check if user with this email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: guestEmail.toLowerCase() }
+      });
+
+      if (existingUser) {
+        // User exists, link booking to this user
+        userId = existingUser.id;
+        console.log(`✅ Found existing user ${existingUser.id} for email ${guestEmail}`);
+      } else {
+        // Create new customer account
+        const defaultPassword = '123456';
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        const newUserId = await generateUserId(Role.CUSTOMER);
+
+        const newUser = await prisma.user.create({
+          data: {
+            id: newUserId,
+            name: guestName || 'Guest',
+            email: guestEmail.toLowerCase(),
+            password: hashedPassword,
+            phone: guestPhone || null,
+            address: address || null,
+            role: Role.CUSTOMER,
+          },
+        });
+
+        userId = newUser.id;
+        isNewUser = true;
+        console.log(`✅ Created new customer account ${newUserId} for ${guestEmail}`);
+      }
+    }
+
     // If user is logged in, try to populate missing details from user table
     if (userId) {
       const user = await prisma.user.findUnique({
@@ -116,17 +155,59 @@ export const createBooking = async (req: Request, res: Response) => {
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
 
-    const count = await prisma.booking.count({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-    });
+    // Use a transaction to ensure atomic ID generation and booking creation
+    let customId: string;
+    let maxRetries = 10; // Increase retries
+    let retryCount = 0;
 
-    const sequence = String(count + 1).padStart(3, '0');
-    const customId = `BK-${dateStr}-${sequence}`;
+    while (retryCount < maxRetries) {
+      try {
+        // Add milliseconds to make ID more unique
+        const timestamp = Date.now().toString().slice(-3); // Last 3 digits of timestamp
+
+        // Count existing bookings for this day
+        const count = await prisma.booking.count({
+          where: {
+            date: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        });
+
+        // Generate ID with timestamp to avoid collisions
+        const sequence = String(count + 1 + retryCount).padStart(3, '0');
+        customId = `BK-${dateStr}-${sequence}-${timestamp}`;
+
+        // Check if this ID already exists
+        const existingBooking = await prisma.booking.findUnique({
+          where: { id: customId }
+        });
+
+        if (!existingBooking) {
+          // ID is unique, break the loop
+          break;
+        }
+
+        // ID exists, retry with incremented sequence
+        retryCount++;
+
+        // Add small delay to avoid tight loop
+        await new Promise(resolve => setTimeout(resolve, 10));
+      } catch (err) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          // Fallback to UUID if all retries fail
+          const { v4: uuidv4 } = await import('uuid');
+          customId = `BK-${dateStr}-${uuidv4().split('-')[0]}`;
+          break;
+        }
+      }
+    }
+
+    if (!customId!) {
+      throw new Error('Failed to generate booking ID');
+    }
 
     // Combine rooms and roomQuantities
     const combinedRooms: Record<string, number> = {};
@@ -196,7 +277,26 @@ export const createBooking = async (req: Request, res: Response) => {
     });
 
     if (guestEmail) {
-      await sendBookingConfirmation(booking, guestEmail);
+      console.log(`📧 Calling sendBookingConfirmation for ${guestEmail}`);
+      const emailResult = await sendBookingConfirmation(booking, guestEmail);
+      console.log(`📧 sendBookingConfirmation result: ${emailResult}`);
+
+      // If this is a new user, send welcome email with login credentials
+      if (isNewUser) {
+        console.log(`📧 Sending welcome email with login credentials to new user ${guestEmail}`);
+        try {
+          const { sendWelcomeEmail } = await import('../utils/email.service');
+          const newUserData = await prisma.user.findUnique({
+            where: { id: userId! }
+          });
+          if (newUserData) {
+            const welcomeEmailResult = await sendWelcomeEmail(newUserData, '123456');
+            console.log(`📧 sendWelcomeEmail result: ${welcomeEmailResult}`);
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending welcome email:', emailError);
+        }
+      }
     }
 
     res.status(201).json({
@@ -244,6 +344,49 @@ export const getBookings = async (req: Request, res: Response) => {
     res.json(bookings);
   } catch (error) {
     console.error('Get bookings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getBookingById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            name: true,
+            phone: true,
+            email: true
+          }
+        },
+        cleaner: {
+          select: {
+            name: true,
+            phone: true
+          }
+        },
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true
+          }
+        },
+        reviews: true
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.json(booking);
+  } catch (error) {
+    console.error('Get booking by ID error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

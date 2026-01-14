@@ -13,6 +13,8 @@ import { HowItWorksPage } from './pages/HowItWorksPage';
 import { ContactPage } from './pages/ContactPage';
 import { CareersPage } from './pages/CareersPage';
 import { ApplicationFormPage } from './pages/ApplicationFormPage';
+import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { CustomerDashboard } from './components/dashboard/CustomerDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { SupervisorDashboard } from './components/supervisor/SupervisorDashboard';
@@ -155,6 +157,14 @@ export default function App() {
               <Route
                 path="/apply"
                 element={<ApplicationFormPage />}
+              />
+              <Route
+                path="/terms"
+                element={<TermsPage />}
+              />
+              <Route
+                path="/privacy"
+                element={<PrivacyPage />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -88,7 +88,7 @@ export function UpcomingBookings({ onReschedule }: UpcomingBookingsProps) {
     if (!bookingToCancel) return;
 
     try {
-      const response = await api.put(`/api/bookings/${bookingToCancel.id}`, {
+      const response = await api.patch(`/api/bookings/${bookingToCancel.id}`, {
         status: 'CANCELLED',
       });
 

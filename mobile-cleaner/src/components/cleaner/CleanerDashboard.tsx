@@ -244,6 +244,20 @@ const EmptyState = ({ icon, title, description }: any) => (
     </View>
 );
 
+const getBadgeText = (job: any, isCompleted: boolean) => {
+    if (isCompleted) return 'Completed';
+    if (job.status === 'REVISION_REQUESTED') return 'Revision';
+    if (job.status === 'IN_PROGRESS') return 'In Progress';
+    return 'Upcoming';
+};
+
+const getBadgeVariant = (job: any, isCompleted: boolean): 'default' | 'secondary' | 'success' | 'outline' | 'info' | 'warning' | 'neutral' | 'error' => {
+    if (isCompleted) return 'success';
+    if (job.status === 'REVISION_REQUESTED') return 'error';
+    if (job.status === 'IN_PROGRESS') return 'info';
+    return 'secondary';
+};
+
 const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
     const isCompleted = job.status === 'COMPLETED';
     return (
@@ -253,8 +267,8 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                     <Text style={styles.jobId}>{job.id}</Text>
                     <Text style={styles.serviceType}>{job.serviceType}</Text>
                 </View>
-                <Badge variant={isCompleted ? 'success' : job.status === 'REVISION_REQUESTED' ? 'error' : job.status === 'IN_PROGRESS' ? 'info' : 'secondary'}>
-                    {isCompleted ? 'Completed' : job.status === 'REVISION_REQUESTED' ? 'Revision' : job.status === 'IN_PROGRESS' ? 'In Progress' : 'Upcoming'}
+                <Badge variant={getBadgeVariant(job, isCompleted)}>
+                    {getBadgeText(job, isCompleted)}
                 </Badge>
             </View>
             <View style={styles.cardContent}>

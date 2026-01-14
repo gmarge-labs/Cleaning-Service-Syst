@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { 
   CheckCircle, 
   Clock, 
@@ -804,9 +805,9 @@ export function ActiveJob() {
                 className="text-sm text-neutral-700 cursor-pointer leading-relaxed"
               >
                 I agree to the{' '}
-                <button className="text-secondary-500 hover:underline">Terms & Conditions</button>,{' '}
-                <button className="text-secondary-500 hover:underline">Privacy Policy</button>, and{' '}
-                <button className="text-secondary-500 hover:underline">Cancellation Policy</button> *
+                <Link to="/terms" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</Link>,{' '}
+                <Link to="/privacy" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>, and{' '}
+                <Link to="/terms" className="text-secondary-500 hover:underline" target="_blank" rel="noopener noreferrer">Cancellation Policy</Link> *
               </label>
             </div>
           </div>

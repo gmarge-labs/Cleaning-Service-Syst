@@ -11,6 +11,7 @@ import { setCredentials } from '../../store/slices/authSlice';
 import { ForgotPasswordModal } from '../auth/ForgotPasswordModal';
 import logo from '../../images/logo/Sparkleville1(2).png';
 import { api } from '../../utils/api';
+import { Link } from 'react-router-dom';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -74,11 +75,6 @@ export function LoginModal({
         throw new Error(data.message || 'Login failed');
       }
 
-      // Determine user role based on email domain or response data if available
-      // For now, we'll stick to the email domain logic as a fallback or primary check
-      // depending on what the backend returns. The backend returns `user` object.
-      // Let's use the backend role if available, otherwise fallback to email check.
-
       const role = data.user.role?.toLowerCase() || getRoleFromEmail(loginEmail);
 
       // Normalize user status to lowercase for frontend consistency
@@ -90,7 +86,7 @@ export function LoginModal({
       // Dispatch to Redux
       dispatch(setCredentials({
         user: normalizedUser,
-        token: data.token || 'dummy-token' // Ensure backend returns token or handle it
+        token: data.token || 'dummy-token'
       }));
 
       // Route to appropriate dashboard based on role
@@ -196,21 +192,21 @@ export function LoginModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[420px] max-h-[90vh] my-4 md:my-8 lg:my-12 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[350px] !max-h-[550px] !h-auto my-2 md:my-4 p-0 border-0 shadow-2xl overflow-hidden flex flex-col">
         {/* Header with Gradient */}
-        <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-6 pb-8 flex-shrink-0">
-          <div className="flex items-center justify-center mb-3">
-            <img src={logo} alt="Sparkleville Logo" className="h-16 w-auto" />
+        <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 p-4 pb-6 flex-shrink-0">
+          <div className="flex items-center justify-center mb-2">
+            <img src={logo} alt="Sparkleville Logo" className="h-12 w-auto" />
           </div>
-          <DialogTitle className="text-center text-white text-2xl mb-1">Welcome Back!</DialogTitle>
+          <DialogTitle className="text-center text-white text-xl mb-1">Welcome Back!</DialogTitle>
           <DialogDescription className="text-center text-white/90 text-sm">
             Sign in to continue or create a new account
           </DialogDescription>
         </div>
 
         {/* Content Area - Scrollable */}
-        <div className="px-6 pb-6 pt-2 overflow-y-auto flex-1">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+        <div className="px-6 pb-4 pt-2 overflow-y-auto max-h-[400px]">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
             <TabsList className="grid w-full grid-cols-2 bg-neutral-100 p-1">
               <TabsTrigger value="login" className="data-[state=active]:bg-white">
                 Login
@@ -221,8 +217,8 @@ export function LoginModal({
             </TabsList>
 
             {/* Login Tab */}
-            <TabsContent value="login" className="mt-6 space-y-4">
-              <form onSubmit={handleLogin} className="space-y-4">
+            <TabsContent value="login" className="mt-4 space-y-3">
+              <form onSubmit={handleLogin} className="space-y-3">
                 {error && (
                   <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm animate-in fade-in slide-in-from-top-2">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -230,7 +226,7 @@ export function LoginModal({
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="login-email" className="text-sm font-medium">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -244,10 +240,6 @@ export function LoginModal({
                       required
                     />
                   </div>
-                  <p className="text-xs text-neutral-500 flex items-center gap-1">
-                    {/* <Shield className="w-3 h-3" />
-                    Use @admin.com, @supervisor.com, or @support.com for staff access */}
-                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -297,8 +289,8 @@ export function LoginModal({
             </TabsContent>
 
             {/* Sign Up Tab */}
-            <TabsContent value="signup" className="mt-6">
-              <form onSubmit={handleSignup} className="space-y-4">
+            <TabsContent value="signup" className="mt-4">
+              <form onSubmit={handleSignup} className="space-y-3">
                 {error && (
                   <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm animate-in fade-in slide-in-from-top-2">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -306,7 +298,7 @@ export function LoginModal({
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="signup-name" className="text-sm font-medium">Full Name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -322,7 +314,7 @@ export function LoginModal({
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="signup-email" className="text-sm font-medium">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -338,7 +330,7 @@ export function LoginModal({
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -357,7 +349,7 @@ export function LoginModal({
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="signup-confirm-password" className="text-sm font-medium">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -376,7 +368,7 @@ export function LoginModal({
                 <div className="flex items-start gap-2 pt-1">
                   <input type="checkbox" className="w-4 h-4 rounded border-neutral-300 text-secondary-500 focus:ring-secondary-500 mt-0.5" required />
                   <label className="text-xs text-neutral-600 leading-relaxed">
-                    I agree to the <a href="#" className="text-secondary-500 hover:underline font-medium">Terms of Service</a> and <a href="#" className="text-secondary-500 hover:underline font-medium">Privacy Policy</a>
+                    I agree to the <Link to="/terms" className="text-secondary-500 hover:underline font-medium" target="_blank" rel="noopener noreferrer">Terms of Service</Link> and <Link to="/privacy" className="text-secondary-500 hover:underline font-medium" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>
                   </label>
                 </div>
 
@@ -389,7 +381,7 @@ export function LoginModal({
                 </Button>
 
                 {/* Divider */}
-                <div className="relative py-4">
+                <div className="relative py-2">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-neutral-200"></div>
                   </div>
@@ -428,23 +420,12 @@ export function LoginModal({
                   </svg>
                   <span className="text-neutral-700 font-medium">Sign up with Gmail</span>
                 </Button>
-
-                {/* Staff Account Note */}
-                {/* <div className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-900 leading-relaxed">
-                      <strong className="font-semibold">Staff Access:</strong> Accounts with @admin.com, @supervisor.com, or @support.com domains require administrator approval.
-                    </p>
-                  </div>
-                </div> */}
               </form>
             </TabsContent>
           </Tabs>
         </div>
       </DialogContent>
 
-      {/* Forgot Password Modal */}
       <ForgotPasswordModal
         isOpen={forgotPasswordOpen}
         onClose={() => setForgotPasswordOpen(false)}

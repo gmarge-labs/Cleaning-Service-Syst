@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform, Alert, AppState } from 'react-native';
 import { ArrowLeft, MapPin, Clock, DollarSign, Navigation, CheckCircle, AlertCircle, Package, Shield, Send, Key, IdCard, ListChecks, ChevronRight, Users, Wrench, Info, Home } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -21,7 +21,12 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
     const isClaimedByMe = job.claimedBy?.some(c => c.id === user?.id) || 
                          job.cleanerId === user?.id;
     const [isClockedIn, setIsClockedIn] = useState(job.status === 'IN_PROGRESS');
-    const [startTime, setStartTime] = useState<Date | null>(job.status === 'IN_PROGRESS' ? new Date() : null);
+    // Use actual startTime from job if available, otherwise null
+    const [startTime, setStartTime] = useState<Date | null>(
+        job.status === 'IN_PROGRESS' && (job as any).startTime 
+            ? new Date((job as any).startTime) 
+            : null
+    );
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [arrivalNotified, setArrivalNotified] = useState(job.status === 'ARRIVED' || job.status === 'IN_PROGRESS');
     const [securityCodeInput, setSecurityCodeInput] = useState('');
@@ -98,38 +103,93 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
 
     const cleaningTasks = getCleaningTasks();
 
-    useEffect(() => {
-        const socket = socketService.getSocket();
-        if (socket) {
-            const handleJobStarted = (data: any) => {
-                if (data.bookingId === job.id) {
+    // useEffect(() => {
+    //     const socket = socketService.getSocket();
+    //     if (socket) {
+    //         const handleJobStarted = (data: any) => {
+    //             if (data.bookingId === job.id) {
+    //                 setIsClockedIn(true);
+    //                 setStartTime(new Date());
+    //                 setShowTaskList(true);
+    //                 setArrivalNotified(true);
+    //                 Alert.alert('Job Started!', 'The customer has verified your identity. You can now start the cleaning.');
+    //             }
+    //         };
+
+    //         const handleRevisionRequested = (data: any) => {
+    //             if (data.bookingId === job.id) {
+    //                 Alert.alert('Revision Requested', 'The customer has requested a revision for this job. Please check the details.');
+    //                 // You might want to refresh the job data here or just let the user see the updated status
+    //             }
+    //         };
+
+    //         socket.on('job_started', handleJobStarted);
+    //         socket.on('revision_requested', handleRevisionRequested);
+    //         return () => {
+    //             socket.off('job_started', handleJobStarted);
+    //             socket.off('revision_requested', handleRevisionRequested);
+    //         };
+    //     }
+    // }, [job.id]);
+
+   useEffect(() => {
+    const socket = socketService.getSocket();
+    if (socket && job.id) {
+        // Listen for job status updates
+        const handleJobUpdate = async (data: { bookingId: string; status: string }) => {
+            if (data.bookingId === job.id) {
+                console.log('Job status updated:', data.status);
+                
+                // ✅ AUTO-SHOW TASK LIST WHEN CUSTOMER VERIFIES
+                if (data.status === 'IN_PROGRESS') {
+                    // Fetch the actual startTime from the server
+                    try {
+                        const response = await jobService.getJobDetails(job.id);
+                        const actualStartTime = response.startTime ? new Date(response.startTime) : new Date();
+                        setStartTime(actualStartTime);
+                    } catch (error) {
+                        console.error('Error fetching start time:', error);
+                        setStartTime(new Date());
+                    }
                     setIsClockedIn(true);
-                    setStartTime(new Date());
-                    setShowTaskList(true);
-                    setArrivalNotified(true);
-                    Alert.alert('Job Started!', 'The customer has verified your identity. You can now start the cleaning.');
+                    setShowTaskList(true);  // <-- Automatically show task list
+                    setShowVerificationModal(false);
+                    alert('✅ Customer verified! You can now start cleaning. Complete all tasks on the checklist.');
                 }
-            };
+            }
+        };
 
-            const handleRevisionRequested = (data: any) => {
-                if (data.bookingId === job.id) {
-                    Alert.alert('Revision Requested', 'The customer has requested a revision for this job. Please check the details.');
-                    // You might want to refresh the job data here or just let the user see the updated status
-                }
-            };
+        const handleRevisionRequested = (data: { bookingId: string; revisionNotes: string }) => {
+            if (data.bookingId === job.id) {
+                alert(`Revision Requested: ${data.revisionNotes}\n\nPlease address the issues and resubmit.`);
+            }
+        };
 
-            socket.on('job_started', handleJobStarted);
-            socket.on('revision_requested', handleRevisionRequested);
-            return () => {
-                socket.off('job_started', handleJobStarted);
-                socket.off('revision_requested', handleRevisionRequested);
-            };
-        }
-    }, [job.id]);
+        socket.on('job_status_updated', handleJobUpdate);
+        socket.on('revision_requested', handleRevisionRequested);
 
+        return () => {
+            socket.off('job_status_updated', handleJobUpdate);
+            socket.off('revision_requested', handleRevisionRequested);
+        };
+    }
+}, [job.id]);
+   
     useEffect(() => {
         let interval: any;
+        const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+            // Recalculate elapsed time when app comes to foreground
+            if (nextAppState === 'active' && isClockedIn && startTime) {
+                const now = new Date();
+                const diff = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                setElapsedTime(`${hours}:${minutes.toString().padStart(2, '0')}`);
+            }
+        });
+
         if (isClockedIn && startTime) {
+            // Update timer every second
             interval = setInterval(() => {
                 const now = new Date();
                 const diff = Math.floor((now.getTime() - startTime.getTime()) / 1000);
@@ -138,7 +198,11 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                 setElapsedTime(`${hours}:${minutes.toString().padStart(2, '0')}`);
             }, 1000);
         }
-        return () => clearInterval(interval);
+        
+        return () => {
+            if (interval) clearInterval(interval);
+            appStateSubscription?.remove();
+        };
     }, [isClockedIn, startTime]);
 
     const handleArrival = async () => {
@@ -341,13 +405,14 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={styles.label}>Additional Rooms:</Text>
                                     <View style={styles.badgeContainer}>
-                                        {Object.entries(job.rooms).map(([room, count]: [string, any]) =>
-                                            count > 0 ? (
+                                        {Object.entries(job.rooms)
+                                            .filter(([room, count]: [string, any]) => count > 0)
+                                            .map(([room, count]: [string, any]) => (
                                                 <Badge key={room} variant="outline">
                                                     {room.replace(/([A-Z])/g, ' $1').replace(/-/g, ' ')} x{count}
                                                 </Badge>
-                                            ) : null
-                                        )}
+                                            ))
+                                        }
                                     </View>
                                 </View>
                             ) : null}
@@ -369,26 +434,27 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 </View>
                             </View>
 
-                            {job.addOns && job.addOns.length > 0 ? (
+                            {job.addOns && job.addOns.length > 0 && (
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={styles.label}>Add-ons:</Text>
                                     <View style={styles.badgeContainer}>
                                         {job.addOns.map((addon: any, index: number) => (
                                             <Badge key={index} variant="secondary">
                                                 {typeof addon === 'string' ? addon : addon.name}
-                                                {addon.quantity && addon.quantity > 1 ? ` x${addon.quantity}` : ''}
+                                                {(typeof addon !== 'string' && addon.quantity && addon.quantity > 1) ? ` x${addon.quantity}` : ''}
                                             </Badge>
                                         ))}
                                     </View>
                                 </View>
-                            ) : null}
+                            )}
 
                             {/* Kitchen Add-ons */}
-                            {job.kitchenAddOns && typeof job.kitchenAddOns === 'object' && Object.keys(job.kitchenAddOns).length > 0 ? (
+                            {job.kitchenAddOns && typeof job.kitchenAddOns === 'object' && Object.keys(job.kitchenAddOns).length > 0 && (
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={styles.label}>Kitchen Add-ons:</Text>
-                                    {Object.entries(job.kitchenAddOns).map(([kitchenIndex, addons]: [string, any]) => (
-                                        addons && addons.length > 0 ? (
+                                    {Object.entries(job.kitchenAddOns)
+                                        .filter(([kitchenIndex, addons]: [string, any]) => addons && addons.length > 0)
+                                        .map(([kitchenIndex, addons]: [string, any]) => (
                                             <View key={kitchenIndex} style={{ marginTop: 4 }}>
                                                 <Text style={[styles.label, { fontSize: 10 }]}>Kitchen #{parseInt(kitchenIndex) + 1}</Text>
                                                 <View style={styles.badgeContainer}>
@@ -397,55 +463,56 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                                     ))}
                                                 </View>
                                             </View>
-                                        ) : null
-                                    ))}
+                                        ))
+                                    }
                                 </View>
-                            ) : null}
+                            )}
 
                             {/* Laundry Details */}
-                            {job.laundryRoomDetails && typeof job.laundryRoomDetails === 'object' && Object.keys(job.laundryRoomDetails).length > 0 ? (
+                            {job.laundryRoomDetails && typeof job.laundryRoomDetails === 'object' && Object.keys(job.laundryRoomDetails).length > 0 && (
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={styles.label}>Laundry Details:</Text>
-                                    {Object.entries(job.laundryRoomDetails).map(([laundryIndex, details]: [string, any]) => (
-                                        details ? (
+                                    {Object.entries(job.laundryRoomDetails)
+                                        .filter(([laundryIndex, details]: [string, any]) => details)
+                                        .map(([laundryIndex, details]: [string, any]) => (
                                             <View key={laundryIndex} style={{ marginTop: 4 }}>
                                                 <Text style={[styles.label, { fontSize: 10 }]}>Laundry Room #{parseInt(laundryIndex) + 1}</Text>
                                                 <Text style={styles.detailText}>Baskets: {details.baskets}, Rounds: {details.rounds}</Text>
                                             </View>
-                                        ) : null
-                                    ))}
+                                        ))
+                                    }
                                 </View>
-                            ) : null}
+                            )}
                         </View>
 
                         {/* Pets */}
-                        {job.hasPet ? (
+                        {job.hasPet && (
                             <View style={styles.detailCard}>
                                 <View style={styles.detailHeader}>
                                     <Info size={20} color={Colors.secondary} />
                                     <Text style={styles.detailTitle}>Pets Information</Text>
                                 </View>
                                 <View style={styles.badgeContainer}>
-                                    {job.petDetails?.dog ? <Badge variant="secondary" style={styles.petBadge}>Dogs</Badge> : null}
-                                    {job.petDetails?.cat ? <Badge variant="secondary" style={styles.petBadge}>Cats</Badge> : null}
-                                    {job.petDetails?.other ? <Badge variant="secondary" style={styles.petBadge}>Other Pets</Badge> : null}
+                                    {job.petDetails?.dog && <Badge variant="secondary" style={styles.petBadge}>Dogs</Badge>}
+                                    {job.petDetails?.cat && <Badge variant="secondary" style={styles.petBadge}>Cats</Badge>}
+                                    {job.petDetails?.other && <Badge variant="secondary" style={styles.petBadge}>Other Pets</Badge>}
                                 </View>
-                                {job.petDetails?.customPets && job.petDetails.customPets.length > 0 ? (
+                                {job.petDetails?.customPets && job.petDetails.customPets.length > 0 && (
                                     <Text style={[styles.detailText, { marginTop: 8 }]}>Other types: {job.petDetails.customPets.join(', ')}</Text>
-                                ) : null}
+                                )}
                                 <Text style={[styles.detailText, { marginTop: 4 }]}>
                                     Presence: {job.petDetails?.petPresent ? 'Pets will be home' : 'Pets will be away'}
                                 </Text>
-                                {job.petDetails?.petInstructions ? (
+                                {job.petDetails?.petInstructions && (
                                     <View style={styles.instructionBox}>
                                         <Text style={styles.instructionText}>"{job.petDetails.petInstructions}"</Text>
                                     </View>
-                                ) : null}
+                                )}
                             </View>
-                        ) : null}
+                        )}
 
                         {/* Special Instructions */}
-                        {job.specialInstructions ? (
+                        {job.specialInstructions && (
                             <View style={styles.detailCard}>
                                 <View style={styles.detailHeader}>
                                     <Wrench size={20} color={Colors.secondary} />
@@ -455,10 +522,10 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                     <Text style={styles.instructionText}>"{job.specialInstructions}"</Text>
                                 </View>
                             </View>
-                        ) : null}
+                        )}
 
                         {/* Revision Reason */}
-                        {job.status === 'REVISION_REQUESTED' && job.revisionReason ? (
+                        {job.status === 'REVISION_REQUESTED' && job.revisionReason && (
                             <View style={[styles.detailCard, { borderColor: Colors.error, borderWidth: 1 }]}>
                                 <View style={styles.detailHeader}>
                                     <AlertCircle size={20} color={Colors.error} />
@@ -471,7 +538,7 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                     Please address the issues mentioned above and submit new photos for verification.
                                 </Text>
                             </View>
-                        ) : null}
+                        )}
                     </View>
                 )}
             </ScrollView>
