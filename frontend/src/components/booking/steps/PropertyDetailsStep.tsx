@@ -4,6 +4,7 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { BookingData } from '../BookingFlow';
 import { Home, Bed, Bath, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 interface PropertyDetailsStepProps {
@@ -115,6 +116,36 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
     if (!formData.propertyType || !formData.address) return false;
 
     return true;
+  };
+
+  const handleContinue = () => {
+    if (!formData.address) {
+      toast.error('Please enter a service address.');
+      return;
+    }
+    if (!formData.propertyType) {
+      toast.error('Please select a property type.');
+      return;
+    }
+
+    // For residential, ensure bedrooms and bathrooms are specified if they are expected
+    if (isResidentialProperty()) {
+      if (formData.bedrooms <= 0) {
+        toast.error('Please specify the number of bedrooms.');
+        return;
+      }
+      if (formData.bathrooms <= 0) {
+        toast.error('Please specify the number of bathrooms.');
+        return;
+      }
+    }
+
+    if (isOfficeProperty() && formData.toilets < 0) {
+      toast.error('Please specify the number of toilets.');
+      return;
+    }
+
+    onNext();
   };
 
   return (
@@ -614,8 +645,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
           Back
         </Button>
         <Button
-          onClick={onNext}
-          disabled={!isValid()}
+          onClick={handleContinue}
           className="flex-1 sm:flex-initial bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
         >
           Continue to Add-ons

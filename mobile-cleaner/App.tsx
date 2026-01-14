@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CleanerLogin } from './src/components/cleaner/CleanerLogin';
 import { CleanerDashboard } from './src/components/cleaner/CleanerDashboard';
 import { JobDetails } from './src/components/cleaner/JobDetails';
@@ -142,8 +143,8 @@ export default function App() {
     const unreadCount = unreadNotifications;
 
     return (
-        <View style={styles.container}>
-            <StatusBar style="auto" />
+        <SafeAreaView style={styles.container}>
+            <StatusBar style="dark" backgroundColor="#ffffff" translucent={false} hidden={false} />
 
             {currentView === 'login' && (
                 <CleanerLogin onLogin={handleLogin} />
@@ -228,7 +229,7 @@ export default function App() {
                     unreadCount={unreadMessages}
                 />
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 

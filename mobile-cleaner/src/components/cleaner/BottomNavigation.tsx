@@ -43,6 +43,7 @@ export function BottomNavigation({ currentView, onNavigate, unreadNotifications 
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = currentView === item.id || (currentView === 'dashboard' && item.id === 'dashboard');
+                    const badgeCount = item.badge ?? 0;
 
                     return (
                         <TouchableOpacity
@@ -55,11 +56,11 @@ export function BottomNavigation({ currentView, onNavigate, unreadNotifications 
                         >
                             <View>
                                 <Icon size={22} color={isActive ? Colors.secondary : Colors.gray} />
-                                {item.badge && item.badge > 0 && !isActive && (
+                                {badgeCount > 0 && !isActive ? (
                                     <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{item.badge}</Text>
+                                        <Text style={styles.badgeText}>{badgeCount}</Text>
                                     </View>
-                                )}
+                                ) : null}
                             </View>
                             <Text style={[styles.label, isActive && styles.activeLabel]}>{item.label}</Text>
                         </TouchableOpacity>

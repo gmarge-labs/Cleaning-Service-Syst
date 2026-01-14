@@ -1,4 +1,5 @@
 import { Button } from '../../ui/button';
+import { toast } from 'sonner';
 import { BookingData, SystemSettings } from '../BookingFlow';
 import { Home, Sparkles, Building2, Hammer, Check } from 'lucide-react';
 
@@ -63,9 +64,11 @@ export function ServiceStep({ data, onUpdate, onNext, onBack, settings }: Servic
   };
 
   const handleContinue = () => {
-    if (selectedService) {
-      onNext();
+    if (!selectedService) {
+      toast.error('Please select a service before continuing.');
+      return;
     }
+    onNext();
   };
 
   return (
@@ -190,7 +193,6 @@ export function ServiceStep({ data, onUpdate, onNext, onBack, settings }: Servic
         </Button>
         <Button
           onClick={handleContinue}
-          disabled={!selectedService}
           className="flex-1 sm:flex-initial bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
         >
           Continue to Property Details

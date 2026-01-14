@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
+import { toast } from 'sonner';
 import { BookingData } from '../BookingFlow';
 import { UserPlus, LogIn, UserX, Eye, EyeOff, Check, X } from 'lucide-react';
 
@@ -19,6 +20,15 @@ export function AccountStep({ data, onUpdate, onNext }: AccountStepProps) {
   });
 
   const handleContinue = () => {
+    if (!formData.email) {
+      toast.error('Please enter your email address.');
+      return;
+    }
+    if (!formData.phone) {
+      toast.error('Please enter your phone number.');
+      return;
+    }
+
     onUpdate({
       accountType: 'guest',
       name: formData.name,
@@ -86,7 +96,6 @@ export function AccountStep({ data, onUpdate, onNext }: AccountStepProps) {
       {/* Continue Button */}
       <Button
         onClick={handleContinue}
-        disabled={!isValid()}
         className="w-full bg-secondary-500 hover:bg-secondary-600 py-6 text-lg"
       >
         Continue to Service Selection

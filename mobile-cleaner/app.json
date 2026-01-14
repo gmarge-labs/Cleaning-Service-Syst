@@ -16,6 +16,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sparkleville.cleaner"
     },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff",
+      "translucent": false,
+      "hidden": false
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -34,7 +40,13 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "environment": "prod"
+      "environment": "prod",
+      "eas": {
+        "projectId": "d4f0f914-8333-4969-9153-3e1762b737c4"
+      }
+    },
+    "updates": {
+      "enabled": true
     }
   }
 }

@@ -579,12 +579,12 @@ export function ContactPage({ onStartChat }: ContactPageProps) {
 
                     {/* Additional Info */}
                     <div className="pt-6 border-t border-neutral-200">
-                      <h3 className="text-lg font-bold text-neutral-900 mb-2">
+                      {/* <h3 className="text-lg font-bold text-neutral-900 mb-2">
                         Email Us
                       </h3>
                       <a href="mailto:admin@sparkleville.co" className="text-secondary-600 hover:text-secondary-700 hover:underline">
                         admin@sparkleville.co
-                      </a>
+                      </a> */}
                     </div>
                   </div>
                 </ScrollReveal>

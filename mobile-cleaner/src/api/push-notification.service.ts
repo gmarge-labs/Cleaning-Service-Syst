@@ -18,6 +18,11 @@ export const pushNotificationService = {
     registerForPushNotificationsAsync: async () => {
         let token;
 
+        if (Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+            console.warn('Remote push notifications are not supported in Expo Go on Android. Use a development build to test push.');
+            return;
+        }
+
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'default',
@@ -48,8 +53,19 @@ export const pushNotificationService = {
                 return;
             }
 
+            const projectId =
+                Constants?.expoConfig?.extra?.eas?.projectId ||
+                Constants?.expoConfig?.extra?.projectId ||
+                Constants?.easConfig?.projectId;
+
+            if (!projectId) {
+                console.warn(
+                    'Missing Expo projectId. Set expo.extra.eas.projectId in app.json to enable push notifications.'
+                );
+                return;
+            }
+
             try {
-                const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
                 token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
                 console.log("Expo Push Token:", token);
             } catch (e) {

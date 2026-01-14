@@ -191,6 +191,11 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
   };
 
   const handleContinueToPayment = () => {
+    if (!isValid()) {
+      toast.error('Please select a date and time first');
+      return;
+    }
+
     // Build petDetails object with all pet information before moving to payment
     const petDetails = hasPet ? {
       dog: selectedPets.includes('Dog'),
@@ -213,7 +218,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
       customPets: customPets,
       petPresent: petPresent ?? undefined,
     });
-    
+
     onNext();
   };
 
@@ -640,7 +645,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
             <Button
               onClick={handleSaveDraft}
               variant="outline"
-              disabled={!isValid() || isLoading}
+              disabled={isLoading}
               className="px-4 sm:px-6 border-secondary-200 text-secondary-600 hover:bg-secondary-50"
             >
               {isLoading ? 'Saving...' : 'Save as Draft'}
@@ -648,7 +653,7 @@ export function SchedulingStep({ data, onUpdate, onNext, onBack, mode = 'new' }:
           )}
           <Button
             onClick={mode === 'reschedule' ? handleReschedule : handleContinueToPayment}
-            disabled={!isValid() || isLoading}
+            disabled={isLoading}
             className="bg-secondary-500 hover:bg-secondary-600 px-4 sm:px-8"
           >
             {isLoading ? 'Processing...' : mode === 'reschedule' ? 'Confirm Reschedule' : 'Continue to Payment'}
