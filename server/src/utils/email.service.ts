@@ -429,10 +429,8 @@ Location: ${booking.address || 'Your specified location'}
 ${addOnsDetails ? `Add-ons: ${addOnsDetails}` : 'Standard cleaning services'}
 ${kitchenDetails ? `Kitchen Services: ${kitchenDetails}\n` : ''}${laundryDetails ? `Laundry Services: ${laundryDetails}\n` : ''}${petDetails ? `Pet Handling: ${petDetails}\n` : ''}${booking.specialInstructions ? `Special Instructions: ${booking.specialInstructions}\n` : ''}
 
-// --- APPOINTMENT DETAILS ---
-// Estimated Duration: ${booking.estimatedDuration || 'TBD'} hours
-// Cleaner(s) Assigned: ${booking.cleanerCount || 1}
-okay
+--- APPOINTMENT DETAILS ---
+Cleaner(s) Assigned: ${booking.cleanerCount || 1}
 --- PAYMENT DETAILS ---
 Subtotal: $${Number(booking.totalAmount - (booking.tipAmount || 0)).toFixed(2)}
 Tip: $${Number(booking.tipAmount || 0).toFixed(2)}
