@@ -95,6 +95,7 @@ export interface APIConfig {
     enabled: boolean;
     apiKey: string;
     secretKey?: string;
+    publishableKey?: string;
     provider: 'stripe' | 'square' | 'other';
   };
   googleCalendar?: {
@@ -259,11 +260,12 @@ export class APIConfigService {
       const provider = config.provider || 'stripe';
 
       if (provider === 'stripe') {
-        // Stripe keys start with 'sk_test_' or 'sk_live_'
-        if (!config.apiKey.startsWith('sk_')) {
-          return false;
-        }
-        return config.apiKey.length > 20;
+        // Stripe secret keys start with 'sk_'
+        const hasSecretKey = config.apiKey?.startsWith('sk_') || config.secretKey?.startsWith('sk_');
+        // Stripe publishable keys start with 'pk_'
+        const hasPublishableKey = config.publishableKey?.startsWith('pk_');
+
+        return !!(hasSecretKey && hasPublishableKey);
       } else if (provider === 'square') {
         // Square keys have a specific format
         return config.apiKey.length > 20;

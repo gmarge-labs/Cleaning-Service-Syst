@@ -1,0 +1,1141 @@
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index 224f0a7..b04cf4d 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -36,6 +36,8 @@
+                         "@radix-ui/react-tooltip": "^1.1.8",
+                         "@radix-ui/react-visually-hidden": "^1.1.0",
+                         "@reduxjs/toolkit": "^2.11.2",
++                        "@stripe/react-stripe-js": "^5.4.1",
++                        "@stripe/stripe-js": "^8.6.1",
+                         "class-variance-authority": "^0.7.1",
+                         "clsx": "*",
+                         "cmdk": "^1.1.1",
+@@ -2619,6 +2621,29 @@
+                   "integrity": "sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==",
+                   "license": "MIT"
+             },
++            "node_modules/@stripe/react-stripe-js": {
++                  "version": "5.4.1",
++                  "resolved": "https://registry.npmjs.org/@stripe/react-stripe-js/-/react-stripe-js-5.4.1.tgz",
++                  "integrity": "sha512-ipeYcAHa4EPmjwfv0lFE+YDVkOQ0TMKkFWamW+BqmnSkEln/hO8rmxGPPWcd9WjqABx6Ro8Xg4pAS7evCcR9cw==",
++                  "license": "MIT",
++                  "dependencies": {
++                        "prop-types": "^15.7.2"
++                  },
++                  "peerDependencies": {
++                        "@stripe/stripe-js": ">=8.0.0 <9.0.0",
++                        "react": ">=16.8.0 <20.0.0",
++                        "react-dom": ">=16.8.0 <20.0.0"
++                  }
++            },
++            "node_modules/@stripe/stripe-js": {
++                  "version": "8.6.1",
++                  "resolved": "https://registry.npmjs.org/@stripe/stripe-js/-/stripe-js-8.6.1.tgz",
++                  "integrity": "sha512-UJ05U2062XDgydbUcETH1AoRQLNhigQ2KmDn1BG8sC3xfzu6JKg95Qt6YozdzFpxl1Npii/02m2LEWFt1RYjVA==",
++                  "license": "MIT",
++                  "engines": {
++                        "node": ">=12.16"
++                  }
++            },
+             "node_modules/@swc/core": {
+                   "version": "1.15.5",
+                   "resolved": "https://registry.npmjs.org/@swc/core/-/core-1.15.5.tgz",
+diff --git a/frontend/package.json b/frontend/package.json
+index a920f33..eef6102 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -31,6 +31,8 @@
+             "@radix-ui/react-tooltip": "^1.1.8",
+             "@radix-ui/react-visually-hidden": "^1.1.0",
+             "@reduxjs/toolkit": "^2.11.2",
++            "@stripe/react-stripe-js": "^5.4.1",
++            "@stripe/stripe-js": "^8.6.1",
+             "class-variance-authority": "^0.7.1",
+             "clsx": "*",
+             "cmdk": "^1.1.1",
+diff --git a/frontend/src/components/admin/pages/SettingsPage.tsx b/frontend/src/components/admin/pages/SettingsPage.tsx
+index fe4d48e..80cb9f0 100644
+--- a/frontend/src/components/admin/pages/SettingsPage.tsx
++++ b/frontend/src/components/admin/pages/SettingsPage.tsx
+@@ -19,12 +19,13 @@ const API_URL = '/api';
+ export function SettingsPage() {
+   const dispatch = useDispatch<AppDispatch>();
+   const { general: reduxGeneral } = useSelector((state: RootState) => state.settings);
+-  
++
+   const [isLoading, setIsLoading] = useState(true);
+   const [isSaving, setIsSaving] = useState(false);
+   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+   const [currentIntegration, setCurrentIntegration] = useState<string>('');
+   const [tempApiKey, setTempApiKey] = useState('');
++  const [tempPublishableKey, setTempPublishableKey] = useState('');
+   const [qualifiedUsersCount, setQualifiedUsersCount] = useState<number | null>(null);
+   const [isLoadingCount, setIsLoadingCount] = useState(false);
+ 
+@@ -100,7 +101,7 @@ export function SettingsPage() {
+     perWindow: 15,
+     perPetHair: 30,
+     perOrganizationHour: 60,
+-    
++
+     standardCleaningMultiplier: 1.0,
+     deepCleaningMultiplier: 1.5,
+     moveInOutMultiplier: 2.0,
+@@ -117,11 +118,11 @@ export function SettingsPage() {
+   });
+ 
+   const [integrations, setIntegrations] = useState({
+-    stripe: { enabled: true, apiKey: 'sk_test_***************' },
+-    plivo: { enabled: true, apiKey: 'MA***************' },
+-    sendgrid: { enabled: true, apiKey: 'SG.***************' },
++    stripe: { enabled: true, apiKey: '', publishableKey: '' },
++    plivo: { enabled: true, apiKey: '' },
++    sendgrid: { enabled: true, apiKey: '' },
+     quickbooks: { enabled: false, apiKey: '' },
+-    googleCalendar: { enabled: true, apiKey: 'AIza***************' },
++    googleCalendar: { enabled: true, apiKey: '' },
+   });
+ 
+   useEffect(() => {
+@@ -131,7 +132,7 @@ export function SettingsPage() {
+   useEffect(() => {
+     const fetchQualifiedCount = async () => {
+       if (!pricingSettings.topBookerCategory) return;
+-      
++
+       try {
+         setIsLoadingCount(true);
+         const response = await api.get(`/api/settings/qualified-count?category=${pricingSettings.topBookerCategory}`);
+@@ -155,7 +156,7 @@ export function SettingsPage() {
+       const response = await api.get(`/api/settings`);
+       if (!response.ok) throw new Error('Failed to fetch settings');
+       const data = await response.json();
+-      
++
+       if (data) {
+         if (data.general) setGeneralSettings(data.general);
+         if (data.pricing) setPricingSettings(data.pricing);
+@@ -181,7 +182,7 @@ export function SettingsPage() {
+       const response = await api.patch(`/api/settings`, updates);
+ 
+       if (!response.ok) throw new Error('Failed to update settings');
+-      
++
+       toast.success('Settings updated successfully!');
+     } catch (error) {
+       console.error('Error updating settings:', error);
+@@ -228,9 +229,10 @@ export function SettingsPage() {
+     saveSettings({ integrations });
+   };
+ 
+-  const handleOpenConfigModal = (integrationKey: string, currentApiKey: string) => {
++  const handleOpenConfigModal = (integrationKey: string, integration: any) => {
+     setCurrentIntegration(integrationKey);
+-    setTempApiKey(currentApiKey || '');
++    setTempApiKey(integration.apiKey || '');
++    setTempPublishableKey(integration.publishableKey || '');
+     setIsConfigModalOpen(true);
+   };
+ 
+@@ -240,7 +242,8 @@ export function SettingsPage() {
+         ...integrations,
+         [currentIntegration]: {
+           ...integrations[currentIntegration as keyof typeof integrations],
+-          apiKey: tempApiKey
++          apiKey: tempApiKey,
++          publishableKey: tempPublishableKey
+         }
+       });
+       setIsConfigModalOpen(false);
+@@ -380,8 +383,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveGeneralSettings} 
++              <Button
++                onClick={handleSaveGeneralSettings}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -420,8 +423,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveServicePrices} 
++              <Button
++                onClick={handleSaveServicePrices}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -464,8 +467,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveRoomPrices} 
++              <Button
++                onClick={handleSaveRoomPrices}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -504,8 +507,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveAddonPrices} 
++              <Button
++                onClick={handleSaveAddonPrices}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -574,8 +577,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveCleanerPay} 
++              <Button
++                onClick={handleSaveCleanerPay}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -625,78 +628,78 @@ export function SettingsPage() {
+ 
+               {/* Configuration Section - Only show if enabled */}
+               {pricingSettings.topBookerEnabled && (
+-              <div className="grid md:grid-cols-2 gap-8">
+-                <div>
+-                  <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
+-                  <p className="text-sm text-neutral-600 mb-3">Select which users qualify for the discount</p>
+-                  <select
+-                    id="top-booker-category"
+-                    value={pricingSettings.topBookerCategory}
+-                    onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerCategory: e.target.value })}
+-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500"
+-                  >
+-                    <option value="all">All Users</option>
+-                    <option value="5-9">Users with 5 to 9 bookings</option>
+-                    <option value="10-15">Users with 10 to 15 bookings</option>
+-                    <option value="16-20">Users with 16 to 20 bookings</option>
+-                    <option value="21+">Users with 21+ bookings</option>
+-                  </select>
+-                </div>
++                <div className="grid md:grid-cols-2 gap-8">
++                  <div>
++                    <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
++                    <p className="text-sm text-neutral-600 mb-3">Select which users qualify for the discount</p>
++                    <select
++                      id="top-booker-category"
++                      value={pricingSettings.topBookerCategory}
++                      onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerCategory: e.target.value })}
++                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500"
++                    >
++                      <option value="all">All Users</option>
++                      <option value="5-9">Users with 5 to 9 bookings</option>
++                      <option value="10-15">Users with 10 to 15 bookings</option>
++                      <option value="16-20">Users with 16 to 20 bookings</option>
++                      <option value="21+">Users with 21+ bookings</option>
++                    </select>
++                  </div>
+ 
+-                <div>
+-                  <Label htmlFor="top-booker-discount" className="text-base font-semibold">Discount Percentage</Label>
+-                  <p className="text-sm text-neutral-600 mb-3">Percentage to deduct from total</p>
+-                  <div className="flex items-center gap-2">
+-                    <Input
+-                      id="top-booker-discount"
+-                      type="number"
+-                      value={pricingSettings.topBookerDiscount}
+-                      onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerDiscount: parseInt(e.target.value) || 0 })}
+-                      min="0"
+-                      max="100"
+-                      className="text-lg font-semibold"
+-                    />
+-                    <span className="text-neutral-600 font-semibold">%</span>
++                  <div>
++                    <Label htmlFor="top-booker-discount" className="text-base font-semibold">Discount Percentage</Label>
++                    <p className="text-sm text-neutral-600 mb-3">Percentage to deduct from total</p>
++                    <div className="flex items-center gap-2">
++                      <Input
++                        id="top-booker-discount"
++                        type="number"
++                        value={pricingSettings.topBookerDiscount}
++                        onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerDiscount: parseInt(e.target.value) || 0 })}
++                        min="0"
++                        max="100"
++                        className="text-lg font-semibold"
++                      />
++                      <span className="text-neutral-600 font-semibold">%</span>
++                    </div>
+                   </div>
+                 </div>
+-              </div>
+               )}
+ 
+               {/* Preview Section - Only show if enabled */}
+               {pricingSettings.topBookerEnabled && (
+-              <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
+-                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+-                  <Tag className="w-4 h-4" />
+-                  Current Discount Structure
+-                </h4>
+-                <div className="flex items-center justify-between text-sm">
+-                  <div>
+-                    <p className="text-neutral-600 mb-1">Qualifying Category</p>
+-                    <p className="font-semibold text-neutral-900">
+-                      {pricingSettings.topBookerCategory === 'all' ? 'All Users' : 
+-                       pricingSettings.topBookerCategory === '5-9' ? '5-9 Bookings' :
+-                       pricingSettings.topBookerCategory === '10-15' ? '10-15 Bookings' :
+-                       pricingSettings.topBookerCategory === '16-20' ? '16-20 Bookings' : '21+ Bookings'}
+-                    </p>
+-                  </div>
+-                  <div className="flex gap-12 text-right">
++                <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
++                  <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
++                    <Tag className="w-4 h-4" />
++                    Current Discount Structure
++                  </h4>
++                  <div className="flex items-center justify-between text-sm">
+                     <div>
+-                      <p className="text-neutral-600 mb-1">Qualified Users</p>
+-                      <p className="font-semibold text-secondary-600">
+-                        {isLoadingCount ? (
+-                          <Loader2 className="w-3 h-3 animate-spin inline" />
+-                        ) : (
+-                          `${qualifiedUsersCount ?? 0} users`
+-                        )}
++                      <p className="text-neutral-600 mb-1">Qualifying Category</p>
++                      <p className="font-semibold text-neutral-900">
++                        {pricingSettings.topBookerCategory === 'all' ? 'All Users' :
++                          pricingSettings.topBookerCategory === '5-9' ? '5-9 Bookings' :
++                            pricingSettings.topBookerCategory === '10-15' ? '10-15 Bookings' :
++                              pricingSettings.topBookerCategory === '16-20' ? '16-20 Bookings' : '21+ Bookings'}
+                       </p>
+                     </div>
+-                    <div>
+-                      <p className="text-neutral-600 mb-1">Discount Applied</p>
+-                      <p className="font-semibold text-green-600">{pricingSettings.topBookerDiscount}% off</p>
++                    <div className="flex gap-12 text-right">
++                      <div>
++                        <p className="text-neutral-600 mb-1">Qualified Users</p>
++                        <p className="font-semibold text-secondary-600">
++                          {isLoadingCount ? (
++                            <Loader2 className="w-3 h-3 animate-spin inline" />
++                          ) : (
++                            `${qualifiedUsersCount ?? 0} users`
++                          )}
++                        </p>
++                      </div>
++                      <div>
++                        <p className="text-neutral-600 mb-1">Discount Applied</p>
++                        <p className="font-semibold text-green-600">{pricingSettings.topBookerDiscount}% off</p>
++                      </div>
+                     </div>
+                   </div>
+                 </div>
+-              </div>
+               )}
+ 
+               <div className="pt-6 border-t border-neutral-200">
+@@ -719,8 +722,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSavePaySettings} 
++              <Button
++                onClick={handleSavePaySettings}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -740,7 +743,7 @@ export function SettingsPage() {
+             </div>
+ 
+             <p className="text-sm text-neutral-600 mb-6">
+-              Configure how the system calculates the estimated time for each booking. 
++              Configure how the system calculates the estimated time for each booking.
+               This affects cleaner assignment (1 cleaner per 4 hours).
+             </p>
+ 
+@@ -748,7 +751,7 @@ export function SettingsPage() {
+               {/* Base & Core Room Times */}
+               <div className="space-y-6">
+                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Base & Core Room Times (Minutes)</h3>
+-                
++
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="base-mins">Base Time</Label>
+@@ -801,7 +804,7 @@ export function SettingsPage() {
+               {/* Specific Room Times */}
+               <div className="space-y-6">
+                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Specific Room Times (Minutes)</h3>
+-                
++
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="per-kitchen">Kitchen</Label>
+@@ -863,7 +866,7 @@ export function SettingsPage() {
+               {/* Kitchen Add-on Times */}
+               <div className="space-y-6">
+                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Kitchen Add-on Times (Minutes)</h3>
+-                
++
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="per-fridge">Inside Fridge</Label>
+@@ -907,7 +910,7 @@ export function SettingsPage() {
+               {/* Service Add-on Times */}
+               <div className="space-y-6">
+                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Add-on Times (Minutes)</h3>
+-                
++
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="per-basket">Laundry (Per Basket)</Label>
+@@ -951,7 +954,7 @@ export function SettingsPage() {
+               {/* Multipliers */}
+               <div className="space-y-6">
+                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Multipliers</h3>
+-                
++
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="std-mult">Standard Cleaning</Label>
+@@ -998,8 +1001,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveDurationSettings} 
++              <Button
++                onClick={handleSaveDurationSettings}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -1098,8 +1101,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveNotificationTemplates} 
++              <Button
++                onClick={handleSaveNotificationTemplates}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -1128,10 +1131,10 @@ export function SettingsPage() {
+                     </p>
+                   </div>
+                   <div className="flex items-center gap-4">
+-                    <Button 
+-                      variant="outline" 
++                    <Button
++                      variant="outline"
+                       size="sm"
+-                      onClick={() => handleOpenConfigModal(key, integration.apiKey)}
++                      onClick={() => handleOpenConfigModal(key, integration)}
+                     >
+                       <Key className="w-4 h-4 mr-2" />
+                       Configure
+@@ -1157,8 +1160,8 @@ export function SettingsPage() {
+             </div>
+ 
+             <div className="flex justify-end pt-4 border-t border-neutral-200">
+-              <Button 
+-                onClick={handleSaveIntegrations} 
++              <Button
++                onClick={handleSaveIntegrations}
+                 disabled={isSaving}
+                 className="bg-secondary-500 hover:bg-secondary-600"
+               >
+@@ -1222,16 +1225,29 @@ export function SettingsPage() {
+           </DialogHeader>
+           <div className="space-y-4 py-4">
+             <div>
+-              <Label htmlFor="api-key">API Key</Label>
++              <Label htmlFor="api-key">{currentIntegration === 'stripe' ? 'Secret Key' : 'API Key'}</Label>
+               <Input
+                 id="api-key"
+-                type="text"
++                type="password"
+                 value={tempApiKey}
+                 onChange={(e) => setTempApiKey(e.target.value)}
+-                placeholder="Enter your API key..."
++                placeholder={currentIntegration === 'stripe' ? 'sk_test_...' : 'Enter your API key...'}
+                 className="mt-1.5"
+               />
+             </div>
++            {currentIntegration === 'stripe' && (
++              <div>
++                <Label htmlFor="publishable-key">Publishable Key</Label>
++                <Input
++                  id="publishable-key"
++                  type="text"
++                  value={tempPublishableKey}
++                  onChange={(e) => setTempPublishableKey(e.target.value)}
++                  placeholder="pk_test_..."
++                  className="mt-1.5"
++                />
++              </div>
++            )}
+             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+               <p className="text-xs text-blue-900">
+                 <strong>Tip:</strong> Keep your API keys secure. Never share them publicly or commit them to version control.
+diff --git a/frontend/src/components/booking/BookingFlow.tsx b/frontend/src/components/booking/BookingFlow.tsx
+index 235798f..a3d5db2 100644
+--- a/frontend/src/components/booking/BookingFlow.tsx
++++ b/frontend/src/components/booking/BookingFlow.tsx
+@@ -13,6 +13,8 @@ import { PricingSidebar } from './PricingSidebar';
+ import { ArrowLeft, Loader2 } from 'lucide-react';
+ import { parseDateFromDB } from '../../utils/dateUtils';
+ import { api } from '../../utils/api';
++import { loadStripe } from '@stripe/stripe-js';
++import { Elements } from '@stripe/react-stripe-js';
+ const API_URL = '/api';
+ 
+ export interface BookingData {
+@@ -201,6 +203,15 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
+       case 'Schedule':
+         return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} mode={mode} />;
+       case 'Payment':
++        const stripeKey = settings?.integrations?.payment?.publishableKey;
++        if (settings?.integrations?.payment?.enabled && stripeKey) {
++          const stripePromise = loadStripe(stripeKey);
++          return (
++            <Elements stripe={stripePromise}>
++              <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />
++            </Elements>
++          );
++        }
+         return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
+       case 'Confirmation':
+         return <ConfirmationStep data={bookingData} onComplete={onComplete} mode={mode} settings={settings} onBookAnother={() => {
+diff --git a/frontend/src/components/booking/steps/PaymentStep.tsx b/frontend/src/components/booking/steps/PaymentStep.tsx
+index d908f5e..8fabc6f 100644
+--- a/frontend/src/components/booking/steps/PaymentStep.tsx
++++ b/frontend/src/components/booking/steps/PaymentStep.tsx
+@@ -4,15 +4,15 @@ import { Input } from '../../ui/input';
+ import { Label } from '../../ui/label';
+ import { Checkbox } from '../../ui/checkbox';
+ import { BookingData, SystemSettings } from '../BookingFlow';
+-import { CreditCard, Shield, AlertCircle, Tag } from 'lucide-react';
++import { CreditCard, Shield, AlertCircle } from 'lucide-react';
+ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+ import { useSelector } from 'react-redux';
+ import { RootState } from '../../../store/store';
+ import { toast } from 'sonner';
+ import { calculateBookingPrice } from '../../../utils/bookingUtils';
+ import { formatDateForDB } from '../../../utils/dateUtils';
+-import { Badge } from '../../ui/badge';
+ import { api } from '../../../utils/api';
++import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+ 
+ interface PaymentStepProps {
+   data: BookingData;
+@@ -31,7 +31,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
+   const [agreedToTerms, setAgreedToTerms] = useState(false);
+   const [emailNotif, setEmailNotif] = useState(true);
+   const [smsNotif, setSmsNotif] = useState(true);
+-  const [applyFreeCleaning, setApplyFreeCleaning] = useState(false);
++  const [applyFreeCleaning] = useState(false);
+   const [cleaningStats, setCleaningStats] = useState({
+     completedCount: 0,
+     progressToNext: 0,
+@@ -39,6 +39,10 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
+     threshold: 5
+   });
+   const [isLoading, setIsLoading] = useState(false);
++  const [stripeError, setStripeError] = useState<string | null>(null);
++
++  const stripe = useStripe();
++  const elements = useElements();
+ 
+   const { user } = useSelector((state: RootState) => state.auth);
+ 
+@@ -83,12 +87,76 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
+     if (applyFreeCleaning && qualifiesForFreeCleaning && totalAmount === 0) {
+       return agreedToTerms;
+     }
+-    // Otherwise, require full payment details
++
++    // If Stripe is enabled, we rely on Stripe Elements validation
++    if (settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe') {
++      return agreedToTerms;
++    }
++
++    // Otherwise, require full manual payment details (fallback)
+     return cardNumber && expiryDate && cvv && cardName && agreedToTerms;
+   };
+ 
+   const handleSubmit = async (status: 'BOOKED' | 'DRAFT' = 'BOOKED') => {
+     setIsLoading(true);
++    setStripeError(null);
++
++    let paymentIntentId = null;
++
++    // Process Stripe Payment if enabled and not a draft
++    if (status === 'BOOKED' && totalAmount > 0 && settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe') {
++      if (!stripe || !elements) {
++        toast.error("Stripe hasn't loaded yet. Please try again.");
++        setIsLoading(false);
++        return;
++      }
++
++      try {
++        // 1. Create PaymentIntent on the server
++        const piResponse = await api.post('/api/bookings/create-payment-intent', {
++          amount: totalAmount,
++          customerEmail: user?.email || data.email,
++        });
++
++        if (!piResponse.ok) {
++          const piResult = await piResponse.json();
++          throw new Error(piResult.message || 'Failed to initialize payment');
++        }
++
++        const { clientSecret, id } = await piResponse.json();
++        paymentIntentId = id;
++
++        // 2. Confirm payment on the client
++        const cardElement = elements.getElement(CardElement);
++        if (!cardElement) throw new Error('Card element not found');
++
++        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
++          payment_method: {
++            card: cardElement,
++            billing_details: {
++              name: cardName || user?.name || data.name || 'Customer',
++              email: user?.email || data.email,
++            },
++          },
++        });
++
++        if (error) {
++          throw new Error(error.message);
++        }
++
++        if (paymentIntent.status !== 'succeeded') {
++          throw new Error('Payment was not successful. Status: ' + paymentIntent.status);
++        }
++
++        toast.success('Payment authorized and confirmed!');
++      } catch (error: any) {
++        console.error('Stripe error:', error);
++        setStripeError(error.message);
++        toast.error(error.message || 'Payment failed');
++        setIsLoading(false);
++        return;
++      }
++    }
+ 
+     const bookingPayload = {
+       ...data,
+@@ -100,18 +168,11 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
+       address: data.address || null,
+       totalAmount: totalAmount,
+       paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? null : paymentMethod),
++      paymentIntentId: paymentIntentId, // Store the successful payment intent ID
+       status: status,
+     };
+ 
+     try {
+-      // const response = await api.post('/api/bookings', {
+-      //   method: 'POST',
+-      //   headers: {
+-      //     'Content-Type': 'application/json',
+-      //   },
+-      //   body: JSON.stringify(bookingPayload),
+-      // });
+-
+       const response = await api.post('/api/bookings', bookingPayload);
+       const result = await response.json();
+ 
+@@ -161,57 +222,98 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
+           </TabsList>
+ 
+           <TabsContent value="credit-card" className="space-y-4 mt-6">
+-            <div>
+-              <Label htmlFor="card-number">Card Number *</Label>
+-              <div className="relative mt-1.5">
+-                <Input
+-                  id="card-number"
+-                  value={cardNumber}
+-                  onChange={(e) => setCardNumber(e.target.value)}
+-                  placeholder="1234 5678 9012 3456"
+-                  maxLength={19}
+-                  className="pl-10"
+-                />
+-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
++            {settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe' ? (
++              <div className="space-y-4">
++                <div>
++                  <Label htmlFor="card-name">Cardholder Name *</Label>
++                  <Input
++                    id="card-name"
++                    value={cardName}
++                    onChange={(e) => setCardName(e.target.value)}
++                    placeholder="John Doe"
++                    className="mt-1.5"
++                  />
++                </div>
++                <div>
++                  <Label>Card Details *</Label>
++                  <div className="mt-1.5 p-4 border border-neutral-200 rounded-lg bg-neutral-50 min-h-[50px] flex items-center">
++                    <div className="w-full">
++                      <CardElement
++                        options={{
++                          style: {
++                            base: {
++                              fontSize: '16px',
++                              color: '#424770',
++                              '::placeholder': {
++                                color: '#aab7c4',
++                              },
++                            },
++                            invalid: {
++                              color: '#9e2146',
++                            },
++                          },
++                        }}
++                      />
++                    </div>
++                  </div>
++                  {stripeError && <p className="text-sm text-red-500 mt-2">{stripeError}</p>}
++                </div>
+               </div>
+-            </div>
++            ) : (
++              <>
++                <div>
++                  <Label htmlFor="card-number">Card Number *</Label>
++                  <div className="relative mt-1.5">
++                    <Input
++                      id="card-number"
++                      value={cardNumber}
++                      onChange={(e) => setCardNumber(e.target.value)}
++                      placeholder="1234 5678 9012 3456"
++                      maxLength={19}
++                      className="pl-10"
++                    />
++                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
++                  </div>
++                </div>
+ 
+-            <div className="grid grid-cols-2 gap-4">
+-              <div>
+-                <Label htmlFor="expiry">Expiry Date *</Label>
+-                <Input
+-                  id="expiry"
+-                  value={expiryDate}
+-                  onChange={(e) => setExpiryDate(e.target.value)}
+-                  placeholder="MM/YY"
+-                  maxLength={5}
+-                  className="mt-1.5"
+-                />
+-              </div>
+-              <div>
+-                <Label htmlFor="cvv">CVV *</Label>
+-                <Input
+-                  id="cvv"
+-                  value={cvv}
+-                  onChange={(e) => setCvv(e.target.value)}
+-                  placeholder="123"
+-                  maxLength={4}
+-                  type="password"
+-                  className="mt-1.5"
+-                />
+-              </div>
+-            </div>
++                <div className="grid grid-cols-2 gap-4">
++                  <div>
++                    <Label htmlFor="expiry">Expiry Date *</Label>
++                    <Input
++                      id="expiry"
++                      value={expiryDate}
++                      onChange={(e) => setExpiryDate(e.target.value)}
++                      placeholder="MM/YY"
++                      maxLength={5}
++                      className="mt-1.5"
++                    />
++                  </div>
++                  <div>
++                    <Label htmlFor="cvv">CVV *</Label>
++                    <Input
++                      id="cvv"
++                      value={cvv}
++                      onChange={(e) => setCvv(e.target.value)}
++                      placeholder="123"
++                      maxLength={4}
++                      type="password"
++                      className="mt-1.5"
++                    />
++                  </div>
++                </div>
+ 
+-            <div>
+-              <Label htmlFor="card-name">Cardholder Name *</Label>
+-              <Input
+-                id="card-name"
+-                value={cardName}
+-                onChange={(e) => setCardName(e.target.value)}
+-                placeholder="John Doe"
+-                className="mt-1.5"
+-              />
+-            </div>
++                <div>
++                  <Label htmlFor="card-name">Cardholder Name *</Label>
++                  <Input
++                    id="card-name"
++                    value={cardName}
++                    onChange={(e) => setCardName(e.target.value)}
++                    placeholder="John Doe"
++                    className="mt-1.5"
++                  />
++                </div>
++              </>
++            )}
+           </TabsContent>
+ 
+           <TabsContent value="debit-card" className="space-y-4 mt-6">
+diff --git a/frontend/src/components/landing/LoginModal.tsx b/frontend/src/components/landing/LoginModal.tsx
+index 0cc5012..93942b7 100644
+--- a/frontend/src/components/landing/LoginModal.tsx
++++ b/frontend/src/components/landing/LoginModal.tsx
+@@ -244,17 +244,10 @@ export function LoginModal({
+                       required
+                     />
+                   </div>
+-<<<<<<< HEAD
+                   <p className="text-xs text-neutral-500 flex items-center gap-1">
+                     {/* <Shield className="w-3 h-3" />
+                     Use @admin.com, @supervisor.com, or @support.com for staff access */}
+                   </p>
+-=======
+-                  {/* <p className="text-xs text-neutral-500 flex items-center gap-1">
+-                    <Shield className="w-3 h-3" />
+-                    Use @admin.com, @supervisor.com, or @support.com for staff access
+-                  </p> */}
+->>>>>>> production
+                 </div>
+ 
+                 <div className="space-y-2">
+diff --git a/server/package-lock.json b/server/package-lock.json
+index 7209951..c6a4835 100644
+--- a/server/package-lock.json
++++ b/server/package-lock.json
+@@ -21,6 +21,7 @@
+                 "nodemailer": "^7.0.12",
+                 "pg": "^8.11.5",
+                 "socket.io": "^4.8.1",
++                "stripe": "^20.1.2",
+                 "uuid": "^13.0.0"
+             },
+             "devDependencies": {
+@@ -3985,9 +3986,9 @@
+             "license": "MIT"
+         },
+         "node_modules/qs": {
+-            "version": "6.14.0",
+-            "resolved": "https://registry.npmjs.org/qs/-/qs-6.14.0.tgz",
+-            "integrity": "sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==",
++            "version": "6.14.1",
++            "resolved": "https://registry.npmjs.org/qs/-/qs-6.14.1.tgz",
++            "integrity": "sha512-4EK3+xJl8Ts67nLYNwqw/dsFVnCf+qR7RgXSK9jEEm9unao3njwMDdmsdvoKBKHzxd7tCYz5e5M+SnMjdtXGQQ==",
+             "license": "BSD-3-Clause",
+             "dependencies": {
+                 "side-channel": "^1.1.0"
+@@ -4592,6 +4593,26 @@
+                 "node": ">=8"
+             }
+         },
++        "node_modules/stripe": {
++            "version": "20.1.2",
++            "resolved": "https://registry.npmjs.org/stripe/-/stripe-20.1.2.tgz",
++            "integrity": "sha512-qU+lQRRJnTxmyvglYBPE24/IepncmywsAg0GDTsTdP2pb+3e3RdREHJZjKgqCmv0phPxN/nmgNPnIPPH8w0P4A==",
++            "license": "MIT",
++            "dependencies": {
++                "qs": "^6.14.1"
++            },
++            "engines": {
++                "node": ">=16"
++            },
++            "peerDependencies": {
++                "@types/node": ">=16"
++            },
++            "peerDependenciesMeta": {
++                "@types/node": {
++                    "optional": true
++                }
++            }
++        },
+         "node_modules/strnum": {
+             "version": "2.1.2",
+             "resolved": "https://registry.npmjs.org/strnum/-/strnum-2.1.2.tgz",
+diff --git a/server/package.json b/server/package.json
+index 6739070..2e62f7c 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -25,6 +25,7 @@
+         "nodemailer": "^7.0.12",
+         "pg": "^8.11.5",
+         "socket.io": "^4.8.1",
++        "stripe": "^20.1.2",
+         "uuid": "^13.0.0"
+     },
+     "devDependencies": {
+diff --git a/server/src/controllers/booking.controller.ts b/server/src/controllers/booking.controller.ts
+index 308173e..300b7f2 100644
+--- a/server/src/controllers/booking.controller.ts
++++ b/server/src/controllers/booking.controller.ts
+@@ -4,6 +4,7 @@ import { createNotification, notifyAdmins, notifyCleaners } from '../utils/notif
+ import { sendBookingConfirmation, sendInvoiceEmail, sendEmail } from '../utils/email.service';
+ import { calculateBookingDuration } from '../utils/booking';
+ import { emitToUser } from '../utils/socket';
++import { PaymentService } from '../utils/payment.service';
+ // import { uploadBase64Image } from '../utils/googleDrive'; // TODO: Google Drive uploads disabled
+ 
+ export const sendInvoice = async (req: Request, res: Response) => {
+@@ -27,6 +28,32 @@ export const sendInvoice = async (req: Request, res: Response) => {
+   }
+ };
+ 
++export async function createPaymentIntent(req: Request, res: Response) {
++  try {
++    const { amount, bookingId, customerEmail } = req.body;
++
++    if (!amount) {
++      return res.status(400).json({ message: 'Amount is required' });
++    }
++
++    const paymentIntent = await PaymentService.createPaymentIntent(amount, 'usd', {
++      bookingId: bookingId || 'new_booking',
++      customerEmail: customerEmail || 'guest',
++    });
++
++    res.json({
++      clientSecret: paymentIntent.client_secret,
++      id: paymentIntent.id
++    });
++  } catch (error) {
++    console.error('Create payment intent error:', error);
++    res.status(500).json({
++      message: 'Failed to create payment intent',
++      error: error instanceof Error ? error.message : String(error)
++    });
++  }
++}
++
+ export const createBooking = async (req: Request, res: Response) => {
+   try {
+     const bookingData = req.body;
+@@ -36,19 +63,19 @@ export const createBooking = async (req: Request, res: Response) => {
+     //   return res.status(400).json({ message: 'Missing required booking fields: serviceType, date, or totalAmount' });
+     // }
+     // More detailed validation
+-const missingFields = [];
+-if (!bookingData.serviceType) missingFields.push('serviceType');
+-if (!bookingData.date) missingFields.push('date');
+-if (bookingData.totalAmount === undefined || bookingData.totalAmount === null) missingFields.push('totalAmount');
+-
+-if (missingFields.length > 0) {
+-  console.error('Missing booking fields:', missingFields, 'Received payload:', bookingData);
+-  return res.status(400).json({ 
+-    message: `Missing required booking fields: ${missingFields.join(', ')}`,
+-    missing: missingFields,
+-    received: Object.keys(bookingData)
+-  });
+-}
++    const missingFields = [];
++    if (!bookingData.serviceType) missingFields.push('serviceType');
++    if (!bookingData.date) missingFields.push('date');
++    if (bookingData.totalAmount === undefined || bookingData.totalAmount === null) missingFields.push('totalAmount');
++
++    if (missingFields.length > 0) {
++      console.error('Missing booking fields:', missingFields, 'Received payload:', bookingData);
++      return res.status(400).json({
++        message: `Missing required booking fields: ${missingFields.join(', ')}`,
++        missing: missingFields,
++        received: Object.keys(bookingData)
++      });
++    }
+     let {
+       userId, guestName, guestEmail, guestPhone, address,
+       serviceType, propertyType, bedrooms, bathrooms, toilets,
+@@ -87,7 +114,7 @@ if (missingFields.length > 0) {
+       month = d.getMonth() + 1;
+       day = d.getDate();
+     }
+-    
++
+     const monthStr = String(month).padStart(2, '0');
+     const dayStr = String(day).padStart(2, '0');
+     const dateStr = `${year}${monthStr}${dayStr}`;
+@@ -621,7 +648,7 @@ export const notifyArrival = async (req: Request, res: Response) => {
+     // Update booking status to ARRIVED and store the code provided by the cleaner
+     await (prisma.booking as any).update({
+       where: { id },
+-      data: { 
++      data: {
+         status: 'ARRIVED',
+         cleanerProvidedCode: securityCode || null
+       }
+@@ -634,7 +661,7 @@ export const notifyArrival = async (req: Request, res: Response) => {
+         type: 'CLEANER_ARRIVED',
+         title: 'Cleaner Arrived!',
+         message: `${cleaner.name} has arrived at your location. Please verify their credentials in your dashboard.`,
+-        data: { 
++        data: {
+           bookingId: booking.id,
+           cleanerName: cleaner.name,
+           cleanerId: cleaner.id,
+diff --git a/server/src/controllers/settings.controller.ts b/server/src/controllers/settings.controller.ts
+index b22b46b..09a8d69 100644
+--- a/server/src/controllers/settings.controller.ts
++++ b/server/src/controllers/settings.controller.ts
+@@ -131,7 +131,28 @@ export const getSettings = async (req: Request, res: Response) => {
+       });
+     }
+ 
+-    res.json(settings);
++    // Sanitize settings before sending to client (remove secret keys)
++    const sanitizedSettings = JSON.parse(JSON.stringify(settings));
++    if (sanitizedSettings.integrations && typeof sanitizedSettings.integrations === 'object') {
++      const integrations = sanitizedSettings.integrations;
++
++      // Sanitization map for each integration type
++      if (integrations.sendgrid) {
++        delete integrations.sendgrid.apiKey;
++      }
++      if (integrations.payment) {
++        delete integrations.payment.apiKey;
++        delete integrations.payment.secretKey;
++        // Keep publishableKey for frontend use
++      }
++      if (integrations.googleCalendar) {
++        delete integrations.googleCalendar.apiKey;
++        delete integrations.googleCalendar.clientSecret;
++        delete integrations.googleCalendar.refreshToken;
++      }
++    }
++
++    res.json(sanitizedSettings);
+   } catch (error) {
+     console.error('Get settings error:', error);
+     res.status(500).json({ message: 'Internal server error' });
+@@ -217,7 +238,7 @@ export const getQualifiedUsersCount = async (req: Request, res: Response) => {
+ export const getAPIConfigs = async (req: Request, res: Response) => {
+   try {
+     const configs = await APIConfigService.getConfigs();
+-    
++
+     // Mask sensitive data before sending to client
+     const maskedConfigs = {
+       sendgrid: configs.sendgrid ? {
+@@ -229,8 +250,9 @@ export const getAPIConfigs = async (req: Request, res: Response) => {
+       payment: configs.payment ? {
+         enabled: configs.payment.enabled,
+         apiKey: configs.payment.apiKey ? `${configs.payment.apiKey.substring(0, 10)}...` : '',
++        publishableKey: configs.payment.publishableKey ? `${configs.payment.publishableKey.substring(0, 10)}...` : '',
+         provider: configs.payment.provider,
+-        configured: !!configs.payment.apiKey
++        configured: !!(configs.payment.apiKey && configs.payment.publishableKey)
+       } : null,
+       googleCalendar: configs.googleCalendar ? {
+         enabled: configs.googleCalendar.enabled,
+@@ -254,13 +276,13 @@ export const getAPIConfigs = async (req: Request, res: Response) => {
+ export const getAPIConfig = async (req: Request, res: Response) => {
+   try {
+     const { name } = req.params;
+-    
++
+     if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
+       return res.status(400).json({ message: 'Invalid API name' });
+     }
+ 
+     const config = await APIConfigService.getConfig(name as any);
+-    
++
+     if (!config) {
+       return res.json({ configured: false });
+     }
+@@ -270,6 +292,7 @@ export const getAPIConfig = async (req: Request, res: Response) => {
+       ...config,
+       apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
+       secretKey: config.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
++      publishableKey: config.publishableKey ? `${config.publishableKey.substring(0, 10)}...` : '',
+       configured: !!config.apiKey
+     });
+   } catch (error) {
+@@ -292,7 +315,7 @@ export const updateAPIConfig = async (req: Request, res: Response) => {
+     }
+ 
+     const updated = await APIConfigService.updateConfig(name as any, updates);
+-    
++
+     // Get the specific config for this service
+     const config = updated[name as keyof typeof updated];
+ 
+@@ -301,6 +324,7 @@ export const updateAPIConfig = async (req: Request, res: Response) => {
+       ...config,
+       apiKey: config?.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
+       secretKey: config?.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
++      publishableKey: config?.publishableKey ? `${config.publishableKey.substring(0, 10)}...` : '',
+       configured: !!config?.apiKey
+     };
+ 
+@@ -343,7 +367,7 @@ export const testAPIConfig = async (req: Request, res: Response) => {
+ export const getIntegrationHealth = async (req: Request, res: Response) => {
+   try {
+     const health = await APIConfigService.checkHealthStatus();
+-    
++
+     res.json({
+       status: health.sendgrid && health.payment && health.googleCalendar ? 'healthy' : 'degraded',
+       services: health,
+diff --git a/server/src/routes/booking.routes.ts b/server/src/routes/booking.routes.ts
+index 709a685..8fe5acb 100644
+--- a/server/src/routes/booking.routes.ts
++++ b/server/src/routes/booking.routes.ts
+@@ -8,6 +8,7 @@ router.get('/', getBookings);
+ router.patch('/:id', updateBooking);
+ router.patch('/:id/claim', claimJob);
+ router.post('/:id/arrive', notifyArrival);
++// router.post('/create-payment-intent', createPaymentIntent);
+ router.post('/send-invoice', sendInvoice);
+ 
+ export default router;
+diff --git a/server/src/utils/api-config.service.ts b/server/src/utils/api-config.service.ts
+index 11d2167..779f792 100644
+--- a/server/src/utils/api-config.service.ts
++++ b/server/src/utils/api-config.service.ts
+@@ -95,6 +95,7 @@ export interface APIConfig {
+     enabled: boolean;
+     apiKey: string;
+     secretKey?: string;
++    publishableKey?: string;
+     provider: 'stripe' | 'square' | 'other';
+   };
+   googleCalendar?: {
+@@ -259,11 +260,12 @@ export class APIConfigService {
+       const provider = config.provider || 'stripe';
+ 
+       if (provider === 'stripe') {
+-        // Stripe keys start with 'sk_test_' or 'sk_live_'
+-        if (!config.apiKey.startsWith('sk_')) {
+-          return false;
+-        }
+-        return config.apiKey.length > 20;
++        // Stripe secret keys start with 'sk_'
++        const hasSecretKey = config.apiKey?.startsWith('sk_') || config.secretKey?.startsWith('sk_');
++        // Stripe publishable keys start with 'pk_'
++        const hasPublishableKey = config.publishableKey?.startsWith('pk_');
++
++        return !!(hasSecretKey && hasPublishableKey);
+       } else if (provider === 'square') {
+         // Square keys have a specific format
+         return config.apiKey.length > 20;

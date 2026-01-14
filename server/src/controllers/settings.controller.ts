@@ -141,7 +141,28 @@ export const getSettings = async (req: Request, res: Response) => {
       });
     }
 
-    res.json(settings);
+    // Sanitize settings before sending to client (remove secret keys)
+    const sanitizedSettings = JSON.parse(JSON.stringify(settings));
+    if (sanitizedSettings.integrations && typeof sanitizedSettings.integrations === 'object') {
+      const integrations = sanitizedSettings.integrations;
+
+      // Sanitization map for each integration type
+      if (integrations.sendgrid) {
+        delete integrations.sendgrid.apiKey;
+      }
+      if (integrations.payment) {
+        delete integrations.payment.apiKey;
+        delete integrations.payment.secretKey;
+        // Keep publishableKey for frontend use
+      }
+      if (integrations.googleCalendar) {
+        delete integrations.googleCalendar.apiKey;
+        delete integrations.googleCalendar.clientSecret;
+        delete integrations.googleCalendar.refreshToken;
+      }
+    }
+
+    res.json(sanitizedSettings);
   } catch (error) {
     console.error('Get settings error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -227,7 +248,7 @@ export const getQualifiedUsersCount = async (req: Request, res: Response) => {
 export const getAPIConfigs = async (req: Request, res: Response) => {
   try {
     const configs = await APIConfigService.getConfigs();
-    
+
     // Mask sensitive data before sending to client
     const maskedConfigs = {
       sendgrid: configs.sendgrid ? {
@@ -239,8 +260,9 @@ export const getAPIConfigs = async (req: Request, res: Response) => {
       payment: configs.payment ? {
         enabled: configs.payment.enabled,
         apiKey: configs.payment.apiKey ? `${configs.payment.apiKey.substring(0, 10)}...` : '',
+        publishableKey: configs.payment.publishableKey ? `${configs.payment.publishableKey.substring(0, 10)}...` : '',
         provider: configs.payment.provider,
-        configured: !!configs.payment.apiKey
+        configured: !!(configs.payment.apiKey && configs.payment.publishableKey)
       } : null,
       googleCalendar: configs.googleCalendar ? {
         enabled: configs.googleCalendar.enabled,
@@ -264,13 +286,13 @@ export const getAPIConfigs = async (req: Request, res: Response) => {
 export const getAPIConfig = async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
-    
+
     if (!['sendgrid', 'payment', 'googleCalendar'].includes(name)) {
       return res.status(400).json({ message: 'Invalid API name' });
     }
 
     const config = await APIConfigService.getConfig(name as any);
-    
+
     if (!config) {
       return res.json({ configured: false });
     }
@@ -280,6 +302,7 @@ export const getAPIConfig = async (req: Request, res: Response) => {
       ...config,
       apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
       secretKey: config.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
+      publishableKey: config.publishableKey ? `${config.publishableKey.substring(0, 10)}...` : '',
       configured: !!config.apiKey
     });
   } catch (error) {
@@ -302,7 +325,7 @@ export const updateAPIConfig = async (req: Request, res: Response) => {
     }
 
     const updated = await APIConfigService.updateConfig(name as any, updates);
-    
+
     // Get the specific config for this service
     const config = updated[name as keyof typeof updated];
 
@@ -311,6 +334,7 @@ export const updateAPIConfig = async (req: Request, res: Response) => {
       ...config,
       apiKey: config?.apiKey ? `${config.apiKey.substring(0, 10)}...` : '',
       secretKey: config?.secretKey ? `${config.secretKey.substring(0, 10)}...` : '',
+      publishableKey: config?.publishableKey ? `${config.publishableKey.substring(0, 10)}...` : '',
       configured: !!config?.apiKey
     };
 
@@ -353,7 +377,7 @@ export const testAPIConfig = async (req: Request, res: Response) => {
 export const getIntegrationHealth = async (req: Request, res: Response) => {
   try {
     const health = await APIConfigService.checkHealthStatus();
-    
+
     res.json({
       status: health.sendgrid && health.payment && health.googleCalendar ? 'healthy' : 'degraded',
       services: health,

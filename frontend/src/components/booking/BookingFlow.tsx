@@ -13,6 +13,8 @@ import { PricingSidebar } from './PricingSidebar';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { parseDateFromDB } from '../../utils/dateUtils';
 import { api } from '../../utils/api';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 const API_URL = '/api';
 
 export interface BookingData {
@@ -201,6 +203,15 @@ export function BookingFlow({ onComplete, onCancel, isAuthenticated = false, ini
       case 'Schedule':
         return <SchedulingStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={mode === 'reschedule' ? undefined : prevStep} mode={mode} />;
       case 'Payment':
+        const stripeKey = settings?.integrations?.payment?.publishableKey;
+        if (settings?.integrations?.payment?.enabled && stripeKey) {
+          const stripePromise = loadStripe(stripeKey);
+          return (
+            <Elements stripe={stripePromise}>
+              <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />
+            </Elements>
+          );
+        }
         return <PaymentStep data={bookingData} onUpdate={updateBookingData} onNext={nextStep} onBack={prevStep} settings={settings} />;
       case 'Confirmation':
         return <ConfirmationStep data={bookingData} onComplete={onComplete} mode={mode} settings={settings} onBookAnother={() => {

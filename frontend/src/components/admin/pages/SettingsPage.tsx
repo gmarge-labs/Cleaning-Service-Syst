@@ -19,12 +19,13 @@ const API_URL = '/api';
 export function SettingsPage() {
   const dispatch = useDispatch<AppDispatch>();
   const { general: reduxGeneral } = useSelector((state: RootState) => state.settings);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [currentIntegration, setCurrentIntegration] = useState<string>('');
   const [tempApiKey, setTempApiKey] = useState('');
+  const [tempPublishableKey, setTempPublishableKey] = useState('');
   const [qualifiedUsersCount, setQualifiedUsersCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(false);
 
@@ -100,7 +101,7 @@ export function SettingsPage() {
     perWindow: 15,
     perPetHair: 30,
     perOrganizationHour: 60,
-    
+
     standardCleaningMultiplier: 1.0,
     deepCleaningMultiplier: 1.5,
     moveInOutMultiplier: 2.0,
@@ -117,11 +118,11 @@ export function SettingsPage() {
   });
 
   const [integrations, setIntegrations] = useState({
-    stripe: { enabled: true, apiKey: 'sk_test_***************' },
-    plivo: { enabled: true, apiKey: 'MA***************' },
-    sendgrid: { enabled: true, apiKey: 'SG.***************' },
+    stripe: { enabled: true, apiKey: '', publishableKey: '' },
+    plivo: { enabled: true, apiKey: '' },
+    sendgrid: { enabled: true, apiKey: '' },
     quickbooks: { enabled: false, apiKey: '' },
-    googleCalendar: { enabled: true, apiKey: 'AIza***************' },
+    googleCalendar: { enabled: true, apiKey: '' },
   });
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function SettingsPage() {
   useEffect(() => {
     const fetchQualifiedCount = async () => {
       if (!pricingSettings.topBookerCategory) return;
-      
+
       try {
         setIsLoadingCount(true);
         const response = await api.get(`/api/settings/qualified-count?category=${pricingSettings.topBookerCategory}`);
@@ -155,7 +156,7 @@ export function SettingsPage() {
       const response = await api.get(`/api/settings`);
       if (!response.ok) throw new Error('Failed to fetch settings');
       const data = await response.json();
-      
+
       if (data) {
         if (data.general) setGeneralSettings(data.general);
         if (data.pricing) setPricingSettings(data.pricing);
@@ -181,7 +182,7 @@ export function SettingsPage() {
       const response = await api.patch(`/api/settings`, updates);
 
       if (!response.ok) throw new Error('Failed to update settings');
-      
+
       toast.success('Settings updated successfully!');
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -228,9 +229,10 @@ export function SettingsPage() {
     saveSettings({ integrations });
   };
 
-  const handleOpenConfigModal = (integrationKey: string, currentApiKey: string) => {
+  const handleOpenConfigModal = (integrationKey: string, integration: any) => {
     setCurrentIntegration(integrationKey);
-    setTempApiKey(currentApiKey || '');
+    setTempApiKey(integration.apiKey || '');
+    setTempPublishableKey(integration.publishableKey || '');
     setIsConfigModalOpen(true);
   };
 
@@ -240,7 +242,8 @@ export function SettingsPage() {
         ...integrations,
         [currentIntegration]: {
           ...integrations[currentIntegration as keyof typeof integrations],
-          apiKey: tempApiKey
+          apiKey: tempApiKey,
+          publishableKey: tempPublishableKey
         }
       });
       setIsConfigModalOpen(false);
@@ -380,8 +383,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveGeneralSettings} 
+              <Button
+                onClick={handleSaveGeneralSettings}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -420,8 +423,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveServicePrices} 
+              <Button
+                onClick={handleSaveServicePrices}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -464,8 +467,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveRoomPrices} 
+              <Button
+                onClick={handleSaveRoomPrices}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -504,8 +507,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveAddonPrices} 
+              <Button
+                onClick={handleSaveAddonPrices}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -574,8 +577,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveCleanerPay} 
+              <Button
+                onClick={handleSaveCleanerPay}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -625,78 +628,78 @@ export function SettingsPage() {
 
               {/* Configuration Section - Only show if enabled */}
               {pricingSettings.topBookerEnabled && (
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
-                  <p className="text-sm text-neutral-600 mb-3">Select which users qualify for the discount</p>
-                  <select
-                    id="top-booker-category"
-                    value={pricingSettings.topBookerCategory}
-                    onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerCategory: e.target.value })}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500"
-                  >
-                    <option value="all">All Users</option>
-                    <option value="5-9">Users with 5 to 9 bookings</option>
-                    <option value="10-15">Users with 10 to 15 bookings</option>
-                    <option value="16-20">Users with 16 to 20 bookings</option>
-                    <option value="21+">Users with 21+ bookings</option>
-                  </select>
-                </div>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <Label htmlFor="top-booker-category" className="text-base font-semibold">Target User Category</Label>
+                    <p className="text-sm text-neutral-600 mb-3">Select which users qualify for the discount</p>
+                    <select
+                      id="top-booker-category"
+                      value={pricingSettings.topBookerCategory}
+                      onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerCategory: e.target.value })}
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                    >
+                      <option value="all">All Users</option>
+                      <option value="5-9">Users with 5 to 9 bookings</option>
+                      <option value="10-15">Users with 10 to 15 bookings</option>
+                      <option value="16-20">Users with 16 to 20 bookings</option>
+                      <option value="21+">Users with 21+ bookings</option>
+                    </select>
+                  </div>
 
-                <div>
-                  <Label htmlFor="top-booker-discount" className="text-base font-semibold">Discount Percentage</Label>
-                  <p className="text-sm text-neutral-600 mb-3">Percentage to deduct from total</p>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="top-booker-discount"
-                      type="number"
-                      value={pricingSettings.topBookerDiscount}
-                      onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerDiscount: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="100"
-                      className="text-lg font-semibold"
-                    />
-                    <span className="text-neutral-600 font-semibold">%</span>
+                  <div>
+                    <Label htmlFor="top-booker-discount" className="text-base font-semibold">Discount Percentage</Label>
+                    <p className="text-sm text-neutral-600 mb-3">Percentage to deduct from total</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="top-booker-discount"
+                        type="number"
+                        value={pricingSettings.topBookerDiscount}
+                        onChange={(e) => setPricingSettings({ ...pricingSettings, topBookerDiscount: parseInt(e.target.value) || 0 })}
+                        min="0"
+                        max="100"
+                        className="text-lg font-semibold"
+                      />
+                      <span className="text-neutral-600 font-semibold">%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
               )}
 
               {/* Preview Section - Only show if enabled */}
               {pricingSettings.topBookerEnabled && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
-                <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
-                  Current Discount Structure
-                </h4>
-                <div className="flex items-center justify-between text-sm">
-                  <div>
-                    <p className="text-neutral-600 mb-1">Qualifying Category</p>
-                    <p className="font-semibold text-neutral-900">
-                      {pricingSettings.topBookerCategory === 'all' ? 'All Users' : 
-                       pricingSettings.topBookerCategory === '5-9' ? '5-9 Bookings' :
-                       pricingSettings.topBookerCategory === '10-15' ? '10-15 Bookings' :
-                       pricingSettings.topBookerCategory === '16-20' ? '16-20 Bookings' : '21+ Bookings'}
-                    </p>
-                  </div>
-                  <div className="flex gap-12 text-right">
+                <div className="mt-6 p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg border border-secondary-200">
+                  <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    Current Discount Structure
+                  </h4>
+                  <div className="flex items-center justify-between text-sm">
                     <div>
-                      <p className="text-neutral-600 mb-1">Qualified Users</p>
-                      <p className="font-semibold text-secondary-600">
-                        {isLoadingCount ? (
-                          <Loader2 className="w-3 h-3 animate-spin inline" />
-                        ) : (
-                          `${qualifiedUsersCount ?? 0} users`
-                        )}
+                      <p className="text-neutral-600 mb-1">Qualifying Category</p>
+                      <p className="font-semibold text-neutral-900">
+                        {pricingSettings.topBookerCategory === 'all' ? 'All Users' :
+                          pricingSettings.topBookerCategory === '5-9' ? '5-9 Bookings' :
+                            pricingSettings.topBookerCategory === '10-15' ? '10-15 Bookings' :
+                              pricingSettings.topBookerCategory === '16-20' ? '16-20 Bookings' : '21+ Bookings'}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-neutral-600 mb-1">Discount Applied</p>
-                      <p className="font-semibold text-green-600">{pricingSettings.topBookerDiscount}% off</p>
+                    <div className="flex gap-12 text-right">
+                      <div>
+                        <p className="text-neutral-600 mb-1">Qualified Users</p>
+                        <p className="font-semibold text-secondary-600">
+                          {isLoadingCount ? (
+                            <Loader2 className="w-3 h-3 animate-spin inline" />
+                          ) : (
+                            `${qualifiedUsersCount ?? 0} users`
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-600 mb-1">Discount Applied</p>
+                        <p className="font-semibold text-green-600">{pricingSettings.topBookerDiscount}% off</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               )}
 
               <div className="pt-6 border-t border-neutral-200">
@@ -719,8 +722,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSavePaySettings} 
+              <Button
+                onClick={handleSavePaySettings}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -740,7 +743,7 @@ export function SettingsPage() {
             </div>
 
             <p className="text-sm text-neutral-600 mb-6">
-              Configure how the system calculates the estimated time for each booking. 
+              Configure how the system calculates the estimated time for each booking.
               This affects cleaner assignment (1 cleaner per 4 hours).
             </p>
 
@@ -748,7 +751,7 @@ export function SettingsPage() {
               {/* Base & Core Room Times */}
               <div className="space-y-6">
                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Base & Core Room Times (Minutes)</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="base-mins">Base Time</Label>
@@ -801,7 +804,7 @@ export function SettingsPage() {
               {/* Specific Room Times */}
               <div className="space-y-6">
                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Specific Room Times (Minutes)</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="per-kitchen">Kitchen</Label>
@@ -863,7 +866,7 @@ export function SettingsPage() {
               {/* Kitchen Add-on Times */}
               <div className="space-y-6">
                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Kitchen Add-on Times (Minutes)</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="per-fridge">Inside Fridge</Label>
@@ -907,7 +910,7 @@ export function SettingsPage() {
               {/* Service Add-on Times */}
               <div className="space-y-6">
                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Add-on Times (Minutes)</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="per-basket">Laundry (Per Basket)</Label>
@@ -951,7 +954,7 @@ export function SettingsPage() {
               {/* Multipliers */}
               <div className="space-y-6">
                 <h3 className="font-semibold text-neutral-900 border-b pb-2">Service Multipliers</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="std-mult">Standard Cleaning</Label>
@@ -998,8 +1001,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveDurationSettings} 
+              <Button
+                onClick={handleSaveDurationSettings}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -1098,8 +1101,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveNotificationTemplates} 
+              <Button
+                onClick={handleSaveNotificationTemplates}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -1128,10 +1131,10 @@ export function SettingsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleOpenConfigModal(key, integration.apiKey)}
+                      onClick={() => handleOpenConfigModal(key, integration)}
                     >
                       <Key className="w-4 h-4 mr-2" />
                       Configure
@@ -1157,8 +1160,8 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-200">
-              <Button 
-                onClick={handleSaveIntegrations} 
+              <Button
+                onClick={handleSaveIntegrations}
                 disabled={isSaving}
                 className="bg-secondary-500 hover:bg-secondary-600"
               >
@@ -1222,16 +1225,29 @@ export function SettingsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="api-key">API Key</Label>
+              <Label htmlFor="api-key">{currentIntegration === 'stripe' ? 'Secret Key' : 'API Key'}</Label>
               <Input
                 id="api-key"
-                type="text"
+                type="password"
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
-                placeholder="Enter your API key..."
+                placeholder={currentIntegration === 'stripe' ? 'sk_test_...' : 'Enter your API key...'}
                 className="mt-1.5"
               />
             </div>
+            {currentIntegration === 'stripe' && (
+              <div>
+                <Label htmlFor="publishable-key">Publishable Key</Label>
+                <Input
+                  id="publishable-key"
+                  type="text"
+                  value={tempPublishableKey}
+                  onChange={(e) => setTempPublishableKey(e.target.value)}
+                  placeholder="pk_test_..."
+                  className="mt-1.5"
+                />
+              </div>
+            )}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-900">
                 <strong>Tip:</strong> Keep your API keys secure. Never share them publicly or commit them to version control.

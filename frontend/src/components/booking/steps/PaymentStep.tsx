@@ -4,15 +4,15 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Checkbox } from '../../ui/checkbox';
 import { BookingData, SystemSettings } from '../BookingFlow';
-import { CreditCard, Shield, AlertCircle, Tag } from 'lucide-react';
+import { CreditCard, Shield, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { toast } from 'sonner';
 import { calculateBookingPrice } from '../../../utils/bookingUtils';
 import { formatDateForDB } from '../../../utils/dateUtils';
-import { Badge } from '../../ui/badge';
 import { api } from '../../../utils/api';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface PaymentStepProps {
   data: BookingData;
@@ -31,7 +31,7 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [emailNotif, setEmailNotif] = useState(true);
   const [smsNotif, setSmsNotif] = useState(true);
-  const [applyFreeCleaning, setApplyFreeCleaning] = useState(false);
+  const [applyFreeCleaning] = useState(false);
   const [cleaningStats, setCleaningStats] = useState({
     completedCount: 0,
     progressToNext: 0,
@@ -39,6 +39,10 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     threshold: 5
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  const stripe = useStripe();
+  const elements = useElements();
 
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -83,12 +87,76 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
     if (applyFreeCleaning && qualifiesForFreeCleaning && totalAmount === 0) {
       return agreedToTerms;
     }
-    // Otherwise, require full payment details
+
+    // If Stripe is enabled, we rely on Stripe Elements validation
+    if (settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe') {
+      return agreedToTerms;
+    }
+
+    // Otherwise, require full manual payment details (fallback)
     return cardNumber && expiryDate && cvv && cardName && agreedToTerms;
   };
 
   const handleSubmit = async (status: 'BOOKED' | 'DRAFT' = 'BOOKED') => {
     setIsLoading(true);
+    setStripeError(null);
+
+    let paymentIntentId = null;
+
+    // Process Stripe Payment if enabled and not a draft
+    if (status === 'BOOKED' && totalAmount > 0 && settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe') {
+      if (!stripe || !elements) {
+        toast.error("Stripe hasn't loaded yet. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // 1. Create PaymentIntent on the server
+        const piResponse = await api.post('/api/bookings/create-payment-intent', {
+          amount: totalAmount,
+          customerEmail: user?.email || data.email,
+        });
+
+        if (!piResponse.ok) {
+          const piResult = await piResponse.json();
+          throw new Error(piResult.message || 'Failed to initialize payment');
+        }
+
+        const { clientSecret, id } = await piResponse.json();
+        paymentIntentId = id;
+
+        // 2. Confirm payment on the client
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) throw new Error('Card element not found');
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: cardName || user?.name || data.name || 'Customer',
+              email: user?.email || data.email,
+            },
+          },
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (paymentIntent.status !== 'succeeded') {
+          throw new Error('Payment was not successful. Status: ' + paymentIntent.status);
+        }
+
+        toast.success('Payment authorized and confirmed!');
+      } catch (error: any) {
+        console.error('Stripe error:', error);
+        setStripeError(error.message);
+        toast.error(error.message || 'Payment failed');
+        setIsLoading(false);
+        return;
+      }
+    }
 
     const bookingPayload = {
       ...data,
@@ -100,18 +168,11 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
       address: data.address || null,
       totalAmount: totalAmount,
       paymentMethod: totalAmount === 0 ? 'free-cleaning-reward' : (status === 'DRAFT' ? null : paymentMethod),
+      paymentIntentId: paymentIntentId, // Store the successful payment intent ID
       status: status,
     };
 
     try {
-      // const response = await api.post('/api/bookings', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(bookingPayload),
-      // });
-
       const response = await api.post('/api/bookings', bookingPayload);
       const result = await response.json();
 
@@ -161,57 +222,98 @@ export function PaymentStep({ data, onUpdate, onNext, onBack, settings }: Paymen
           </TabsList>
 
           <TabsContent value="credit-card" className="space-y-4 mt-6">
-            <div>
-              <Label htmlFor="card-number">Card Number *</Label>
-              <div className="relative mt-1.5">
-                <Input
-                  id="card-number"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  className="pl-10"
-                />
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            {settings?.integrations?.payment?.enabled && settings?.integrations?.payment?.provider === 'stripe' ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="card-name">Cardholder Name *</Label>
+                  <Input
+                    id="card-name"
+                    value={cardName}
+                    onChange={(e) => setCardName(e.target.value)}
+                    placeholder="John Doe"
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label>Card Details *</Label>
+                  <div className="mt-1.5 p-4 border border-neutral-200 rounded-lg bg-neutral-50 min-h-[50px] flex items-center">
+                    <div className="w-full">
+                      <CardElement
+                        options={{
+                          style: {
+                            base: {
+                              fontSize: '16px',
+                              color: '#424770',
+                              '::placeholder': {
+                                color: '#aab7c4',
+                              },
+                            },
+                            invalid: {
+                              color: '#9e2146',
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {stripeError && <p className="text-sm text-red-500 mt-2">{stripeError}</p>}
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="card-number">Card Number *</Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="card-number"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      placeholder="1234 5678 9012 3456"
+                      maxLength={19}
+                      className="pl-10"
+                    />
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="expiry">Expiry Date *</Label>
-                <Input
-                  id="expiry"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cvv">CVV *</Label>
-                <Input
-                  id="cvv"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                  placeholder="123"
-                  maxLength={4}
-                  type="password"
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="expiry">Expiry Date *</Label>
+                    <Input
+                      id="expiry"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      placeholder="MM/YY"
+                      maxLength={5}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cvv">CVV *</Label>
+                    <Input
+                      id="cvv"
+                      value={cvv}
+                      onChange={(e) => setCvv(e.target.value)}
+                      placeholder="123"
+                      maxLength={4}
+                      type="password"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="card-name">Cardholder Name *</Label>
-              <Input
-                id="card-name"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="John Doe"
-                className="mt-1.5"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="card-name">Cardholder Name *</Label>
+                  <Input
+                    id="card-name"
+                    value={cardName}
+                    onChange={(e) => setCardName(e.target.value)}
+                    placeholder="John Doe"
+                    className="mt-1.5"
+                  />
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="debit-card" className="space-y-4 mt-6">

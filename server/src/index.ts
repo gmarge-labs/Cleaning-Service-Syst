@@ -23,7 +23,7 @@ const allowedOrigins = process.env.FRONTEND_URL
 // Manual CORS middleware
 app.use((req, res, next) => {
   const origin = req.get('origin');
-  
+
   // Check if origin is allowed
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -31,12 +31,12 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-user-id');
   }
-  
+
   // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
-  
+
   next();
 });
 
@@ -76,14 +76,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// httpServer.listen(port, async () => {
-
-//   console.log(`Server is running on port ${port}`);
-  
-//   // Initialize API configurations on startup
-//   await initializeAPIConfigs();
-// });
-
 // Attach error handler FIRST, before any listen attempts
 httpServer.on('error', (err: any) => {
   if (err.code === 'EADDRINUSE') {
@@ -103,12 +95,7 @@ httpServer.on('error', (err: any) => {
 // Now listen
 httpServer.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
-  
+
   // Initialize API configurations on startup
   await initializeAPIConfigs();
-<<<<<<< HEAD
 });
-
-=======
-});
->>>>>>> master

@@ -244,17 +244,10 @@ export function LoginModal({
                       required
                     />
                   </div>
-<<<<<<< HEAD
                   <p className="text-xs text-neutral-500 flex items-center gap-1">
                     {/* <Shield className="w-3 h-3" />
                     Use @admin.com, @supervisor.com, or @support.com for staff access */}
                   </p>
-=======
-                  {/* <p className="text-xs text-neutral-500 flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
-                    Use @admin.com, @supervisor.com, or @support.com for staff access
-                  </p> */}
->>>>>>> production
                 </div>
 
                 <div className="space-y-2">
