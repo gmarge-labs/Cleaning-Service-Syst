@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Switch, Platform, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Image, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, Clock, Save, Edit2, IdCard, CheckCircle, X, Settings, Star, Camera } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -73,7 +74,7 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.5,
@@ -100,7 +101,7 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
         setIsLoading(true);
         try {
             if (!user) return;
-            
+
             const updated = await authService.updateProfile(user.id, {
                 name: editedProfile.name,
                 email: editedProfile.email,
@@ -112,7 +113,7 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
                 accountNumber: editedProfile.accountNumber,
                 routingNumber: editedProfile.routingNumber,
             });
-            
+
             setProfile(editedProfile);
             onUpdateUser(updated);
             setIsEditing(false);
@@ -172,8 +173,8 @@ export function CleanerProfile({ currentView, onNavigate, user, onUpdateUser, un
 
                 <View style={styles.profileCard}>
                     <View style={styles.profileMain}>
-                        <TouchableOpacity 
-                            style={styles.avatarContainer} 
+                        <TouchableOpacity
+                            style={styles.avatarContainer}
                             onPress={pickImage}
                             disabled={!isEditing}
                         >

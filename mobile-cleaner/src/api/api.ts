@@ -26,6 +26,20 @@ api.interceptors.request.use(
     }
 );
 
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            console.log('Unauthorized request, clearing session...');
+            await AsyncStorage.removeItem('user');
+            // We can't easily trigger a navigation change from here without a global state or event emitter,
+            // but clearing AsyncStorage will cause the next app restart or manual check to fail.
+            // For now, let's just clear it.
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;
 
 

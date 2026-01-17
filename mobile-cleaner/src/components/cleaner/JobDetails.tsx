@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Linking, Platform, Alert, AppState } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Linking, Platform, Alert, AppState } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Clock, DollarSign, Navigation, CheckCircle, AlertCircle, Package, Shield, Send, Key, IdCard, ListChecks, ChevronRight, Users, Wrench, Info, Home } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -18,13 +19,13 @@ interface JobDetailsProps {
 }
 
 export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: JobDetailsProps) {
-    const isClaimedByMe = job.claimedBy?.some(c => c.id === user?.id) || 
-                         job.cleanerId === user?.id;
+    const isClaimedByMe = job.claimedBy?.some(c => c.id === user?.id) ||
+        job.cleanerId === user?.id;
     const [isClockedIn, setIsClockedIn] = useState(job.status === 'IN_PROGRESS');
     // Use actual startTime from job if available, otherwise null
     const [startTime, setStartTime] = useState<Date | null>(
-        job.status === 'IN_PROGRESS' && (job as any).startTime 
-            ? new Date((job as any).startTime) 
+        job.status === 'IN_PROGRESS' && (job as any).startTime
+            ? new Date((job as any).startTime)
             : null
     );
     const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -93,10 +94,10 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
         }
 
         // Add base tasks
-        tasks.push('Dust all surfaces');
-        tasks.push('Vacuum all floors');
-        tasks.push('Mop hard floors');
-        tasks.push('Empty trash bins');
+        // tasks.push('Dust all surfaces');
+        // tasks.push('Vacuum all floors');
+        // tasks.push('Mop hard floors');
+        // tasks.push('Empty trash bins');
 
         return tasks;
     };
@@ -132,49 +133,49 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
     //     }
     // }, [job.id]);
 
-   useEffect(() => {
-    const socket = socketService.getSocket();
-    if (socket && job.id) {
-        // Listen for job status updates
-        const handleJobUpdate = async (data: { bookingId: string; status: string }) => {
-            if (data.bookingId === job.id) {
-                console.log('Job status updated:', data.status);
-                
-                // ✅ AUTO-SHOW TASK LIST WHEN CUSTOMER VERIFIES
-                if (data.status === 'IN_PROGRESS') {
-                    // Fetch the actual startTime from the server
-                    try {
-                        const response = await jobService.getJobDetails(job.id);
-                        const actualStartTime = response.startTime ? new Date(response.startTime) : new Date();
-                        setStartTime(actualStartTime);
-                    } catch (error) {
-                        console.error('Error fetching start time:', error);
-                        setStartTime(new Date());
+    useEffect(() => {
+        const socket = socketService.getSocket();
+        if (socket && job.id) {
+            // Listen for job status updates
+            const handleJobUpdate = async (data: { bookingId: string; status: string }) => {
+                if (data.bookingId === job.id) {
+                    console.log('Job status updated:', data.status);
+
+                    // ✅ AUTO-SHOW TASK LIST WHEN CUSTOMER VERIFIES
+                    if (data.status === 'IN_PROGRESS') {
+                        // Fetch the actual startTime from the server
+                        try {
+                            const response = await jobService.getJobDetails(job.id);
+                            const actualStartTime = (response as any).startTime ? new Date((response as any).startTime) : new Date();
+                            setStartTime(actualStartTime);
+                        } catch (error) {
+                            console.error('Error fetching start time:', error);
+                            setStartTime(new Date());
+                        }
+                        setIsClockedIn(true);
+                        setShowTaskList(true);  // <-- Automatically show task list
+                        setShowVerificationModal(false);
+                        alert('✅ Customer verified! You can now start cleaning. Complete all tasks on the checklist.');
                     }
-                    setIsClockedIn(true);
-                    setShowTaskList(true);  // <-- Automatically show task list
-                    setShowVerificationModal(false);
-                    alert('✅ Customer verified! You can now start cleaning. Complete all tasks on the checklist.');
                 }
-            }
-        };
+            };
 
-        const handleRevisionRequested = (data: { bookingId: string; revisionNotes: string }) => {
-            if (data.bookingId === job.id) {
-                alert(`Revision Requested: ${data.revisionNotes}\n\nPlease address the issues and resubmit.`);
-            }
-        };
+            const handleRevisionRequested = (data: { bookingId: string; revisionNotes: string }) => {
+                if (data.bookingId === job.id) {
+                    alert(`Revision Requested: ${data.revisionNotes}\n\nPlease address the issues and resubmit.`);
+                }
+            };
 
-        socket.on('job_status_updated', handleJobUpdate);
-        socket.on('revision_requested', handleRevisionRequested);
+            socket.on('job_status_updated', handleJobUpdate);
+            socket.on('revision_requested', handleRevisionRequested);
 
-        return () => {
-            socket.off('job_status_updated', handleJobUpdate);
-            socket.off('revision_requested', handleRevisionRequested);
-        };
-    }
-}, [job.id]);
-   
+            return () => {
+                socket.off('job_status_updated', handleJobUpdate);
+                socket.off('revision_requested', handleRevisionRequested);
+            };
+        }
+    }, [job.id]);
+
     useEffect(() => {
         let interval: any;
         const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
@@ -198,7 +199,7 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                 setElapsedTime(`${hours}:${minutes.toString().padStart(2, '0')}`);
             }, 1000);
         }
-        
+
         return () => {
             if (interval) clearInterval(interval);
             appStateSubscription?.remove();
@@ -589,7 +590,9 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 <View style={styles.codeRow}>
                                     <Key size={24} color={Colors.white} style={{ marginRight: 8 }} />
                                     <Text style={styles.codeValue}>{job.securityCode || '----'}</Text>
+                                    
                                 </View>
+                                <Text style={{ fontSize: 20 }}>{job.cleanerId || 'check ur id'}</Text>
                                 <Text style={styles.codeHint}>Provide this code to the customer</Text>
                             </View>
                         </LinearGradient>
@@ -606,7 +609,7 @@ export function JobDetails({ job, user, onBack, onCompleteJob, onClaimJob }: Job
                                 label="Confirm Your Cleaner ID"
                                 value={cleanerIdInput}
                                 onChangeText={setCleanerIdInput}
-                                placeholder="CLN-XXXXX"
+                                placeholder="spkl-XXXXX"
                             />
                         </View>
 
@@ -926,7 +929,7 @@ const styles = StyleSheet.create({
     codeValue: {
         fontSize: 36,
         fontWeight: 'bold',
-        color: Colors.white, 
+        color: Colors.white,
         letterSpacing: 2,
     },
     codeHint: {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sparkles, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '../../constants/theme';
@@ -48,9 +49,11 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
                     >
                         {/* Logo */}
                         <View style={styles.logoContainer}>
-                            <View style={styles.logoIcon}>
-                                <Sparkles size={36} color={Colors.white} />
-                            </View>
+                            <Image
+                                source={require('../../../assets/icon.png')}
+                                style={styles.logoIcon}
+                                resizeMode="contain"
+                            />
                             <View>
                                 <Text style={styles.logoText}>Sparkleville</Text>
                                 <Text style={styles.logoSubtext}>Cleaner App</Text>
@@ -112,22 +115,22 @@ export function CleanerLogin({ onLogin }: CleanerLoginProps) {
                                     disabled={isLoading}
                                 />
 
-                        {/* <View style={styles.demoBox}>
+                                {/* <View style={styles.demoBox}>
                             <Text style={styles.demoText}>
                                 <Text style={styles.demoBold}>Demo Mode:</Text> Click "Sign In" to continue
                             </Text>
                         </View> */}
-                    </View>
-                </View>
+                            </View>
+                        </View>
 
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Need help? Contact support</Text>
-                    <Text style={styles.copyright}>© 2025 Sparkleville</Text>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
-    </SafeAreaView>
-</LinearGradient>
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>Need help? Contact support</Text>
+                            <Text style={styles.copyright}>© 2025 Sparkleville</Text>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 

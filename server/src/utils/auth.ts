@@ -9,13 +9,19 @@ export interface AuthRequest extends Request {
   };
 }
 
+import fs from 'fs';
+import path from 'path';
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    // For now, we'll expect the userId in the 'x-user-id' header
-    // In a real app, this would be a JWT token
     const userId = req.headers['x-user-id'] as string;
+    
+    // LOG TO FILE FOR DEBUGGING
+    const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - userId: ${userId}\n`;
+    fs.appendFileSync(path.join(process.cwd(), 'auth_debug.log'), logMsg);
 
     if (!userId) {
+      fs.appendFileSync(path.join(process.cwd(), 'auth_debug.log'), `[${new Date().toISOString()}] Auth Failed: No userId header\n`);
       return res.status(401).json({ message: 'Authentication required' });
     }
 
@@ -25,8 +31,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     });
 
     if (!user) {
+      fs.appendFileSync(path.join(process.cwd(), 'auth_debug.log'), `[${new Date().toISOString()}] Auth Failed: User ${userId} not found in DB\n`);
       return res.status(401).json({ message: 'User not found' });
     }
+
+    fs.appendFileSync(path.join(process.cwd(), 'auth_debug.log'), `[${new Date().toISOString()}] Auth Success: User ${user.id}\n`);
 
     req.user = {
       id: user.id,

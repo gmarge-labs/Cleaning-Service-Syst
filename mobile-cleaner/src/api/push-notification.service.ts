@@ -66,10 +66,11 @@ export const pushNotificationService = {
             }
 
             try {
-                token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+                const expoToken = await Notifications.getExpoPushTokenAsync({ projectId });
+                token = expoToken.data;
                 console.log("Expo Push Token:", token);
-            } catch (e) {
-                console.log("Error fetching token:", e);
+            } catch (e: any) {
+                console.warn("Failed to fetch push token. If you are using Expo Go on Android with SDK 53+, this is expected as remote push notifications were removed. Error:", e.message);
             }
 
         } else {

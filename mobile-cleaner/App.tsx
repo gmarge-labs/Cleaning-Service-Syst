@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { CleanerLogin } from './src/components/cleaner/CleanerLogin';
 import { CleanerDashboard } from './src/components/cleaner/CleanerDashboard';
 import { JobDetails } from './src/components/cleaner/JobDetails';
@@ -143,93 +143,95 @@ export default function App() {
     const unreadCount = unreadNotifications;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar style="dark" backgroundColor="#ffffff" translucent={false} hidden={false} />
+        <SafeAreaProvider>
+            <SafeAreaView style={styles.container}>
+                <StatusBar style="dark" backgroundColor="#ffffff" translucent={false} hidden={false} />
 
-            {currentView === 'login' && (
-                <CleanerLogin onLogin={handleLogin} />
-            )}
+                {currentView === 'login' && (
+                    <CleanerLogin onLogin={handleLogin} />
+                )}
 
-            {currentView === 'dashboard' && (
-                <CleanerDashboard
-                    user={user}
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    onSelectJob={handleSelectJob}
-                    onStartJob={handleStartJob}
-                    onClaimJob={handleClaimJob}
-                    onLogout={handleLogout}
-                    onNavigateToMessages={() => setCurrentView('messages')}
-                    onNavigateToProfile={() => setCurrentView('profile')}
-                    onNavigateToEarnings={() => setCurrentView('earnings')}
-                    onNavigateToNotifications={() => setCurrentView('notifications')}
-                    unreadCount={unreadNotifications}
-                    unreadMessages={unreadMessages}
-                />
-            )}
+                {currentView === 'dashboard' && (
+                    <CleanerDashboard
+                        user={user}
+                        activeTab={activeTab}
+                        onTabChange={setActiveTab}
+                        onSelectJob={handleSelectJob}
+                        onStartJob={handleStartJob}
+                        onClaimJob={handleClaimJob}
+                        onLogout={handleLogout}
+                        onNavigateToMessages={() => setCurrentView('messages')}
+                        onNavigateToProfile={() => setCurrentView('profile')}
+                        onNavigateToEarnings={() => setCurrentView('earnings')}
+                        onNavigateToNotifications={() => setCurrentView('notifications')}
+                        unreadCount={unreadNotifications}
+                        unreadMessages={unreadMessages}
+                    />
+                )}
 
-            {currentView === 'job-details' && selectedJob && (
-                <JobDetails
-                    job={selectedJob}
-                    user={user}
-                    onBack={() => setCurrentView('dashboard')}
-                    onCompleteJob={() => setCurrentView('job-completion')}
-                    onClaimJob={handleClaimJob}
-                />
-            )}
+                {currentView === 'job-details' && selectedJob && (
+                    <JobDetails
+                        job={selectedJob}
+                        user={user}
+                        onBack={() => setCurrentView('dashboard')}
+                        onCompleteJob={() => setCurrentView('job-completion')}
+                        onClaimJob={handleClaimJob}
+                    />
+                )}
 
-            {currentView === 'job-completion' && selectedJob && (
-                <JobCompletion
-                    job={selectedJob}
-                    onBack={() => setCurrentView('job-details')}
-                    onSubmit={() => {
-                        setCurrentView('dashboard');
-                    }}
-                />
-            )}
+                {currentView === 'job-completion' && selectedJob && (
+                    <JobCompletion
+                        job={selectedJob}
+                        onBack={() => setCurrentView('job-details')}
+                        onSubmit={() => {
+                            setCurrentView('dashboard');
+                        }}
+                    />
+                )}
 
-            {currentView === 'earnings' && (
-                <CleanerEarnings
-                    currentView={currentView}
-                    onNavigate={(view) => setCurrentView(view)}
-                    user={user}
-                    unreadCount={unreadNotifications}
-                />
-            )}
+                {currentView === 'earnings' && (
+                    <CleanerEarnings
+                        currentView={currentView}
+                        onNavigate={(view) => setCurrentView(view)}
+                        user={user}
+                        unreadCount={unreadNotifications}
+                    />
+                )}
 
-            {currentView === 'notifications' && (
-                <CleanerNotifications
-                    currentView={currentView}
-                    onNavigate={(view) => {
-                        if (view === 'dashboard') {
-                            // Refresh unread count when returning to dashboard
-                            if (user) notificationService.getUnreadCount(user.id).then(setUnreadNotifications);
-                        }
-                        setCurrentView(view);
-                    }}
-                    userId={user?.id}
-                    unreadCount={unreadNotifications}
-                />
-            )}
+                {currentView === 'notifications' && (
+                    <CleanerNotifications
+                        currentView={currentView}
+                        onNavigate={(view) => {
+                            if (view === 'dashboard') {
+                                // Refresh unread count when returning to dashboard
+                                if (user) notificationService.getUnreadCount(user.id).then(setUnreadNotifications);
+                            }
+                            setCurrentView(view);
+                        }}
+                        userId={user?.id}
+                        unreadCount={unreadNotifications}
+                    />
+                )}
 
-            {currentView === 'profile' && (
-                <CleanerProfile
-                    currentView={currentView}
-                    onNavigate={(view) => setCurrentView(view)}
-                    user={user}
-                    onUpdateUser={(u) => setUser(u)}
-                    unreadCount={unreadNotifications}
-                />
-            )}
+                {currentView === 'profile' && (
+                    <CleanerProfile
+                        currentView={currentView}
+                        onNavigate={(view) => setCurrentView(view)}
+                        user={user}
+                        onUpdateUser={(u) => setUser(u)}
+                        unreadCount={unreadNotifications}
+                    />
+                )}
 
-            {currentView === 'messages' && (
-                <CleanerMessages
-                    currentView={currentView}
-                    onNavigate={(view) => setCurrentView(view)}
-                    unreadCount={unreadMessages}
-                />
-            )}
-        </SafeAreaView>
+                {currentView === 'messages' && (
+                    <CleanerMessages
+                        currentView={currentView}
+                        onNavigate={(view) => setCurrentView(view)}
+                        unreadCount={unreadMessages}
+                    />
+                )}
+            </SafeAreaView>
+        </SafeAreaProvider>
     );
 }
 

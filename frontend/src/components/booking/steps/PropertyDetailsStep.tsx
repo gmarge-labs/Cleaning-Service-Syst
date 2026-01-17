@@ -128,18 +128,6 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
       return;
     }
 
-    // For residential, ensure bedrooms and bathrooms are specified if they are expected
-    if (isResidentialProperty()) {
-      if (formData.bedrooms <= 0) {
-        toast.error('Please specify the number of bedrooms.');
-        return;
-      }
-      if (formData.bathrooms <= 0) {
-        toast.error('Please specify the number of bathrooms.');
-        return;
-      }
-    }
-
     if (isOfficeProperty() && formData.toilets < 0) {
       toast.error('Please specify the number of toilets.');
       return;
@@ -225,7 +213,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
             <div className="max-w-[180px]">
               <Label htmlFor="bedrooms" className="text-base font-semibold mb-3 flex items-center gap-2">
                 <Bed className="w-5 h-5 text-secondary-500" />
-                Bedrooms *
+                Bedrooms 
               </Label>
               <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200">
                 <span className="text-xs text-neutral-700 font-medium">Qty:</span>
@@ -254,7 +242,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
             <div className="max-w-[180px]">
               <Label htmlFor="bathrooms" className="text-base font-semibold mb-3 flex items-center gap-2">
                 <Bath className="w-5 h-5 text-secondary-500" />
-                Bathrooms *
+                Bathrooms 
               </Label>
               <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200">
                 <span className="text-xs text-neutral-700 font-medium">Qty:</span>
@@ -315,7 +303,7 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
         )}
 
         {/* Additional Rooms - Nested under Property Type */}
-        {formData.propertyType && isResidentialProperty() && formData.bedrooms > 0 && formData.bathrooms > 0 && (
+        {formData.propertyType && isResidentialProperty() && (
           <div className="ml-6 pl-6 border-l-2 border-secondary-200 space-y-3">
             <div>
               <Label className="text-sm font-semibold text-secondary-700 block mb-2">
@@ -595,10 +583,19 @@ export function PropertyDetailsStep({ data, onUpdate, onNext, onBack }: Property
           <div className="p-4 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg">
             <p className="text-sm text-neutral-900">
               <strong>Your property:</strong> {formData.propertyType}
-              {isResidentialProperty() && (
-                <> with {formData.bedrooms} bedroom{formData.bedrooms !== 1 ? 's' : ''}, {formData.bathrooms} bathroom{formData.bathrooms !== 1 ? 's' : ''}</>
+              {isResidentialProperty() && (formData.bedrooms > 0 || formData.bathrooms > 0) && (
+                <>
+                  {' with '}
+                  {formData.bedrooms > 0 && (
+                    <>{formData.bedrooms} bedroom{formData.bedrooms !== 1 ? 's' : ''}</>
+                  )}
+                  {formData.bedrooms > 0 && formData.bathrooms > 0 && ', '}
+                  {formData.bathrooms > 0 && (
+                    <>{formData.bathrooms} bathroom{formData.bathrooms !== 1 ? 's' : ''}</>
+                  )}
+                </>
               )}
-              {isOfficeProperty() && (
+              {isOfficeProperty() && formData.toilets > 0 && (
                 <> with {formData.toilets} toilet{formData.toilets !== 1 ? 's' : ''}</>
               )}
               {formData.rooms.length > 0 && (

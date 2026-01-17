@@ -4,8 +4,8 @@ import ENV from '../config/environment';
 class SocketService {
     private socket: Socket | null = null;
 
-    connect(userId: string, role: string) {
-        if (this.socket?.connected) return;
+    connect(userId: string, role: string): Socket {
+        if (this.socket?.connected) return this.socket;
 
         this.socket = io(ENV.socketUrl, {
             transports: ['websocket'],
@@ -19,6 +19,8 @@ class SocketService {
         this.socket.on('disconnect', () => {
             console.log('Socket disconnected');
         });
+
+        return this.socket;
     }
 
     disconnect() {

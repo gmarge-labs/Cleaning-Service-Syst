@@ -1,4 +1,5 @@
 import api from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Booking {
     id: string;
@@ -57,36 +58,93 @@ export interface Booking {
 export const jobService = {
     getAvailableJobs: async (): Promise<Booking[]> => {
         try {
-            // Fetch jobs that are published (BOOKED, CONFIRMED, RESCHEDULED, or PENDING)
             const response = await api.get('/bookings', {
                 params: { status: 'BOOKED,CONFIRMED,RESCHEDULED,PENDING' }
             });
-            // The server already filters for jobs that need more cleaners
+            try {
+                // Limit to 50 items to avoid storage full
+                const dataToCache = response.data.slice(0, 50);
+                await AsyncStorage.setItem('cached_available_jobs', JSON.stringify(dataToCache));
+            } catch (storageError: any) {
+                console.error('Storage error (available):', storageError);
+                if (storageError.message && storageError.message.includes('SQLITE_FULL')) {
+                    await AsyncStorage.clear(); 
+                }
+            }
             return response.data;
         } catch (error) {
             console.error('Error fetching available jobs:', error);
+            // Return cached data on error if needed, or empty array
+            const cached = await AsyncStorage.getItem('cached_available_jobs');
+            if (cached) return JSON.parse(cached);
             return [];
         }
+    },
+
+    getCachedAvailableJobs: async (): Promise<Booking[]> => {
+        try {
+            const cached = await AsyncStorage.getItem('cached_available_jobs');
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) { return []; }
     },
 
     getAssignedJobs: async (cleanerId: string): Promise<Booking[]> => {
         try {
             const response = await api.get('/bookings', { params: { cleanerId } });
-            return response.data.filter((b: any) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED');
+            const data = response.data.filter((b: any) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED');
+            try {
+                await AsyncStorage.setItem(`cached_assigned_jobs_${cleanerId}`, JSON.stringify(data));
+            } catch (storageError: any) {
+                console.error('Storage error (assigned):', storageError);
+            }
+            return data;
         } catch (error) {
             console.error('Error fetching assigned jobs:', error);
+            const cached = await AsyncStorage.getItem(`cached_assigned_jobs_${cleanerId}`);
+            if (cached) return JSON.parse(cached);
             return [];
         }
+    },
+
+    getCachedAssignedJobs: async (cleanerId: string): Promise<Booking[]> => {
+        try {
+            const cached = await AsyncStorage.getItem(`cached_assigned_jobs_${cleanerId}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) { return []; }
     },
 
     getJobHistory: async (cleanerId: string): Promise<Booking[]> => {
         try {
             const response = await api.get('/bookings', { params: { cleanerId } });
-            return response.data.filter((b: any) => b.status === 'COMPLETED');
+            const data = response.data.filter((b: any) => b.status === 'COMPLETED');
+            try {
+                // Limit history to last 20 items to save space
+                const dataToCache = data.slice(0, 20);
+                await AsyncStorage.setItem(`cached_history_jobs_${cleanerId}`, JSON.stringify(dataToCache));
+            } catch (storageError: any) {
+                console.error('Storage error (history):', storageError);
+                if (storageError.message && storageError.message.includes('SQLITE_FULL')) {
+                    // Critical cleanup if full
+                    const keys = await AsyncStorage.getAllKeys();
+                    await AsyncStorage.multiRemove(keys);
+                }
+            }
+            return data;
         } catch (error) {
             console.error('Error fetching job history:', error);
+            try {
+                const cached = await AsyncStorage.getItem(`cached_history_jobs_${cleanerId}`);
+                if (cached) return JSON.parse(cached);
+            } catch (e) { /* ignore */ }
             return [];
         }
+    },
+
+    getCachedJobHistory: async (cleanerId: string): Promise<Booking[]> => {
+        try {
+            const cached = await AsyncStorage.getItem(`cached_history_jobs_${cleanerId}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) { return []; }
     },
 
     claimJob: async (jobId: string, cleanerId: string) => {

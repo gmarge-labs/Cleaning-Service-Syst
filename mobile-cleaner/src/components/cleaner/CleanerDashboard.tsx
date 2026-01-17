@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, Clock, DollarSign, MapPin, ChevronRight, User, LogOut, Bell, Users, Star, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Badge } from '../Badge';
@@ -50,8 +51,34 @@ export function CleanerDashboard({
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
+    const processAvailableJobs = (jobs: Booking[]) => {
+        const filteredAvailable = jobs.filter(job => {
+            const isAlreadyClaimedByMe = job.claimedBy?.some(c => c.id === user?.id);
+            const needsMoreCleaners = (job.claimedBy?.length || 0) < (job.cleanerCount || 1);
+            return !isAlreadyClaimedByMe && needsMoreCleaners;
+        });
+        return filteredAvailable.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    };
+
     const fetchData = async () => {
         if (!user?.id) return;
+
+        // 1. Instant Load from Cache
+        try {
+            const [cachedAvailable, cachedAssigned, cachedHistory] = await Promise.all([
+                jobService.getCachedAvailableJobs(),
+                jobService.getCachedAssignedJobs(user.id),
+                jobService.getCachedJobHistory(user.id)
+            ]);
+
+            if (cachedAvailable.length > 0) setAvailableJobs(processAvailableJobs(cachedAvailable));
+            if (cachedAssigned.length > 0) setMyJobs(cachedAssigned);
+            if (cachedHistory.length > 0) setCompletedJobs(cachedHistory);
+        } catch (e) {
+            console.log('Cache load check:', e);
+        }
+
+        // 2. Fetch Fresh Data
         setIsLoading(true);
         try {
             const [available, assigned] = await Promise.all([
@@ -59,20 +86,7 @@ export function CleanerDashboard({
                 jobService.getAssignedJobs(user.id)
             ]);
 
-            // Filter available jobs to exclude those already claimed by this user
-            // and those that are already full
-            const filteredAvailable = available.filter(job => {
-                const isAlreadyClaimedByMe = job.claimedBy?.some(c => c.id === user.id);
-                const needsMoreCleaners = (job.claimedBy?.length || 0) < (job.cleanerCount || 1);
-                return !isAlreadyClaimedByMe && needsMoreCleaners;
-            });
-
-            // Sort available jobs by date (most recent first)
-            const sortedAvailable = filteredAvailable.sort((a, b) => {
-                return new Date(b.date).getTime() - new Date(a.date).getTime();
-            });
-
-            setAvailableJobs(sortedAvailable);
+            setAvailableJobs(processAvailableJobs(available));
             setMyJobs(assigned);
 
             // Also fetch history if on completed tab, or just fetch it here
@@ -299,11 +313,11 @@ const JobCard = ({ job, onSelect, onStart, showStartButton }: any) => {
                             </View>
                         )}
                         {showStartButton && !isCompleted && (
-                            <Button 
-                                title={job.status === 'REVISION_REQUESTED' ? 'Fix Issues' : job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'} 
-                                onPress={() => onStart(job)} 
-                                variant="gradient" 
-                                style={styles.startBtn} 
+                            <Button
+                                title={job.status === 'REVISION_REQUESTED' ? 'Fix Issues' : job.status === 'IN_PROGRESS' ? 'Resume' : 'Arrive'}
+                                onPress={() => onStart(job)}
+                                variant="gradient"
+                                style={styles.startBtn}
                             />
                         )}
                         <TouchableOpacity onPress={() => onSelect(job)} style={styles.detailsBtn}>

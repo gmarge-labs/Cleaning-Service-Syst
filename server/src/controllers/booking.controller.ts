@@ -590,8 +590,41 @@ export const updateBooking = async (req: Request, res: Response) => {
           message: `A revision has been requested for job ${id}. Please check the details.`,
           data: { bookingId: id }
         });
-        emitToUser(cleaner.id, 'revision_requested', { bookingId: id });
+        emitToUser(cleaner.id, 'revision_requested', { 
+          bookingId: id, 
+          revisionNotes: updateData.revisionReason || 'No reason provided' 
+        });
       });
+
+      // Notify admins about the revision/rejection
+      await notifyAdmins({
+        type: 'REVISION_REQUESTED',
+        title: 'Job Revision Requested',
+        message: `Customer ${existingBooking.guestName || 'Guest'} requested a revision for booking ${id}. Reason: ${updateData.revisionReason || 'No reason provided'}`,
+        data: {
+          bookingId: id,
+          customerId: existingBooking.userId,
+          customerName: existingBooking.guestName,
+          serviceType: existingBooking.serviceType,
+          revisionReason: updateData.revisionReason,
+          totalAmount: existingBooking.totalAmount.toString()
+        }
+      });
+
+      // Create an automated review entry for the rejection/revision
+      try {
+        await prisma.review.create({
+          data: {
+            bookingId: id,
+            rating: 1, // Default to 1 star for rejections/revisions
+            comment: `[SYSTEM: REVISION REQUESTED] ${updateData.revisionReason || 'No reason provided'}`,
+            status: 'PENDING'
+          }
+        });
+        console.log(`Automated review created for revision request on booking ${id}`);
+      } catch (reviewError) {
+        console.error('Error creating automated review for revision request:', reviewError);
+      }
     }
 
     // Handle Cancellation

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, TextInput, Alert, ActionSheetIOS, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Alert, ActionSheetIOS, Platform, Linking, type AlertButton } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, X, CheckCircle, Upload, AlertTriangle, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Spacing } from '../../constants/theme';
 import { Button } from '../Button';
@@ -15,60 +16,97 @@ interface JobCompletionProps {
     onBack: () => void;
 }
 
+const MAX_PHOTOS = 10;
+
 export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
-    const [photos, setPhotos] = useState<{uri: string, base64: string}[]>([]);
+    const [photos, setPhotos] = useState<{ uri: string, base64: string }[]>([]);
     const [notes, setNotes] = useState('');
     const [issues, setIssues] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleTakePhoto = async () => {
-        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    const addPhoto = (asset: ImagePicker.ImagePickerAsset) => {
+        setPhotos((prev) => {
+            if (prev.length >= MAX_PHOTOS) {
+                Alert.alert('Photo limit reached', `You can upload up to ${MAX_PHOTOS} photos.`);
+                return prev;
+            }
 
-        if (permissionResult.granted === false) {
-            alert("You've refused to allow this app to access your camera!");
-            return;
+            if (!asset?.base64) {
+                Alert.alert('Photo not added', 'Unable to read the selected photo. Please try again.');
+                return prev;
+            }
+
+            return [...prev, {
+                uri: asset.uri,
+                base64: `data:image/jpeg;base64,${asset.base64}`
+            }];
+        });
+    };
+
+    const ensurePermission = async (type: 'camera' | 'gallery') => {
+        const permission = type === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (permission.granted) {
+            return true;
         }
 
+        const message = type === 'camera'
+            ? 'Camera access is required to take photos.'
+            : 'Photo library access is required to choose images.';
+
+        const actions: AlertButton[] = permission.canAskAgain
+            ? [{ text: 'OK' }]
+            : [
+                { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                { text: 'Cancel', style: 'cancel' }
+            ];
+
+        Alert.alert('Permission needed', message, actions);
+        return false;
+    };
+
+    const handleTakePhoto = async () => {
+        const hasPermission = await ensurePermission('camera');
+        if (!hasPermission) return;
+
         const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.5,
             base64: true,
         });
 
-        if (!result.canceled && result.assets[0].base64) {
-            setPhotos([...photos, { 
-                uri: result.assets[0].uri, 
-                base64: `data:image/jpeg;base64,${result.assets[0].base64}` 
-            }]);
+        if (!result.canceled && result.assets?.length) {
+            addPhoto(result.assets[0]);
         }
     };
 
     const handlePickFromGallery = async () => {
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (permissionResult.granted === false) {
-            alert("You've refused to allow this app to access your photo library!");
-            return;
-        }
+        const hasPermission = await ensurePermission('gallery');
+        if (!hasPermission) return;
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.5,
             base64: true,
         });
 
-        if (!result.canceled && result.assets[0].base64) {
-            setPhotos([...photos, { 
-                uri: result.assets[0].uri, 
-                base64: `data:image/jpeg;base64,${result.assets[0].base64}` 
-            }]);
+        if (!result.canceled && result.assets?.length) {
+            addPhoto(result.assets[0]);
         }
     };
 
     const handlePhotoUpload = async () => {
+        if (photos.length >= MAX_PHOTOS) {
+            Alert.alert('Photo limit reached', `You can upload up to ${MAX_PHOTOS} photos.`);
+            return;
+        }
+
         if (Platform.OS === 'ios') {
             ActionSheetIOS.showActionSheetWithOptions(
                 {
@@ -105,7 +143,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
         setIsSubmitting(true);
         try {
             const photoData = photos.map(p => p.base64);
-            
+
             // If this is a revision, we might want to use different fields or just overwrite
             // For now, we'll overwrite completionPhotos but also support the backend's expectation
             const updateData: any = {
@@ -118,7 +156,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
             await jobService.updateJobStatus(job.id, 'COMPLETED', updateData);
             onSubmit();
         } catch (error: any) {
-            alert(error.message);
+            Alert.alert('Error', error?.message || 'Failed to submit job completion.');
         } finally {
             setIsSubmitting(false);
         }
@@ -140,7 +178,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
                 </TouchableOpacity>
                 <View>
                     <Text style={styles.headerTitle}>Complete Job</Text>
-                    <Text style={styles.headerSubtitle}>{job.guestName || 'Customer'}</Text>
+                    {/* <Text style={styles.headerSubtitle}>{job.guestName || 'Customer'}</Text> */}
                 </View>
             </LinearGradient>
 
@@ -155,7 +193,7 @@ export function JobCompletion({ job, onSubmit, onBack }: JobCompletionProps) {
                             </View>
                             <Text style={styles.cardSubtitle}>Upload at least 2 photos</Text>
                         </View>
-                        <Text style={styles.countText}>{photos.length}/10</Text>
+                        <Text style={styles.countText}>{photos.length}/{MAX_PHOTOS}</Text>
                     </View>
 
                     {photos.length > 0 && (
